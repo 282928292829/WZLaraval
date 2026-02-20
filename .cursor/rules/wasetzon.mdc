@@ -1,0 +1,40 @@
+---
+description: Wasetzon Laravel rebuild — project context, site labels, paths, stack, AI behavior, and architectural decisions
+alwaysApply: true
+---
+
+# Wasetzon Project Context
+
+## Site Labels
+- **Legacy site** — old WordPress, data source only: `Wordpress/pwa3/old-wordpress/`
+- **New WordPress site** — features reference, almost-live but not switching to: `Wordpress/pwa3/app/public/`
+- **Laravel site** — the build target: `wasetzonlaraval/` (this project)
+
+## Key Paths
+- Legacy DB dump: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/wasetzonjan302026.sql`
+- Legacy uploads: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/old-wp-content/uploads/`
+- Features reference: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/app/public/`
+- Full plan: `LARAVEL_PLAN.md` — read this at the start of every session
+
+## Stack
+Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie Permission, MySQL 8, Redis
+
+## AI Behavior
+- Read `LARAVEL_PLAN.md` before making any changes in a new session
+- Before building any feature, audit the corresponding source in the new WordPress site to capture all behavior and edge cases
+- When blocked or uncertain, ask the owner — never guess or hallucinate a solution
+- Do not create new base folders or change dependencies without approval
+- Commit after every feature with small, atomic commits
+- After completing a task, update the `## Current Task` section in `LARAVEL_PLAN.md` with: what was just completed and exactly what the next session should start with. Then tell the user: **"Start next session with: `Read LARAVEL_PLAN.md then continue from the Current Task section.`"**
+
+## Key Architectural Decisions
+- **URLs:** `/orders/{id}` — nginx 301 redirects legacy `/order/(.*)` → `/orders/$1`
+- **Translations:** `lang/ar.json` + `lang/en.json` only — no `translations` DB table
+- **Orders list:** two Blades — `orders/index.blade.php` (customer), `orders/staff.blade.php` (staff)
+- **Order detail:** one shared Blade `orders/show.blade.php` — staff sections gated with `@can`
+- **File storage:** Laravel `Storage` facade, local disk, driver set in `.env`
+- **Mobile-first:** all customer-facing pages; Filament admin is desktop-first
+- **No-scroll forms:** sign-in, sign-up, and each new-order item row must fit on screen without scrolling on mobile — compact layout, submit action always visible without scrolling
+- **New-order layout:** Option 1 (responsive) is site default, admin sets via Filament settings
+- **Templates:** all rewritten from scratch — no WordPress copy/paste
+- **Default menus:** header/footer menus, submenus, login/signup buttons seeded from new WordPress site at Phase 1
