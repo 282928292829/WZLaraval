@@ -123,72 +123,66 @@
             @php $showPartners = \App\Models\Setting::get('show_partners', true); @endphp
             @if ($showPartners)
                 <div class="border-t border-gray-100">
-                    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col items-center gap-5">
-                        <img src="/images/footer-banks.svg"
-                             alt="Banks"
-                             class="w-full max-w-xs sm:max-w-sm object-contain opacity-75"
-                             loading="lazy">
-                        <img src="/images/footer-payments.svg"
-                             alt="Payment Methods"
-                             class="w-full max-w-sm sm:max-w-md object-contain opacity-75"
-                             loading="lazy">
-                        <img src="/images/footer-shipping.svg"
-                             alt="Shipping Partners"
-                             class="w-full max-w-md sm:max-w-lg object-contain opacity-75"
-                             loading="lazy">
+                    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-5">
+                        <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
+                        <img src="https://wasetzon.com/wp-content/uploads/custom/partners.png"
+                             alt="{{ __('footer.partners') }}"
+                             class="w-full max-w-sm object-contain opacity-70"
+                             loading="lazy"
+                             width="400" height="80">
+                        <img src="https://wasetzon.com/wp-content/uploads/custom/banks.png"
+                             alt="{{ __('footer.partners') }}"
+                             class="w-full max-w-sm object-contain opacity-70"
+                             loading="lazy"
+                             width="400" height="80">
                     </div>
                 </div>
             @endif
 
-            {{-- Bottom bar: legal + copyright + language --}}
+            {{-- Bottom bar: legal + last updated + copyright --}}
             <div class="border-t border-gray-100">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4 text-center text-xs text-gray-400">
 
-                        {{-- Legal / registration --}}
-                        <div class="flex flex-col items-center sm:items-start gap-1.5 text-center sm:text-start">
-                            @if ($commercialReg)
-                                <span>{{ __('footer.commercial_reg') }}: {{ $commercialReg }}</span>
-                            @endif
-                            <a href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000020424"
-                               target="_blank" rel="noopener noreferrer"
-                               class="inline-flex items-center gap-1.5 hover:text-gray-600 transition-colors">
-                                {{ __('footer.certified_by') }}
-                            </a>
-                        </div>
-
-                        {{-- Copyright --}}
-                        <p class="text-center">
-                            &copy; {{ date('Y') }} {{ __('app.name') }}.
-                            {{ __('footer.all_rights') }}.
-                        </p>
-
-                        {{-- Language toggle --}}
+                    {{-- Commercial registration + SBC badge --}}
+                    @if ($commercialReg)
                         <div>
-                            @if (app()->getLocale() === 'ar')
-                                <form method="POST" action="{{ route('language.switch', 'en') }}">
-                                    @csrf
-                                    <button type="submit" class="hover:text-gray-600 transition-colors">English</button>
-                                </form>
-                            @else
-                                <form method="POST" action="{{ route('language.switch', 'ar') }}">
-                                    @csrf
-                                    <button type="submit"
-                                            class="hover:text-gray-600 transition-colors"
-                                            style="font-family: 'IBM Plex Sans Arabic', sans-serif;">
-                                        العربية
-                                    </button>
-                                </form>
-                            @endif
+                            <span>{{ __('footer.commercial_reg') }}: {{ $commercialReg }}</span>
                         </div>
-
+                    @endif
+                    <div>
+                        <a href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000020424"
+                           target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-600 transition-colors text-xs text-gray-500">
+                            <img src="https://wasetzon.com/wp-content/uploads/2024/04/شعار-المركز-السعودي-للأعمال-–-Saudi-Business-Center-Logo-–-PNG-–-SVG-svg-1.png"
+                                 alt="Saudi Business Center"
+                                 class="w-6 h-6 object-contain"
+                                 loading="lazy">
+                            {{ __('footer.certified_by') }}
+                        </a>
                     </div>
+
+                    {{-- Last updated --}}
+                    @php
+                        $manifestPath = public_path('build/manifest.json');
+                        $lastUpdated  = file_exists($manifestPath) ? filemtime($manifestPath) : null;
+                    @endphp
+                    @if ($lastUpdated)
+                        <div>
+                            <strong>{{ __('footer.last_updated') }}:</strong>
+                            {{ date('Y/m/d', $lastUpdated) }} - {{ date('H:i', $lastUpdated) }}
+                        </div>
+                    @endif
+
+                    {{-- Copyright --}}
+                    <p>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</p>
+
                 </div>
             </div>
 
         </footer>
 
         @livewireScripts
+        @stack('scripts')
 
         <x-dev-toolbar />
 

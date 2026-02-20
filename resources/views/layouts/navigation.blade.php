@@ -1,8 +1,12 @@
-<nav x-data="{ open: false, infoOpen: false }" @click.outside="infoOpen = false" class="bg-white border-b border-gray-100 sticky top-0 z-40">
+<nav x-data="{ open: false, infoOpen: false }"
+     x-effect="document.body.style.overflow = open ? 'hidden' : ''"
+     @keydown.escape.window="open = false; infoOpen = false"
+     class="bg-white border-b border-gray-100 sticky top-0 z-40">
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-14">
 
-            {{-- Logo --}}
+            {{-- Logo + Desktop nav --}}
             <div class="flex items-center gap-6">
                 <a href="{{ url('/') }}"
                    class="text-lg font-bold text-primary-600 tracking-tight shrink-0">
@@ -12,14 +16,12 @@
                 {{-- Desktop nav links --}}
                 <div class="hidden sm:flex items-center gap-1">
 
-                    {{-- New Order — all users --}}
                     <a href="{{ url('/new-order') }}"
                        class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('New Order') }}
                     </a>
 
                     @auth
-                        {{-- My Orders (customer) --}}
                         @if (auth()->user()->hasAnyRole(['customer']))
                             <a href="{{ url('/orders') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -27,7 +29,6 @@
                             </a>
                         @endif
 
-                        {{-- All Orders + Inbox (staff) --}}
                         @if (auth()->user()->hasAnyRole(['editor', 'admin', 'superadmin']))
                             <a href="{{ url('/orders') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -45,7 +46,6 @@
                             @endcan
                         @endif
 
-                        {{-- Admin Panel --}}
                         @if (auth()->user()->hasAnyRole(['admin', 'superadmin']))
                             <a href="{{ url('/admin') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -54,7 +54,7 @@
                         @endif
                     @endauth
 
-                    {{-- معلومات عامة dropdown — all users --}}
+                    {{-- General Info dropdown --}}
                     <div class="relative" x-data="{ infoOpen: false }" @click.outside="infoOpen = false">
                         <button @click="infoOpen = !infoOpen"
                                 :aria-expanded="infoOpen"
@@ -73,7 +73,7 @@
                              x-transition:leave="transition ease-in duration-75"
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute start-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
+                             class="absolute start-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
                              style="display: none;">
                             <a href="{{ url('/pages/how-to-order') }}"
                                class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
@@ -103,23 +103,27 @@
                                class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
                                 {{ __('nav.testimonials') }}
                             </a>
-                            <div class="border-t border-gray-100 my-1"></div>
-                            <a href="{{ route('blog.index') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('blog.blog') }}
-                            </a>
                         </div>
                     </div>
 
                 </div>
             </div>
 
-            {{-- Right side: language toggle + auth controls --}}
-            <div class="flex items-center gap-2">
+            {{-- Right side: language toggle + auth controls + hamburger --}}
+            <div class="flex items-center gap-1.5">
+
+                {{-- Language toggle — all devices --}}
+                <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">
+                    @csrf
+                    <button type="submit"
+                            class="px-2.5 py-1 text-xs font-semibold text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-md transition-colors"
+                            style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
+                        {{ app()->getLocale() === 'ar' ? 'EN' : 'عر' }}
+                    </button>
+                </form>
 
                 @guest
-                    {{-- Guest: login + register --}}
-                    <div class="hidden sm:flex items-center gap-2">
+                    <div class="hidden sm:flex items-center gap-2 ms-1">
                         <a href="{{ route('login') }}"
                            class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                             {{ __('Log in') }}
@@ -132,8 +136,7 @@
                 @endguest
 
                 @auth
-                    {{-- Authenticated: user dropdown --}}
-                    <div class="hidden sm:block relative" x-data="{ userOpen: false }" @click.outside="userOpen = false">
+                    <div class="hidden sm:block relative ms-1" x-data="{ userOpen: false }" @click.outside="userOpen = false">
                         <button @click="userOpen = !userOpen"
                                 class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                             <span class="max-w-[120px] truncate">{{ Auth::user()->name }}</span>
@@ -178,67 +181,77 @@
                 @endauth
 
                 {{-- Mobile hamburger --}}
-                <button @click="open = !open"
+                <button @click="open = true"
                         class="sm:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                        :aria-expanded="open">
-                    <svg class="w-5 h-5" :class="{ 'hidden': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        aria-label="{{ __('nav.open_menu') }}">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <svg class="w-5 h-5" :class="{ 'hidden': !open }" class="hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
         </div>
     </div>
 
-    {{-- Mobile menu --}}
+    {{-- Mobile full-screen overlay --}}
     <div x-show="open"
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0 -translate-y-1"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-100"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 -translate-y-1"
-         class="sm:hidden border-t border-gray-100 bg-white"
-         style="display: none;">
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 bg-white overflow-y-auto sm:hidden"
+         style="display: none;"
+         role="dialog"
+         aria-modal="true">
+
+        {{-- Overlay header bar --}}
+        <div class="flex items-center justify-between h-14 px-4 border-b border-gray-100">
+            <span class="text-sm font-semibold text-gray-700">{{ __('nav.menu') }}</span>
+            <button @click="open = false"
+                    class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                    aria-label="{{ __('nav.close_menu') }}">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
 
         {{-- Mobile nav links --}}
-        <div class="px-4 pt-3 pb-2 space-y-1">
+        <nav class="px-4 pt-3 pb-2 space-y-0.5">
 
-            {{-- New Order — all users --}}
-            <a href="{{ url('/new-order') }}"
-               class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+            <a href="{{ url('/new-order') }}" @click="open = false"
+               class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                 {{ __('New Order') }}
             </a>
 
             @auth
                 @if (auth()->user()->hasAnyRole(['customer']))
-                    <a href="{{ url('/orders') }}"
-                       class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                    <a href="{{ url('/orders') }}" @click="open = false"
+                       class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('My Orders') }}
                     </a>
                 @endif
 
                 @if (auth()->user()->hasAnyRole(['editor', 'admin', 'superadmin']))
-                    <a href="{{ url('/orders') }}"
-                       class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                    <a href="{{ url('/orders') }}" @click="open = false"
+                       class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('All Orders') }}
                     </a>
                 @endif
 
                 @if (auth()->user()->hasAnyRole(['admin', 'superadmin']))
-                    <a href="{{ url('/admin') }}"
-                       class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                    <a href="{{ url('/admin') }}" @click="open = false"
+                       class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('Admin Panel') }}
                     </a>
                 @endif
             @endauth
 
-            {{-- معلومات عامة — accordion submenu --}}
+            {{-- General Info accordion --}}
             <div x-data="{ subOpen: false }">
                 <button @click="subOpen = !subOpen"
-                        class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                        class="w-full flex items-center justify-between px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                     <span>{{ __('nav.general_info') }}</span>
                     <svg class="w-4 h-4 text-gray-400 transition-transform" :class="{ 'rotate-180': subOpen }"
                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -249,92 +262,88 @@
                      x-transition:enter="transition ease-out duration-100"
                      x-transition:enter-start="opacity-0"
                      x-transition:enter-end="opacity-100"
-                     class="ms-3 mt-1 space-y-0.5 border-s-2 border-gray-100 ps-3"
+                     class="ms-3 mt-1 mb-1 space-y-0 border-s-2 border-gray-100 ps-3"
                      style="display: none;">
-                    <a href="{{ url('/pages/how-to-order') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/how-to-order') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.how_to_order') }}
                     </a>
-                    <a href="{{ url('/pages/calculator') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/calculator') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.calculator') }}
                     </a>
-                    <a href="{{ url('/pages/shipping-calculator') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/shipping-calculator') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.shipping_calculator') }}
                     </a>
-                    <a href="{{ url('/pages/payment-methods') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/payment-methods') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.payment_methods') }}
                     </a>
-                    <a href="{{ url('/pages/membership') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/membership') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.membership') }}
                     </a>
-                    <a href="{{ url('/pages/faq') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/faq') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.faq') }}
                     </a>
-                    <a href="{{ url('/pages/testimonials') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ url('/pages/testimonials') }}" @click="open = false"
+                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                         {{ __('nav.testimonials') }}
-                    </a>
-                    <a href="{{ route('blog.index') }}"
-                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('blog.blog') }}
                     </a>
                 </div>
             </div>
-        </div>
+        </nav>
 
-        {{-- Mobile: user info + auth actions --}}
-        <div class="border-t border-gray-100 px-4 pt-3 pb-4">
+        {{-- Mobile user section --}}
+        <div class="border-t border-gray-100 px-4 pt-4 pb-8 mt-2">
             @auth
-                <div class="mb-3 px-3">
+                <div class="mb-4 px-3">
                     <p class="text-sm font-semibold text-gray-800">{{ Auth::user()->name }}</p>
                     <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
                 </div>
 
-                <a href="{{ route('account.index') }}"
-                   class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                    {{ __('account.my_account') }}
-                </a>
-
                 @can('view-all-orders')
-                    <a href="{{ route('inbox.index') }}"
-                       class="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                        {{ __('inbox.inbox') }}
+                    <a href="{{ route('inbox.index') }}" @click="open = false"
+                       class="flex items-center justify-between px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                        <span>{{ __('inbox.inbox') }}</span>
                         @php $inboxUnreadMobile = \App\Models\Activity::whereNull('read_at')->count(); @endphp
                         @if ($inboxUnreadMobile > 0)
-                            <span class="ms-auto inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full">
                                 {{ $inboxUnreadMobile > 9 ? '9+' : $inboxUnreadMobile }}
                             </span>
                         @endif
                     </a>
                 @endcan
 
+                <a href="{{ route('account.index') }}" @click="open = false"
+                   class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                    {{ __('account.my_account') }}
+                </a>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
-                            class="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-start">
+                            class="w-full flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-start">
                         {{ __('Log Out') }}
                     </button>
                 </form>
             @endauth
 
             @guest
-                <div class="flex items-center gap-2 px-3">
+                <div class="flex items-center gap-3 px-3">
                     <a href="{{ route('login') }}"
-                       class="flex-1 text-center py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                       class="flex-1 text-center py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         {{ __('Log in') }}
                     </a>
                     <a href="{{ route('register') }}"
-                       class="flex-1 text-center py-2 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                       class="flex-1 text-center py-2.5 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
                         {{ __('Register') }}
                     </a>
                 </div>
             @endguest
-
         </div>
+
     </div>
 </nav>

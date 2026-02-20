@@ -310,6 +310,9 @@
     "nav.membership": "Monthly & Annual Membership",
     "nav.faq": "FAQ",
     "nav.testimonials": "Testimonials",
+    "nav.menu": "Menu",
+    "nav.open_menu": "Open menu",
+    "nav.close_menu": "Close menu",
 
     "footer.information": "Information",
     "footer.how_to_order": "How to Order",
@@ -332,5 +335,6 @@
     "footer.partners": "Our Partners",
     "footer.commercial_reg": "Commercial Registration",
     "footer.certified_by": "Certified by Saudi Business Center",
-    "footer.all_rights": "All rights reserved"
+    "footer.all_rights": "All rights reserved",
+    "footer.last_updated": "Last updated"
 }

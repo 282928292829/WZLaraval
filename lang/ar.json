@@ -324,12 +324,15 @@
 
     "nav.general_info": "معلومات عامة",
     "nav.how_to_order": "طريقة الطلب",
-    "nav.calculator": "الآلة الحاسبة",
+    "nav.calculator": "الآلة الحاسبة (تحويل العملة)",
     "nav.shipping_calculator": "أسعار الشحن من أمريكا",
     "nav.payment_methods": "خيارات الدفع",
     "nav.membership": "عضوية شهرية وسنوية",
-    "nav.faq": "الأسئلة الشائعة",
+    "nav.faq": "الاسئلة الشائعة",
     "nav.testimonials": "آراء العملاء",
+    "nav.menu": "القائمة",
+    "nav.open_menu": "فتح القائمة",
+    "nav.close_menu": "إغلاق القائمة",
 
     "footer.information": "معلومات",
     "footer.how_to_order": "طريقة الطلب",
@@ -352,5 +355,6 @@
     "footer.partners": "شركائنا",
     "footer.commercial_reg": "رقم السجل التجاري",
     "footer.certified_by": "موثق لدى منصة أعمال",
-    "footer.all_rights": "جميع الحقوق محفوظة"
+    "footer.all_rights": "جميع الحقوق محفوظة",
+    "footer.last_updated": "تاريخ آخر تحديث"
 }

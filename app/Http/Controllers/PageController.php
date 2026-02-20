@@ -13,6 +13,13 @@ class PageController extends Controller
             ->where('is_published', true)
             ->firstOrFail();
 
+        // Use a dedicated template if one exists for this slug (e.g. pages/faq.blade.php)
+        $dedicatedView = 'pages.' . str_replace('-', '_', $slug);
+
+        if (view()->exists($dedicatedView)) {
+            return view($dedicatedView, compact('page'));
+        }
+
         return view('pages.show', compact('page'));
     }
 }
