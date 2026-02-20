@@ -9,7 +9,13 @@ class SettingsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Default order form field configuration.
+        // ── Contact / Footer ──────────────────────────────────────────────────
+        Setting::set('whatsapp',                '966500000000',              'string', 'contact');
+        Setting::set('contact_email',           'info@wasetzon.com',         'string', 'contact');
+        Setting::set('commercial_registration', '1234567890',                'string', 'contact');
+        Setting::set('show_partners',           '1',                         'boolean', 'general');
+
+        // ── Default order form field configuration ────────────────────────────
         // sort_order  — display order (1 = first)
         // optional    — true = collapsed under "show more" toggle on mobile
         // enabled     — false = hidden entirely from the form

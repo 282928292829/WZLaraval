@@ -1,8 +1,8 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 sticky top-0 z-40">
+<nav x-data="{ open: false, infoOpen: false }" @click.outside="infoOpen = false" class="bg-white border-b border-gray-100 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-14">
 
-            {{-- Logo + desktop nav links --}}
+            {{-- Logo --}}
             <div class="flex items-center gap-6">
                 <a href="{{ url('/') }}"
                    class="text-lg font-bold text-primary-600 tracking-tight shrink-0">
@@ -11,33 +11,23 @@
 
                 {{-- Desktop nav links --}}
                 <div class="hidden sm:flex items-center gap-1">
-                    @guest
-                        <a href="{{ url('/new-order') }}"
-                           class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                            {{ __('New Order') }}
-                        </a>
-                        <a href="{{ route('blog.index') }}"
-                           class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                            {{ __('blog.blog') }}
-                        </a>
-                    @endguest
+
+                    {{-- New Order — all users --}}
+                    <a href="{{ url('/new-order') }}"
+                       class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                        {{ __('New Order') }}
+                    </a>
 
                     @auth
+                        {{-- My Orders (customer) --}}
                         @if (auth()->user()->hasAnyRole(['customer']))
-                            <a href="{{ url('/new-order') }}"
-                               class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                                {{ __('New Order') }}
-                            </a>
                             <a href="{{ url('/orders') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                                 {{ __('My Orders') }}
                             </a>
-                            <a href="{{ route('blog.index') }}"
-                               class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                                {{ __('blog.blog') }}
-                            </a>
                         @endif
 
+                        {{-- All Orders + Inbox (staff) --}}
                         @if (auth()->user()->hasAnyRole(['editor', 'admin', 'superadmin']))
                             <a href="{{ url('/orders') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -55,6 +45,7 @@
                             @endcan
                         @endif
 
+                        {{-- Admin Panel --}}
                         @if (auth()->user()->hasAnyRole(['admin', 'superadmin']))
                             <a href="{{ url('/admin') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -62,36 +53,72 @@
                             </a>
                         @endif
                     @endauth
+
+                    {{-- معلومات عامة dropdown — all users --}}
+                    <div class="relative" x-data="{ infoOpen: false }" @click.outside="infoOpen = false">
+                        <button @click="infoOpen = !infoOpen"
+                                :aria-expanded="infoOpen"
+                                class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                            {{ __('nav.general_info') }}
+                            <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="{ 'rotate-180': infoOpen }"
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <div x-show="infoOpen"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             class="absolute start-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
+                             style="display: none;">
+                            <a href="{{ url('/pages/how-to-order') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.how_to_order') }}
+                            </a>
+                            <a href="{{ url('/pages/calculator') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.calculator') }}
+                            </a>
+                            <a href="{{ url('/pages/shipping-calculator') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.shipping_calculator') }}
+                            </a>
+                            <a href="{{ url('/pages/payment-methods') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.payment_methods') }}
+                            </a>
+                            <a href="{{ url('/pages/membership') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.membership') }}
+                            </a>
+                            <a href="{{ url('/pages/faq') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.faq') }}
+                            </a>
+                            <a href="{{ url('/pages/testimonials') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('nav.testimonials') }}
+                            </a>
+                            <div class="border-t border-gray-100 my-1"></div>
+                            <a href="{{ route('blog.index') }}"
+                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                {{ __('blog.blog') }}
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
             {{-- Right side: language toggle + auth controls --}}
             <div class="flex items-center gap-2">
 
-                {{-- Language toggle (desktop) --}}
-                <div class="hidden sm:block">
-                    @if (app()->getLocale() === 'ar')
-                        <form method="POST" action="{{ route('language.switch', 'en') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
-                                English
-                            </button>
-                        </form>
-                    @else
-                        <form method="POST" action="{{ route('language.switch', 'ar') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="px-2.5 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-                                    style="font-family: 'IBM Plex Sans Arabic', sans-serif;">
-                                العربية
-                            </button>
-                        </form>
-                    @endif
-                </div>
-
                 @guest
-                    {{-- Guest: login + register buttons --}}
+                    {{-- Guest: login + register --}}
                     <div class="hidden sm:flex items-center gap-2">
                         <a href="{{ route('login') }}"
                            class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
@@ -152,7 +179,8 @@
 
                 {{-- Mobile hamburger --}}
                 <button @click="open = !open"
-                        class="sm:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+                        class="sm:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                        :aria-expanded="open">
                     <svg class="w-5 h-5" :class="{ 'hidden': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
@@ -177,30 +205,18 @@
 
         {{-- Mobile nav links --}}
         <div class="px-4 pt-3 pb-2 space-y-1">
-            @guest
-                <a href="{{ url('/new-order') }}"
-                   class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                    {{ __('New Order') }}
-                </a>
-                <a href="{{ route('blog.index') }}"
-                   class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                    {{ __('blog.blog') }}
-                </a>
-            @endguest
+
+            {{-- New Order — all users --}}
+            <a href="{{ url('/new-order') }}"
+               class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                {{ __('New Order') }}
+            </a>
 
             @auth
                 @if (auth()->user()->hasAnyRole(['customer']))
-                    <a href="{{ url('/new-order') }}"
-                       class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                        {{ __('New Order') }}
-                    </a>
                     <a href="{{ url('/orders') }}"
                        class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('My Orders') }}
-                    </a>
-                    <a href="{{ route('blog.index') }}"
-                       class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                        {{ __('blog.blog') }}
                     </a>
                 @endif
 
@@ -218,6 +234,57 @@
                     </a>
                 @endif
             @endauth
+
+            {{-- معلومات عامة — accordion submenu --}}
+            <div x-data="{ subOpen: false }">
+                <button @click="subOpen = !subOpen"
+                        class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                    <span>{{ __('nav.general_info') }}</span>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="{ 'rotate-180': subOpen }"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div x-show="subOpen"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     class="ms-3 mt-1 space-y-0.5 border-s-2 border-gray-100 ps-3"
+                     style="display: none;">
+                    <a href="{{ url('/pages/how-to-order') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.how_to_order') }}
+                    </a>
+                    <a href="{{ url('/pages/calculator') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.calculator') }}
+                    </a>
+                    <a href="{{ url('/pages/shipping-calculator') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.shipping_calculator') }}
+                    </a>
+                    <a href="{{ url('/pages/payment-methods') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.payment_methods') }}
+                    </a>
+                    <a href="{{ url('/pages/membership') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.membership') }}
+                    </a>
+                    <a href="{{ url('/pages/faq') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.faq') }}
+                    </a>
+                    <a href="{{ url('/pages/testimonials') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('nav.testimonials') }}
+                    </a>
+                    <a href="{{ route('blog.index') }}"
+                       class="block py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        {{ __('blog.blog') }}
+                    </a>
+                </div>
+            </div>
         </div>
 
         {{-- Mobile: user info + auth actions --}}
@@ -268,27 +335,6 @@
                 </div>
             @endguest
 
-            {{-- Mobile: language toggle --}}
-            <div class="mt-3 px-3">
-                @if (app()->getLocale() === 'ar')
-                    <form method="POST" action="{{ route('language.switch', 'en') }}">
-                        @csrf
-                        <button type="submit"
-                                class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
-                            Switch to English
-                        </button>
-                    </form>
-                @else
-                    <form method="POST" action="{{ route('language.switch', 'ar') }}">
-                        @csrf
-                        <button type="submit"
-                                class="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
-                                style="font-family: 'IBM Plex Sans Arabic', sans-serif;">
-                            التبديل إلى العربية
-                        </button>
-                    </form>
-                @endif
-            </div>
         </div>
     </div>
 </nav>

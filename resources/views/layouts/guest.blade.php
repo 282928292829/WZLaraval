@@ -54,5 +54,7 @@
         </div>
 
         @livewireScripts
+
+        <x-dev-toolbar />
     </body>
 </html>

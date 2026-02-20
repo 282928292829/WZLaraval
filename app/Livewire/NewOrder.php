@@ -98,8 +98,13 @@ class NewOrder extends Component
         $this->exchangeRates   = $this->buildExchangeRates();
         $this->loadFieldConfig();
 
-        // Start with one empty item; Alpine.js seeds more on desktop
-        $this->items[] = $this->emptyItem($this->defaultCurrency);
+        // Start with one empty item; pre-fill URL if passed from hero form
+        $item = $this->emptyItem($this->defaultCurrency);
+        $prefill = request()->query('product_url', '');
+        if ($prefill !== '') {
+            $item['url'] = substr(trim($prefill), 0, 2000);
+        }
+        $this->items[] = $item;
     }
 
     // -------------------------------------------------------------------------

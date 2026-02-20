@@ -52,20 +52,15 @@ isProject: false
 # Laravel Full Rebuild — Wasetzon
 
 ## Current Task
-> **Public blog and static pages frontend built this session.**
+> **Settings + Pages seeded, footer and static page routing verified.**
 >
 > **What was built:**
-> - `app/Http/Controllers/BlogController.php` — `index()` (paginated list, category filter), `show()` (single post + related posts), `storeComment()` (guests + auth users, moderation for guests).
-> - `app/Http/Controllers/PageController.php` — `show()` for published static pages.
-> - `routes/web.php` — Added: `GET /blog`, `GET /blog/{slug}`, `POST /blog/{post}/comments` (throttled 10/min), `GET /pages/{slug}`.
-> - `resources/views/blog/index.blade.php` — Responsive 2-col grid, category sidebar, pagination, featured image fallback, empty state.
-> - `resources/views/blog/show.blade.php` — Full post with breadcrumb, featured image, author meta, body (raw HTML from Filament TipTap), related posts sidebar, comment thread + comment form (guest fields when not logged in, reply support via Alpine.js).
-> - `resources/views/blog/_comment.blade.php` — Recursive comment partial, max depth 1, team badge for staff, edited indicator, reply button.
-> - `resources/views/pages/show.blade.php` — Clean single-column article layout with SEO meta slot.
-> - `lang/ar.json` + `lang/en.json` — 24 new `blog.*` translation strings added.
-> - `layouts/navigation.blade.php` — Blog link added to desktop nav (guest + customer) and mobile menu.
+> - `database/seeders/SettingsSeeder.php` — Added `whatsapp`, `contact_email`, `commercial_registration`, `show_partners` keys to the `settings` table (groups: `contact` / `general`). Footer now renders all contact info dynamically.
+> - `database/seeders/PageSeeder.php` (new) — Seeds 3 bilingual static pages: `how-to-order`, `faq`, `payment-methods`. All published, uses `updateOrCreate` for idempotency.
+> - `database/seeders/DatabaseSeeder.php` — `PageSeeder` registered in call chain.
+> - **Verified in browser:** Footer shows `966500000000` + `info@wasetzon.com` from DB. `/pages/how-to-order` loads correctly with SEO title + bilingual body. "General Info" nav dropdown → "How to Order" → resolves to `/pages/how-to-order`. ✓
 >
-> **Next session should start with:** Review the app in the browser — seed a test blog post via Filament admin and verify `/blog`, `/blog/{slug}`, and a static `/pages/{slug}` all render correctly. Then decide if there's anything else to build before deploy.
+> **Next session should start with:** Build the blog system — `/blog` index (paginated, card grid) and `/blog/{slug}` show (full post with HTML body, SEO meta). The `posts`, `post_categories`, and `post_comments` tables are already migrated and the `Post`, `PostCategory`, `PostComment` models exist. Create `BlogController` with `index` and `show` methods, add routes, build `blog/index.blade.php` and `blog/show.blade.php` views (bilingual titles/bodies, published-only filter, responsive card grid). Also audit the new WordPress site (`pwa3/app/public/`) blog pages before building to capture any behaviour or edge cases.
 
 > **Previous session — Phase 7 Production Deploy artifacts created:**
 > - `deploy/server-setup.sh` — one-time Ubuntu 22.04 setup: PHP 8.3-FPM, Composer, Node 20, MySQL 8, Redis, nginx, Supervisor, certbot, UFW firewall, fail2ban, deploy user + app directory.

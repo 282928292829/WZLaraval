@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
@@ -19,6 +20,9 @@ Route::post('/language/{locale}', function (string $locale) {
 })->name('language.switch');
 
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
     return view('welcome');
 });
 
@@ -81,5 +85,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Dev-only quick login — never registered in production
+if (app()->environment('local')) {
+    Route::post('/_dev/login-as', [DevController::class, 'loginAs'])->name('dev.login-as');
+}
 
 require __DIR__.'/auth.php';
