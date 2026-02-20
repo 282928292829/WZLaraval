@@ -15,9 +15,10 @@
     {{-- ── URL ──────────────────────────────────────────────── --}}
     @case('url')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-url-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-url-{{ $index }}"
             type="text"
             wire:model.blur="items.{{ $index }}.url"
             placeholder="{{ $index === 0 ? __('order.url_placeholder') : '' }}"
@@ -34,9 +35,10 @@
     {{-- ── QTY ─────────────────────────────────────────────── --}}
     @case('qty')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-qty-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-qty-{{ $index }}"
             type="tel"
             wire:model.blur="items.{{ $index }}.qty"
             class="w-full rounded-lg border border-gray-200 px-2 py-2.5 text-sm text-center
@@ -44,42 +46,54 @@
             @input="convertArabicNumerals($event); saveDraft()"
             @blur="recalculate()"
         >
+        @error("items.{$index}.qty")
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
         @break
 
     {{-- ── SIZE ────────────────────────────────────────────── --}}
     @case('size')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-size-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-size-{{ $index }}"
             type="text"
             wire:model.blur="items.{{ $index }}.size"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
             @input="saveDraft()"
         >
+        @error("items.{$index}.size")
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
         @break
 
     {{-- ── COLOR ───────────────────────────────────────────── --}}
     @case('color')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-color-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-color-{{ $index }}"
             type="text"
             wire:model.blur="items.{{ $index }}.color"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
             @input="saveDraft()"
         >
+        @error("items.{$index}.color")
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
         @break
 
     {{-- ── PRICE ───────────────────────────────────────────── --}}
     @case('price')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-price-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-price-{{ $index }}"
             type="text"
             inputmode="decimal"
             wire:model.blur="items.{{ $index }}.price"
@@ -89,14 +103,18 @@
             @input="convertArabicNumerals($event); saveDraft()"
             @blur="recalculate()"
         >
+        @error("items.{$index}.price")
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
         @break
 
     {{-- ── CURRENCY ─────────────────────────────────────────── --}}
     @case('currency')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-currency-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <select
+            id="field-currency-{{ $index }}"
             wire:model="items.{{ $index }}.currency"
             class="w-full rounded-lg border border-gray-200 px-2 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
@@ -114,9 +132,10 @@
     {{-- ── NOTES ───────────────────────────────────────────── --}}
     @case('notes')
         @if ($isMobile)
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
+            <label for="field-notes-{{ $index }}" class="block text-xs font-medium text-gray-600 mb-1">{{ $label }}</label>
         @endif
         <input
+            id="field-notes-{{ $index }}"
             type="text"
             wire:model.blur="items.{{ $index }}.notes"
             placeholder="{{ $index === 0 ? __('order.notes_placeholder') : '' }}"
@@ -124,6 +143,9 @@
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
             @input="saveDraft()"
         >
+        @error("items.{$index}.notes")
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
         @break
 
     {{-- ── FILE ────────────────────────────────────────────── --}}

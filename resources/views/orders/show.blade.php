@@ -1,4 +1,30 @@
 @php
+    // Build the gallery array for the lightbox (all image URLs on this page)
+    $lightboxImages = [];
+    foreach ($order->items as $item) {
+        if ($item->image_path) {
+            $lightboxImages[] = Storage::disk('public')->url($item->image_path);
+        }
+    }
+    foreach ($order->files->whereNull('comment_id') as $file) {
+        if ($file->isImage()) {
+            $lightboxImages[] = $file->url();
+        }
+    }
+    $allVisibleComments = $order->comments->filter(fn ($c) => $c->isVisibleTo(auth()->user()));
+    foreach ($allVisibleComments as $c) {
+        $cf = $order->files->where('comment_id', $c->id)->first();
+        if ($cf && $cf->isImage()) {
+            $lightboxImages[] = $cf->url();
+        }
+    }
+@endphp
+
+@push('scripts')
+<script>window.orderLightboxImages = @json($lightboxImages);</script>
+@endpush
+
+@php
     $statusClasses = match ($order->status) {
         'pending'       => 'bg-yellow-50 text-yellow-700 ring-yellow-200',
         'needs_payment' => 'bg-red-50 text-red-700 ring-red-200',
@@ -26,13 +52,13 @@
     };
 
     $timelineIcon = fn ($type) => match ($type) {
-        'status_change' => '🔄',
-        'comment'       => '💬',
-        'note'          => '📝',
-        'file_upload'   => '📎',
-        'payment'       => '💳',
-        'merge'         => '🔗',
-        default         => '•',
+        'status_change' => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>',
+        'comment'       => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>',
+        'note'          => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>',
+        'file_upload'   => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>',
+        'payment'       => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>',
+        'merge'         => '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>',
+        default         => '<span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>',
     };
 
     $visibleComments = $order->comments->filter(
@@ -67,12 +93,8 @@
                 {{-- Back + number --}}
                 <div class="flex items-center gap-2">
                     <a href="{{ route('orders.index') }}" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            @if(app()->getLocale() === 'ar')
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            @else
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                            @endif
+                        <svg class="w-4 h-4 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                     </a>
                     <span class="text-lg font-bold text-gray-900">
@@ -81,10 +103,10 @@
                     <button
                         type="button"
                         x-data
-                        @click="navigator.clipboard.writeText('{{ $order->order_number }}').then(() => { $el.textContent = '✓'; setTimeout(() => $el.textContent = '⧉', 1500) })"
+                        @click="navigator.clipboard.writeText('{{ $order->order_number }}').then(() => { $el.innerHTML = '<svg class=\'w-4 h-4 shrink-0 text-green-500\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M5 13l4 4L19 7\'/></svg>'; setTimeout(() => $el.innerHTML = '<svg class=\'w-4 h-4 shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\'/></svg>', 1500) })"
                         class="text-gray-400 hover:text-primary-500 transition-colors text-sm"
                         title="{{ __('orders.copy_number') }}"
-                    >⧉</button>
+                    ><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>
                 </div>
                 {{-- Date + customer (staff only) --}}
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
@@ -125,7 +147,8 @@
                     <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
                     {{ __('orders.needs_payment_note') }}
                 @else
-                    ⏸ {{ __('orders.on_hold_note') }}
+                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ __('orders.on_hold_note') }}
                 @endif
             </div>
         @endif
@@ -133,13 +156,94 @@
         {{-- Merged notice --}}
         @if ($order->merged_into)
             <div class="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-sm">
-                🔗 {{ __('orders.merged_into') }}
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                {{ __('orders.merged_into') }}
                 <a href="{{ route('orders.show', $order->merged_into) }}" class="font-semibold text-primary-600 hover:underline">
                     {{ __('orders.view_merged_order') }}
                 </a>
             </div>
         @endif
     </div>
+
+    {{-- ── Shipping Address ────────────────────────────────────────────────── --}}
+    @php
+        $editableStatuses    = ['pending', 'needs_payment', 'on_hold'];
+        $canChangeAddress    = in_array($order->status, $editableStatuses)
+                               && ($isOwner || $isStaff);
+        $orderUserAddresses  = $canChangeAddress
+                               ? $order->user->addresses()->orderByDesc('is_default')->get()
+                               : collect();
+        $snap                = $order->shipping_address_snapshot;
+    @endphp
+
+    @if ($snap || $canChangeAddress)
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div class="space-y-0.5">
+                    <h3 class="text-sm font-semibold text-gray-700">{{ __('orders.shipping_address') }}</h3>
+                    @if ($snap)
+                        <p class="text-sm text-gray-600">
+                            {{ $snap['recipient_name'] ?? '' }}
+                            @if (!empty($snap['phone']))
+                                · <span class="tabular-nums">{{ $snap['phone'] }}</span>
+                            @endif
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            {{ implode('، ', array_filter([
+                                $snap['address'] ?? null,
+                                $snap['city']    ?? null,
+                                $snap['country'] ?? null,
+                            ])) }}
+                        </p>
+                        @if (!empty($snap['label']))
+                            <span class="inline-block text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500 mt-1">
+                                {{ $snap['label'] }}
+                            </span>
+                        @endif
+                    @else
+                        <p class="text-sm text-amber-600">{{ __('orders.no_shipping_address') }}</p>
+                    @endif
+                </div>
+
+                @if ($canChangeAddress && $orderUserAddresses->isNotEmpty())
+                    <div x-data="{ open: false }" class="relative">
+                        <button type="button" @click="open = !open"
+                            class="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 border border-primary-200 rounded-xl px-3 py-1.5 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ __('orders.change_address') }}
+                        </button>
+
+                        <div x-show="open" @click.outside="open = false" x-collapse
+                            class="absolute end-0 mt-1 w-72 bg-white border border-gray-100 rounded-2xl shadow-lg z-20 overflow-hidden">
+                            <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                {{ __('orders.select_address') }}
+                            </p>
+                            <div class="divide-y divide-gray-50 max-h-60 overflow-y-auto">
+                                @foreach ($orderUserAddresses as $addr)
+                                    <form action="{{ route('orders.shipping-address.update', $order->id) }}" method="POST">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="shipping_address_id" value="{{ $addr->id }}">
+                                        <button type="submit"
+                                            class="w-full text-start px-3 py-3 text-sm hover:bg-primary-50 transition-colors
+                                                {{ $order->shipping_address_id === $addr->id ? 'bg-primary-50' : '' }}">
+                                            <span class="font-medium text-gray-800">{{ $addr->label ?: $addr->city }}</span>
+                                            @if ($addr->is_default)
+                                                <span class="ms-1 text-xs text-primary-600">{{ __('orders.default') }}</span>
+                                            @endif
+                                            <span class="block text-xs text-gray-400 mt-0.5 truncate">
+                                                {{ implode('، ', array_filter([$addr->address, $addr->city, $addr->country])) }}
+                                            </span>
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
 
     {{-- ── Status Timeline ────────────────────────────────────────────────── --}}
     @if ($order->timeline->count())
@@ -154,8 +258,8 @@
                 <ol class="relative border-s border-gray-200 space-y-4 ps-5">
                     @foreach ($order->timeline->sortByDesc('created_at') as $entry)
                         <li class="relative">
-                            <span class="absolute -start-2 flex items-center justify-center w-4 h-4 rounded-full bg-primary-100 text-xs ring-4 ring-white">
-                                {{ $timelineIcon($entry->type) }}
+                            <span class="absolute -start-2 flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 text-primary-600 ring-4 ring-white">
+                                {!! $timelineIcon($entry->type) !!}
                             </span>
                             <div class="text-xs text-gray-400 mb-0.5">
                                 {{ $entry->created_at?->format('Y/m/d H:i') }}
@@ -202,9 +306,14 @@
                     <div class="flex items-start gap-3">
                         {{-- Thumbnail --}}
                         @if ($item->image_path)
-                            <img src="{{ Storage::disk('public')->url($item->image_path) }}"
-                                 alt=""
-                                 class="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-100">
+                            @php $itemImgUrl = Storage::disk('public')->url($item->image_path); @endphp
+                            <button type="button"
+                                @click="$dispatch('open-lightbox', { src: '{{ $itemImgUrl }}', gallery: window.orderLightboxImages })"
+                                class="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                <img src="{{ $itemImgUrl }}"
+                                     alt=""
+                                     class="w-12 h-12 rounded-lg object-cover border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
+                            </button>
                         @else
                             <div class="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
                                 <span class="text-gray-300 text-lg">{{ $i + 1 }}</span>
@@ -387,12 +496,14 @@
                 @foreach ($order->files->whereNull('comment_id') as $file)
                     <div class="flex items-center gap-3 px-4 py-3">
                         @if ($file->isImage())
-                            <a href="{{ $file->url() }}" target="_blank" class="shrink-0">
-                                <img src="{{ $file->url() }}" alt="" class="w-10 h-10 object-cover rounded-lg border border-gray-100">
-                            </a>
+                            <button type="button"
+                                @click="$dispatch('open-lightbox', { src: '{{ $file->url() }}', gallery: window.orderLightboxImages })"
+                                class="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                <img src="{{ $file->url() }}" alt="" class="w-10 h-10 object-cover rounded-lg border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
+                            </button>
                         @else
-                            <div class="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 text-sm shrink-0">
-                                📄
+                            <div class="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             </div>
                         @endif
                         <div class="flex-1 min-w-0">
@@ -492,13 +603,16 @@
                         @if ($commentFile)
                             <div class="flex items-center gap-2 mt-1">
                                 @if ($commentFile->isImage())
-                                    <a href="{{ $commentFile->url() }}" target="_blank">
-                                        <img src="{{ $commentFile->url() }}" alt="" class="h-16 rounded-lg border border-gray-100 object-cover">
-                                    </a>
+                                    <button type="button"
+                                        @click="$dispatch('open-lightbox', { src: '{{ $commentFile->url() }}', gallery: window.orderLightboxImages })"
+                                        class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        <img src="{{ $commentFile->url() }}" alt="" class="h-16 rounded-lg border border-gray-100 object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
+                                    </button>
                                 @else
                                     <a href="{{ $commentFile->url() }}" target="_blank"
-                                        class="flex items-center gap-1 text-xs text-primary-600 hover:underline border border-gray-200 rounded-lg px-2 py-1">
-                                        📄 {{ $commentFile->original_name }} ({{ $commentFile->humanSize() }})
+                                        class="flex items-center gap-1.5 text-xs text-primary-600 hover:underline border border-gray-200 rounded-lg px-2 py-1">
+                                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        {{ $commentFile->original_name }} ({{ $commentFile->humanSize() }})
                                     </a>
                                 @endif
                             </div>
@@ -590,22 +704,57 @@
         {{-- ── Add comment ──────────────────────────────────────────────── --}}
         <div class="border-t border-gray-100 px-4 py-4">
             <form action="{{ route('orders.comments.store', $order->id) }}" method="POST"
-                enctype="multipart/form-data" class="space-y-3">
+                enctype="multipart/form-data" class="space-y-3"
+                x-data="{ body: '{{ old('body') }}' }">
                 @csrf
+
+                {{-- Quick-reply templates (staff only) --}}
+                @if ($isStaff)
+                    @php $commentTemplates = \App\Models\CommentTemplate::active()->limit(20)->get(); @endphp
+                    @if ($commentTemplates->isNotEmpty())
+                        <div x-data="{ open: false }" class="relative">
+                            <button type="button" @click="open = !open"
+                                class="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/></svg>
+                                {{ __('orders.quick_reply') }}
+                                <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" x-collapse
+                                class="mt-1 border border-gray-100 rounded-xl bg-white shadow-sm divide-y divide-gray-50 max-h-52 overflow-y-auto">
+                                @foreach ($commentTemplates as $tpl)
+                                    <button type="button"
+                                        @click="body = {{ Js::from($tpl->content) }}; $root.querySelector('[name=template_id]').value = {{ $tpl->id }}; open = false"
+                                        class="w-full text-start px-3 py-2 text-xs text-gray-700 hover:bg-primary-50 transition-colors">
+                                        <span class="font-medium text-gray-800">{{ $tpl->title }}</span>
+                                        <span class="block text-gray-400 truncate mt-0.5">{{ Str::limit($tpl->content, 60) }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @endif
+
+                <input type="hidden" name="template_id" value="">
                 <textarea
                     name="body"
                     rows="3"
+                    x-model="body"
                     placeholder="{{ __('orders.write_comment') }}"
                     required
-                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none leading-relaxed">{{ old('body') }}</textarea>
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none leading-relaxed"></textarea>
 
-                <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-3 flex-wrap" x-data="{ fileName: '' }">
                     {{-- File attach --}}
                     <label class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                        {{ __('orders.attach_file') }}
-                        <input type="file" name="file" class="sr-only" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx">
+                        <span x-text="fileName || '{{ __('orders.attach_file') }}'"></span>
+                        <input type="file" name="file" class="sr-only" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                            @change="fileName = $event.target.files[0]?.name ?? ''">
                     </label>
+                    <template x-if="fileName">
+                        <button type="button" @click="fileName = ''; $root.querySelector('input[type=file]').value = ''"
+                            class="text-xs text-red-400 hover:text-red-600">✕</button>
+                    </template>
 
                     {{-- Internal note toggle (staff only) --}}
                     @if ($isStaff)
@@ -667,6 +816,34 @@
             </div>
         </div>
     @endcan
+
+    {{-- ── Staff: send email ────────────────────────────────────────────── --}}
+    @if ($isStaff)
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4"
+             x-data="{ sending: false, done: false, error: '' }">
+            <button type="button" @click="sending = true; error = ''; done = false;
+                fetch('{{ route('orders.send-email', $order->id) }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                }).then(r => r.json()).then(d => {
+                    sending = false;
+                    if (d.success) { done = true; } else { error = d.message; }
+                }).catch(() => { sending = false; error = '{{ __('Network error. Please try again.') }}'; })"
+                class="flex items-center justify-between w-full text-sm font-semibold text-gray-700"
+                :disabled="sending">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    {{ __('orders.send_confirmation_email') }}
+                </span>
+                <span x-show="sending" class="text-xs text-gray-400 animate-pulse">{{ __('Sending…') }}</span>
+            </button>
+            <p x-show="done" x-cloak class="text-xs text-green-600 mt-2">{{ __('orders.email_queued') }}</p>
+            <p x-show="error" x-cloak class="text-xs text-red-600 mt-2" x-text="error"></p>
+        </div>
+    @endif
 
     {{-- ── Staff: merge orders ───────────────────────────────────────────── --}}
     @can('merge-orders')
@@ -752,6 +929,98 @@
             </div>
         </form>
     </div>
+</div>
+
+{{-- ── Image Lightbox ──────────────────────────────────────────────────────── --}}
+<div
+    x-data="{
+        show: false,
+        src: '',
+        gallery: [],
+        currentIndex: 0,
+        open(src, gallery) {
+            this.gallery = (gallery && gallery.length) ? gallery : [src];
+            this.currentIndex = this.gallery.indexOf(src);
+            if (this.currentIndex === -1) this.currentIndex = 0;
+            this.src = this.gallery[this.currentIndex];
+            this.show = true;
+            document.body.style.overflow = 'hidden';
+        },
+        close() {
+            this.show = false;
+            document.body.style.overflow = '';
+        },
+        prev() {
+            if (this.gallery.length > 1) {
+                this.currentIndex = (this.currentIndex - 1 + this.gallery.length) % this.gallery.length;
+                this.src = this.gallery[this.currentIndex];
+            }
+        },
+        next() {
+            if (this.gallery.length > 1) {
+                this.currentIndex = (this.currentIndex + 1) % this.gallery.length;
+                this.src = this.gallery[this.currentIndex];
+            }
+        },
+        init() {
+            window.addEventListener('open-lightbox', e => {
+                this.open(e.detail.src, e.detail.gallery || []);
+            });
+            document.addEventListener('keydown', e => {
+                if (!this.show) return;
+                if (e.key === 'Escape') this.close();
+                if (e.key === 'ArrowLeft') this.prev();
+                if (e.key === 'ArrowRight') this.next();
+            });
+        }
+    }"
+    x-show="show"
+    x-cloak
+    @click.self="close()"
+    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
+    style="display: none;">
+
+    {{-- Close --}}
+    <button @click.stop="close()"
+        class="absolute top-4 end-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors z-10"
+        title="{{ __('nav.close_menu') }}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+
+    {{-- Prev --}}
+    <template x-if="gallery.length > 1">
+        <button @click.stop="prev()"
+            class="absolute start-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors z-10">
+            <svg class="w-5 h-5 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </button>
+    </template>
+
+    {{-- Next --}}
+    <template x-if="gallery.length > 1">
+        <button @click.stop="next()"
+            class="absolute end-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors z-10">
+            <svg class="w-5 h-5 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
+    </template>
+
+    {{-- Image --}}
+    <img :src="src" alt=""
+        class="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl select-none"
+        @click.stop
+        draggable="false">
+
+    {{-- Gallery counter --}}
+    <template x-if="gallery.length > 1">
+        <div class="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/80 text-xs font-medium bg-black/40 px-3 py-1 rounded-full tabular-nums select-none">
+            <span x-text="currentIndex + 1"></span>&thinsp;/&thinsp;<span x-text="gallery.length"></span>
+        </div>
+    </template>
 </div>
 
 {{-- Edit history modal --}}
