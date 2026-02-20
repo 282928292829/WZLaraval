@@ -123,18 +123,23 @@
             @php $showPartners = \App\Models\Setting::get('show_partners', true); @endphp
             @if ($showPartners)
                 <div class="border-t border-gray-100">
-                    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-5">
+                    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-6">
                         <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
-                        <img src="https://wasetzon.com/wp-content/uploads/custom/partners.png"
-                             alt="{{ __('footer.partners') }}"
+                        <img src="{{ asset('images/Banks.svg') }}"
+                             alt="Banks"
+                             class="w-full max-w-xs object-contain opacity-70"
+                             loading="lazy"
+                             height="18">
+                        <img src="{{ asset('images/Payment.svg') }}"
+                             alt="Payment"
                              class="w-full max-w-sm object-contain opacity-70"
                              loading="lazy"
-                             width="400" height="80">
-                        <img src="https://wasetzon.com/wp-content/uploads/custom/banks.png"
-                             alt="{{ __('footer.partners') }}"
-                             class="w-full max-w-sm object-contain opacity-70"
+                             height="18">
+                        <img src="{{ asset('images/Shipping.svg') }}"
+                             alt="Shipping"
+                             class="w-full max-w-md object-contain opacity-70"
                              loading="lazy"
-                             width="400" height="80">
+                             height="18">
                     </div>
                 </div>
             @endif
@@ -172,6 +177,18 @@
                             {{ date('Y/m/d', $lastUpdated) }} - {{ date('H:i', $lastUpdated) }}
                         </div>
                     @endif
+
+                    {{-- Language toggle --}}
+                    <div>
+                        <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">
+                            @csrf
+                            <button type="submit"
+                                    class="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-400 rounded-lg transition-colors"
+                                    style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
+                                {{ __('Switch language text') }}
+                            </button>
+                        </form>
+                    </div>
 
                     {{-- Copyright --}}
                     <p>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</p>
