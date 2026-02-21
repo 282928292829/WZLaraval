@@ -14,7 +14,8 @@ class BlogController extends Controller
     public function index(Request $request): View
     {
         $categorySlug = $request->query('category');
-        $category = null;
+        $search       = trim((string) $request->query('search', ''));
+        $category     = null;
 
         $query = Post::query()
             ->published()
@@ -26,10 +27,21 @@ class BlogController extends Controller
             $query->where('post_category_id', $category->id);
         }
 
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title_ar', 'like', "%{$search}%")
+                  ->orWhere('title_en', 'like', "%{$search}%")
+                  ->orWhere('excerpt_ar', 'like', "%{$search}%")
+                  ->orWhere('excerpt_en', 'like', "%{$search}%")
+                  ->orWhere('body_ar', 'like', "%{$search}%")
+                  ->orWhere('body_en', 'like', "%{$search}%");
+            });
+        }
+
         $posts = $query->paginate(12)->withQueryString();
         $categories = PostCategory::has('posts')->orderBy('sort_order')->get();
 
-        return view('blog.index', compact('posts', 'categories', 'category'));
+        return view('blog.index', compact('posts', 'categories', 'category', 'search'));
     }
 
     public function show(string $slug): View

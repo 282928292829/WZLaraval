@@ -25,9 +25,15 @@ class PostCategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
-    protected static ?string $navigationLabel = 'Categories';
+    public static function getNavigationLabel(): string
+    {
+        return __('Categories');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Blog';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Blog');
+    }
 
     protected static ?int $navigationSort = 2;
 
@@ -42,47 +48,47 @@ class PostCategoryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Category Details')->schema([
+            Section::make(__('Category Details'))->schema([
                 TextInput::make('name_ar')
-                    ->label('Name (Arabic)')
+                    ->label(__('Name (Arabic)'))
                     ->required()
                     ->maxLength(100),
 
                 TextInput::make('name_en')
-                    ->label('Name (English)')
+                    ->label(__('Name (English)'))
                     ->required()
                     ->maxLength(100),
 
                 TextInput::make('slug')
-                    ->label('Slug')
+                    ->label(__('Slug'))
                     ->required()
                     ->unique(table: 'post_categories', column: 'slug', ignoreRecord: true)
                     ->maxLength(120)
-                    ->helperText('URL-friendly identifier. Leave blank to auto-generate.')
+                    ->helperText(__('URL-friendly identifier. Leave blank to auto-generate.'))
                     ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null),
 
                 Select::make('parent_id')
-                    ->label('Parent Category')
+                    ->label(__('Parent Category'))
                     ->relationship('parent', 'name_en')
                     ->searchable()
                     ->preload()
                     ->nullable()
-                    ->helperText('Optional. Creates a sub-category.'),
+                    ->helperText(__('Optional. Creates a sub-category.')),
 
                 TextInput::make('sort_order')
-                    ->label('Sort Order')
+                    ->label(__('Sort Order'))
                     ->numeric()
                     ->default(0)
                     ->minValue(0),
             ])->columns(2),
 
-            Section::make('Description')->schema([
+            Section::make(__('Description'))->schema([
                 Textarea::make('description_ar')
-                    ->label('Description (Arabic)')
+                    ->label(__('Description (Arabic)'))
                     ->rows(3),
 
                 Textarea::make('description_en')
-                    ->label('Description (English)')
+                    ->label(__('Description (English)'))
                     ->rows(3),
             ])->columns(2)->collapsible(),
         ]);
@@ -93,30 +99,30 @@ class PostCategoryResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name_en')
-                    ->label('Name (EN)')
+                    ->label(__('Name (EN)'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('name_ar')
-                    ->label('Name (AR)')
+                    ->label(__('Name (AR)'))
                     ->searchable(),
 
                 TextColumn::make('slug')
-                    ->label('Slug')
+                    ->label(__('Slug'))
                     ->copyable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('parent.name_en')
-                    ->label('Parent')
-                    ->placeholder('—'),
+                    ->label(__('Parent'))
+                    ->placeholder(__('—')),
 
                 TextColumn::make('posts_count')
-                    ->label('Posts')
+                    ->label(__('Posts'))
                     ->counts('posts')
                     ->sortable(),
 
                 TextColumn::make('sort_order')
-                    ->label('Order')
+                    ->label(__('Order'))
                     ->sortable(),
             ])
             ->defaultSort('sort_order')

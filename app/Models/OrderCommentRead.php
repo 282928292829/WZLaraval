@@ -15,6 +15,10 @@ class OrderCommentRead extends Model
         'read_at',
     ];
 
+    protected $casts = [
+        'read_at' => 'datetime',
+    ];
+
     public function comment(): BelongsTo
     {
         return $this->belongsTo(OrderComment::class, 'comment_id');

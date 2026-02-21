@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Jobs\FetchActivityGeoLocation;
+use App\Services\UserAgentParser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\Request;
 
 class UserActivityLog extends Model
 {
@@ -19,6 +22,14 @@ class UserActivityLog extends Model
         'properties',
         'ip_address',
         'user_agent',
+        'browser',
+        'browser_version',
+        'device',
+        'device_model',
+        'os',
+        'os_version',
+        'country',
+        'city',
         'created_at',
     ];
 
@@ -30,6 +41,35 @@ class UserActivityLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Create an activity log entry enriched with device metadata from the request.
+     * Dispatches a background job to fetch geo data (country/city) asynchronously.
+     *
+     * @param  array<string,mixed>  $data  Base fields (user_id, event, etc.)
+     */
+    public static function fromRequest(Request $request, array $data): static
+    {
+        $ua     = $request->userAgent() ?? '';
+        $parser = new UserAgentParser($ua);
+        $parsed = $parser->parse();
+
+        $log = static::create(array_merge($data, [
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $ua,
+            'browser'         => $parsed['browser'],
+            'browser_version' => $parsed['browser_version'],
+            'device'          => $parsed['device'],
+            'device_model'    => $parsed['device_model'],
+            'os'              => $parsed['os'],
+            'os_version'      => $parsed['os_version'],
+        ]));
+
+        // Fetch geo data in the background to avoid blocking the request
+        FetchActivityGeoLocation::dispatch($log->id, $request->ip());
+
+        return $log;
     }
 
     public function eventLabel(): string

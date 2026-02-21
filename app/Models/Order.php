@@ -18,6 +18,8 @@ class Order extends Model
         'status',
         'layout_option',
         'notes',
+        'shipping_address_id',
+        'shipping_address_snapshot',
         'is_paid',
         'paid_at',
         'payment_proof',
@@ -31,17 +33,23 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'is_paid'       => 'boolean',
-        'paid_at'       => 'datetime',
-        'can_edit_until'=> 'datetime',
-        'merged_at'     => 'datetime',
-        'subtotal'      => 'decimal:2',
-        'total_amount'  => 'decimal:2',
+        'is_paid'                    => 'boolean',
+        'paid_at'                    => 'datetime',
+        'can_edit_until'             => 'datetime',
+        'merged_at'                  => 'datetime',
+        'subtotal'                   => 'decimal:2',
+        'total_amount'               => 'decimal:2',
+        'shipping_address_snapshot'  => 'array',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function shippingAddress(): BelongsTo
+    {
+        return $this->belongsTo(UserAddress::class, 'shipping_address_id');
     }
 
     public function items(): HasMany

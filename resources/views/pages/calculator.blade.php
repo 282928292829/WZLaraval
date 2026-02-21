@@ -48,7 +48,7 @@
                 {{ __('calc.cost_commission_calculator') }}
             </h1>
             <p class="text-sm text-gray-500">
-                احسب قيمة المنتجات والعمولة بالريال السعودي بسهولة
+                {{ __('calc.subtitle') }}
             </p>
         </div>
 
@@ -64,7 +64,7 @@
                         class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary-500 text-white text-xs font-bold"
                         x-text="currencySymbol"
                     >$</span>
-                    <span>أدخل قيمة المنتجات بالدولار أو أي عملة أخرى</span>
+                    <span>{{ __('calc.enter_product_value') }}</span>
                 </label>
 
                 <div class="flex gap-2">
@@ -77,7 +77,7 @@
                             x-model="rawInput"
                             @input="onInput()"
                             @focus="$event.target.select()"
-                            placeholder="مثال: 100 أو ١٠٠"
+                            placeholder="{{ __('calc.example_100') }}"
                             class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-base font-semibold focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none transition"
                             dir="ltr"
                         />
@@ -90,21 +90,21 @@
                             @change="calculate()"
                             class="w-full border-2 border-gray-200 rounded-xl px-3 py-3 text-center text-sm font-semibold focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none transition appearance-none bg-gray-50 cursor-pointer"
                         >
-                            <option value="USD">دولار أمريكي - USD</option>
-                            <option value="EUR">يورو - EUR</option>
-                            <option value="GBP">جنيه إسترليني - GBP</option>
-                            <option value="CNY">يوان صيني - CNY</option>
-                            <option value="JPY">ين ياباني - JPY</option>
-                            <option value="KRW">وون كوري - KRW</option>
-                            <option value="TRY">ليرة تركية - TRY</option>
-                            <option value="SAR">ريال سعودي - SAR</option>
-                            <option value="AED">درهم إماراتي - AED</option>
+                            <option value="USD">{{ __('calc.usd') }}</option>
+                            <option value="EUR">{{ __('calc.eur') }}</option>
+                            <option value="GBP">{{ __('calc.gbp') }}</option>
+                            <option value="CNY">{{ __('calc.cny') }}</option>
+                            <option value="JPY">{{ __('calc.jpy') }}</option>
+                            <option value="KRW">{{ __('calc.krw') }}</option>
+                            <option value="TRY">{{ __('calc.try') }}</option>
+                            <option value="SAR">{{ __('calc.sar') }}</option>
+                            <option value="AED">{{ __('calc.aed') }}</option>
                         </select>
                     </div>
                 </div>
 
                 <p class="mt-2 text-xs text-center text-gray-400" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">
-                    أدخل سعر المنتجات (يقبل الأرقام العربية أو الانجليزية)
+                    {{ __('calc.enter_price_hint') }}
                 </p>
             </div>
 
@@ -120,10 +120,10 @@
             <div class="mt-5 flex flex-col gap-3">
                 {{-- Products value --}}
                 <div class="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
-                    <span class="text-sm text-gray-600 font-medium">قيمة المنتجات</span>
+                    <span class="text-sm text-gray-600 font-medium">{{ __('calc.products_value') }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-primary-600 text-base" dir="ltr">
-                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">ريال</span>
-                        <span x-text="hasValue ? formatNum(convertSAR) : 'أدخل المبلغ للحساب'"
+                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-text="hasValue ? formatNum(convertSAR) : '{{ __('calc.enter_amount_to_calc') }}'"
                               :class="hasValue ? '' : 'text-sm text-gray-400 font-normal'"
                               :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
                     </span>
@@ -131,10 +131,10 @@
 
                 {{-- Commission --}}
                 <div class="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
-                    <span class="text-sm text-gray-600 font-medium">عمولة وسيط زون</span>
+                    <span class="text-sm text-gray-600 font-medium">{{ __('calc.wasetzon_commission') }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-primary-600 text-base" dir="ltr">
-                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">ريال</span>
-                        <span x-text="hasValue ? formatNum(commission) : 'أدخل المبلغ للحساب'"
+                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-text="hasValue ? formatNum(commission) : '{{ __('calc.enter_amount_to_calc') }}'"
                               :class="hasValue ? '' : 'text-sm text-gray-400 font-normal'"
                               :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
                     </span>
@@ -143,10 +143,10 @@
                 {{-- Total — gradient row --}}
                 <div class="flex items-center justify-between px-4 py-4 rounded-xl"
                      style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);">
-                    <span class="text-base text-white font-semibold">💰 الإجمالي (بدون الشحن الدولي)</span>
+                    <span class="text-base text-white font-semibold">💰 {{ __('calc.total_without_shipping') }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-white text-lg" dir="ltr">
-                        <span x-show="hasValue" class="text-sm text-white/80 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">ريال</span>
-                        <span x-text="hasValue ? formatNum(total) : 'أدخل المبلغ للحساب'"
+                        <span x-show="hasValue" class="text-sm text-white/80 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-text="hasValue ? formatNum(total) : '{{ __('calc.enter_amount_to_calc') }}'"
                               :class="hasValue ? '' : 'text-sm text-white/70 font-normal'"
                               :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
                     </span>
@@ -158,7 +158,7 @@
         <div class="bg-white rounded-xl shadow-md border border-gray-200 p-5 sm:p-7 mb-6">
             <h2 class="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
                 <span>ℹ️</span>
-                معلومات مهمة
+                {{ __('calc.important_info') }}
             </h2>
 
             <div class="flex flex-col gap-3">
@@ -166,10 +166,10 @@
                 <div class="flex gap-3 items-start bg-orange-50 border border-orange-100 rounded-xl p-4">
                     <div class="flex-none w-7 h-7 flex items-center justify-center rounded-lg bg-primary-500 text-white text-xs font-bold">1</div>
                     <div class="flex-1">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-1">سعر الصرف</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ __('calc.exchange_rate') }}</h3>
                         <p class="text-xs text-gray-600 leading-relaxed">
-                            <strong>١ دولار أمريكي = {{ $displayUsdRate }} ريال سعودي</strong><br>
-                            <span class="text-gray-400">إبراء للذمة: سعر الصرف يُحدَّد تلقائيًا ليشمل رسوم تحويل العملة ورسوم العمليات الدولية والمعالجة البنكية.</span>
+                            <strong>{{ __('calc.usd_to_sar', ['rate' => $displayUsdRate]) }}</strong><br>
+                            <span class="text-gray-400">إبراء للذمة: {{ __('calc.exchange_rate') }} يُحدَّد تلقائيًا ليشمل رسوم تحويل العملة ورسوم العمليات الدولية والمعالجة البنكية.</span>
                         </p>
                     </div>
                 </div>
@@ -178,10 +178,10 @@
                 <div class="flex gap-3 items-start bg-orange-50 border border-orange-100 rounded-xl p-4">
                     <div class="flex-none w-7 h-7 flex items-center justify-center rounded-lg bg-primary-500 text-white text-xs font-bold">2</div>
                     <div class="flex-1">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-1">العمولة</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ __('calc.commission') }}</h3>
                         <p class="text-xs text-gray-600 leading-relaxed">
-                            <strong>{{ $displayRateAbove }}٪ للطلبات أكثر من {{ $displayThreshold }} ريال</strong><br>
-                            <strong>{{ $displayFlatBelow }} ريال للطلبات أقل من {{ $displayThreshold }} ريال</strong>
+                            <strong>{{ __('calc.commission_above', ['rate' => $displayRateAbove, 'threshold' => $displayThreshold]) }}</strong><br>
+                            <strong>{{ __('calc.commission_below', ['flat' => $displayFlatBelow, 'threshold' => $displayThreshold]) }}</strong>
                         </p>
                     </div>
                 </div>
@@ -190,11 +190,11 @@
                 <div class="flex gap-3 items-start bg-orange-50 border border-orange-100 rounded-xl p-4">
                     <div class="flex-none w-7 h-7 flex items-center justify-center rounded-lg bg-primary-500 text-white text-xs font-bold">3</div>
                     <div class="flex-1">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-1">الشحن منفصل</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ __('calc.shipping_separate') }}</h3>
                         <p class="text-xs text-gray-600 leading-relaxed">
-                            تكلفة الشحن من أمريكا تُحسب بشكل منفصل حسب الوزن.
+                            {{ __('calc.shipping_separate_desc') }}
                             <a href="{{ route('pages.show', 'shipping-calculator') }}" class="text-primary-600 font-semibold underline hover:no-underline">
-                                يمكنك معرفة أسعار الشحن الدولي من هنا
+                                {{ __('calc.shipping_calc_link') }}
                             </a>
                         </p>
                     </div>
@@ -205,15 +205,15 @@
         {{-- CTA --}}
         <div class="rounded-xl p-7 sm:p-10 text-center text-white shadow-lg"
              style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); box-shadow: 0 10px 30px rgba(249,115,22,0.3);">
-            <h2 class="text-2xl font-bold mb-3">جاهز للطلب؟</h2>
+            <h2 class="text-2xl font-bold mb-3">{{ __('calc.ready_to_order') }}</h2>
             <p class="text-base mb-6 opacity-95 leading-relaxed">
-                ابدأ طلبك الآن واحصل على منتجاتك المفضلة من أمازون
+                {{ __('calc.start_order_desc') }}
             </p>
             <a
                 href="{{ route('new-order') }}"
                 class="inline-flex items-center gap-2 bg-white text-primary-600 font-bold px-8 py-4 rounded-xl text-lg hover:-translate-y-0.5 hover:shadow-xl transition-all"
             >
-                <span>طلب جديد</span>
+                <span>{{ __('calc.new_order') }}</span>
                 <span>🚀</span>
             </a>
         </div>

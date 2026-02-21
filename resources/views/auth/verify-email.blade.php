@@ -7,11 +7,7 @@
             </svg>
         </div>
         <h1 class="text-xl font-bold text-gray-900">
-            @if (app()->getLocale() === 'ar')
-                تحقق من بريدك الإلكتروني
-            @else
-                Check your email
-            @endif
+            {{ __('Check your email') }}
         </h1>
         <p class="mt-2 text-sm text-gray-500 leading-relaxed">
             {{ __("Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn't receive the email, we will gladly send you another.") }}

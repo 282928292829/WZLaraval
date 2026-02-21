@@ -12,6 +12,33 @@
 
         <form wire:submit="submit" class="space-y-4">
 
+            {{-- Guest fields (shown only when not logged in) --}}
+            @if($isGuest)
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">الاسم <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        wire:model="guest_name"
+                        placeholder="الاسم الكامل"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    @error('guest_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">رقم الجوال / واتساب <span class="text-red-500">*</span></label>
+                    <input
+                        type="text"
+                        wire:model="guest_phone"
+                        placeholder="05xxxxxxxx"
+                        dir="ltr"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    @error('guest_phone') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            @endif
+
             {{-- Amount --}}
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">المبلغ المدفوع (ريال سعودي) <span class="text-red-500">*</span></label>
@@ -40,6 +67,7 @@
                     <option value="بنك الإنماء">بنك الإنماء</option>
                     <option value="البنك السعودي الأول">البنك السعودي الأول</option>
                     <option value="البنك السعودي للإستثمار">البنك السعودي للإستثمار</option>
+                    <option value="بنك الرياض">بنك الرياض</option>
                     <option value="بطاقة ائتمانية">بطاقة ائتمانية (Credit Card)</option>
                     <option value="مدى">مدى (Mada)</option>
                     <option value="باي بال">باي بال (PayPal)</option>
@@ -73,7 +101,7 @@
                         placeholder="مثال: 12345"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
-                    <p class="text-gray-400 text-xs mt-1">أدخل رقم الطلب إذا كنت تعرفه، وإلا سنقوم بالبحث عن طلبك من خلال حسابك.</p>
+                    <p class="text-gray-400 text-xs mt-1" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">أدخل رقم الطلب إذا كنت تعرفه، وإلا سنقوم بالبحث عن طلبك من خلال حسابك.</p>
                 @endif
             </div>
 

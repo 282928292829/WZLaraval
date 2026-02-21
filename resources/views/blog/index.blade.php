@@ -5,17 +5,47 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
         {{-- Page heading --}}
-        <div class="mb-8">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{ __('blog.blog') }}</h1>
-            @if ($category)
-                <p class="mt-1 text-sm text-gray-500">
-                    {{ __('blog.posts_in_category') }}:
-                    <span class="font-medium text-gray-700">{{ $category->getName() }}</span>
-                    — <a href="{{ route('blog.index') }}" class="text-primary-600 hover:underline">{{ __('blog.view_all') }}</a>
-                </p>
-            @else
-                <p class="mt-1 text-sm text-gray-500">{{ __('blog.blog_description') }}</p>
-            @endif
+        <div class="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{ __('blog.blog') }}</h1>
+                @if ($search !== '')
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ __('blog.no_results_for') }} "<span class="font-medium text-gray-700">{{ $search }}</span>"
+                        @if ($posts->total() > 0)
+                            — {{ $posts->total() }} {{ __('results') }}
+                        @endif
+                        &mdash; <a href="{{ route('blog.index') }}" class="text-primary-600 hover:underline">{{ __('blog.view_all') }}</a>
+                    </p>
+                @elseif ($category)
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ __('blog.posts_in_category') }}:
+                        <span class="font-medium text-gray-700">{{ $category->getName() }}</span>
+                        — <a href="{{ route('blog.index') }}" class="text-primary-600 hover:underline">{{ __('blog.view_all') }}</a>
+                    </p>
+                @else
+                    <p class="mt-1 text-sm text-gray-500">{{ __('blog.blog_description') }}</p>
+                @endif
+            </div>
+
+            {{-- Search input --}}
+            <form method="GET" action="{{ route('blog.index') }}" class="flex gap-2 w-full sm:w-72 shrink-0">
+                @if ($category)
+                    <input type="hidden" name="category" value="{{ $category->slug }}">
+                @endif
+                <div class="relative flex-1">
+                    <input type="search" name="search" value="{{ $search }}"
+                        placeholder="{{ __('blog.search_placeholder') }}"
+                        aria-label="{{ __('blog.search_label') }}"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent pe-10">
+                    <button type="submit"
+                        class="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 hover:text-primary-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
         </div>
 
         <div class="lg:grid lg:grid-cols-4 lg:gap-8">
@@ -107,6 +137,26 @@
 
             {{-- Sidebar --}}
             <aside class="hidden lg:block lg:col-span-1 space-y-6 mt-8 lg:mt-0">
+
+                {{-- Search --}}
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{{ __('blog.search_label') }}</h3>
+                    <form method="GET" action="{{ route('blog.index') }}" class="flex gap-2">
+                        @if ($category)
+                            <input type="hidden" name="category" value="{{ $category->slug }}">
+                        @endif
+                        <div class="relative flex-1">
+                            <input type="search" name="search" value="{{ $search }}"
+                                placeholder="{{ __('blog.search_placeholder') }}"
+                                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 pe-9">
+                            <button type="submit" class="absolute inset-y-0 end-0 flex items-center pe-2.5 text-gray-400 hover:text-primary-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
 
                 {{-- Categories --}}
                 @if ($categories->isNotEmpty())

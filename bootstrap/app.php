@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
+
+        $middleware->alias([
+            'role.throttle' => \App\Http\Middleware\RoleBasedThrottle::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

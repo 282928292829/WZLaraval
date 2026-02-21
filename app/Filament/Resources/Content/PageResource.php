@@ -28,9 +28,15 @@ class PageResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    protected static ?string $navigationLabel = 'Static Pages';
+    public static function getNavigationLabel(): string
+    {
+        return __('Static Pages');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Content';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Content');
+    }
 
     protected static ?int $navigationSort = 1;
 
@@ -45,72 +51,72 @@ class PageResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Content')->schema([
+            Section::make(__('Content'))->schema([
                 TextInput::make('title_ar')
-                    ->label('Title (Arabic)')
+                    ->label(__('Title (Arabic)'))
                     ->required()
                     ->maxLength(255),
 
                 TextInput::make('title_en')
-                    ->label('Title (English)')
+                    ->label(__('Title (English)'))
                     ->required()
                     ->maxLength(255),
 
                 TextInput::make('slug')
-                    ->label('Slug')
+                    ->label(__('Slug'))
                     ->required()
                     ->unique(table: 'pages', column: 'slug', ignoreRecord: true)
                     ->maxLength(255)
                     ->columnSpanFull()
-                    ->helperText('URL path: /faq, /about, /calculator, etc.'),
+                    ->helperText(__('URL path: /faq, /about, /calculator, etc.')),
 
                 RichEditor::make('body_ar')
-                    ->label('Body (Arabic)')
+                    ->label(__('Body (Arabic)'))
                     ->columnSpanFull(),
 
                 RichEditor::make('body_en')
-                    ->label('Body (English)')
+                    ->label(__('Body (English)'))
                     ->columnSpanFull(),
             ])->columns(2),
 
-            Section::make('Publish & Navigation')->schema([
+            Section::make(__('Publish & Navigation'))->schema([
                 Toggle::make('is_published')
-                    ->label('Published')
+                    ->label(__('Published'))
                     ->onColor('success')
-                    ->helperText('Unpublished pages return 404.'),
+                    ->helperText(__('Unpublished pages return 404.')),
 
                 Toggle::make('show_in_header')
-                    ->label('Show in Header Menu')
-                    ->helperText('Adds a link to the top navigation.'),
+                    ->label(__('Show in Header Menu'))
+                    ->helperText(__('Adds a link to the top navigation.')),
 
                 Toggle::make('show_in_footer')
-                    ->label('Show in Footer Menu')
-                    ->helperText('Adds a link to the footer navigation.'),
+                    ->label(__('Show in Footer Menu'))
+                    ->helperText(__('Adds a link to the footer navigation.')),
 
                 TextInput::make('menu_order')
-                    ->label('Menu Order')
+                    ->label(__('Menu Order'))
                     ->numeric()
                     ->default(0)
                     ->minValue(0)
-                    ->helperText('Lower number = appears first in navigation.'),
+                    ->helperText(__('Lower number = appears first in navigation.')),
             ])->columns(2)->collapsible(),
 
-            Section::make('SEO')->schema([
+            Section::make(__('SEO'))->schema([
                 TextInput::make('seo_title_ar')
-                    ->label('SEO Title (Arabic)')
+                    ->label(__('SEO Title (Arabic)'))
                     ->maxLength(70),
 
                 TextInput::make('seo_title_en')
-                    ->label('SEO Title (English)')
+                    ->label(__('SEO Title (English)'))
                     ->maxLength(70),
 
                 Textarea::make('seo_description_ar')
-                    ->label('SEO Description (Arabic)')
+                    ->label(__('SEO Description (Arabic)'))
                     ->rows(2)
                     ->maxLength(160),
 
                 Textarea::make('seo_description_en')
-                    ->label('SEO Description (English)')
+                    ->label(__('SEO Description (English)'))
                     ->rows(2)
                     ->maxLength(160),
             ])->columns(2)->collapsible(),
@@ -122,22 +128,22 @@ class PageResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('title_en')
-                    ->label('Title (EN)')
+                    ->label(__('Title (EN)'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('title_ar')
-                    ->label('Title (AR)')
+                    ->label(__('Title (AR)'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('slug')
-                    ->label('Slug')
+                    ->label(__('Slug'))
                     ->copyable()
                     ->prefix('/'),
 
                 IconColumn::make('is_published')
-                    ->label('Published')
+                    ->label(__('Published'))
                     ->boolean()
                     ->trueIcon(Heroicon::OutlinedCheckCircle)
                     ->falseIcon(Heroicon::OutlinedXCircle)
@@ -145,23 +151,23 @@ class PageResource extends Resource
                     ->falseColor('gray'),
 
                 IconColumn::make('show_in_header')
-                    ->label('Header')
+                    ->label(__('Header'))
                     ->boolean()
                     ->trueColor('info')
                     ->falseColor('gray'),
 
                 IconColumn::make('show_in_footer')
-                    ->label('Footer')
+                    ->label(__('Footer'))
                     ->boolean()
                     ->trueColor('info')
                     ->falseColor('gray'),
 
                 TextColumn::make('menu_order')
-                    ->label('Order')
+                    ->label(__('Order'))
                     ->sortable(),
 
                 TextColumn::make('updated_at')
-                    ->label('Last Updated')
+                    ->label(__('Last Updated'))
                     ->dateTime('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -169,15 +175,15 @@ class PageResource extends Resource
             ->defaultSort('menu_order')
             ->filters([
                 TernaryFilter::make('is_published')
-                    ->label('Published')
-                    ->trueLabel('Published only')
-                    ->falseLabel('Unpublished only'),
+                    ->label(__('Published'))
+                    ->trueLabel(__('Published only'))
+                    ->falseLabel(__('Unpublished only')),
 
                 TernaryFilter::make('show_in_header')
-                    ->label('In Header'),
+                    ->label(__('In Header')),
 
                 TernaryFilter::make('show_in_footer')
-                    ->label('In Footer'),
+                    ->label(__('In Footer')),
             ])
             ->recordActions([
                 EditAction::make(),

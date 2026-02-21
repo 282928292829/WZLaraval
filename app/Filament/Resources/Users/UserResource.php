@@ -35,9 +35,15 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static ?string $navigationLabel = 'Users';
+    public static function getNavigationLabel(): string
+    {
+        return __('Users');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administration';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Administration');
+    }
 
     protected static ?int $navigationSort = 1;
 
@@ -56,26 +62,26 @@ class UserResource extends Resource
 
         return $schema
             ->components([
-                Section::make('Account Details')
+                Section::make(__('Account Details'))
                     ->schema([
                         TextInput::make('name')
-                            ->label('Name')
+                            ->label(__('Name'))
                             ->required()
                             ->maxLength(100),
 
                         TextInput::make('email')
-                            ->label('Email')
+                            ->label(__('Email'))
                             ->email()
                             ->required()
                             ->unique(table: 'users', column: 'email', ignoreRecord: true),
 
                         TextInput::make('phone')
-                            ->label('Phone')
+                            ->label(__('Phone'))
                             ->nullable()
                             ->maxLength(30),
 
                         TextInput::make('password')
-                            ->label('New Password')
+                            ->label(__('New Password'))
                             ->password()
                             ->revealable()
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? bcrypt($state) : null)
@@ -84,25 +90,25 @@ class UserResource extends Resource
                     ])
                     ->columns(2),
 
-                Section::make('Status')
+                Section::make(__('Status'))
                     ->schema([
                         Toggle::make('is_banned')
-                            ->label('Banned')
+                            ->label(__('Banned'))
                             ->onColor('danger')
                             ->offColor('success')
-                            ->helperText('Banned users cannot log in.'),
+                            ->helperText(__('Banned users cannot log in.')),
 
                         TextInput::make('banned_reason')
-                            ->label('Ban Reason')
+                            ->label(__('Ban Reason'))
                             ->maxLength(255)
                             ->nullable()
                             ->visible(fn ($get) => (bool) $get('is_banned')),
                     ]),
 
-                Section::make('Role')
+                Section::make(__('Role'))
                     ->schema([
                         Select::make('roles')
-                            ->label('Role')
+                            ->label(__('Role'))
                             ->options($allRoles)
                             ->relationship(
                                 name: 'roles',
@@ -111,14 +117,14 @@ class UserResource extends Resource
                             ->preload()
                             ->searchable()
                             ->multiple()
-                            ->helperText('Assign one or more roles. Roles carry bundled permissions.'),
+                            ->helperText(__('Assign one or more roles. Roles carry bundled permissions.')),
                     ]),
 
-                Section::make('Permission Overrides')
-                    ->description('Grant or revoke individual permissions on top of this user\'s role(s).')
+                Section::make(__('Permission Overrides'))
+                    ->description(__('Grant or revoke individual permissions on top of this user\'s role(s).'))
                     ->schema([
                         CheckboxList::make('direct_permissions')
-                            ->label('Direct Permissions')
+                            ->label(__('Direct Permissions'))
                             ->options($allPermissions)
                             ->bulkToggleable()
                             ->columns(3)
@@ -140,27 +146,27 @@ class UserResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('email')
-                    ->label('Email')
+                    ->label(__('Email'))
                     ->searchable()
                     ->copyable(),
 
                 TextColumn::make('phone')
-                    ->label('Phone')
+                    ->label(__('Phone'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('roles.name')
-                    ->label('Role')
+                    ->label(__('Role'))
                     ->badge()
                     ->separator(','),
 
                 IconColumn::make('is_banned')
-                    ->label('Banned')
+                    ->label(__('Banned'))
                     ->boolean()
                     ->trueIcon(Heroicon::OutlinedNoSymbol)
                     ->falseIcon(Heroicon::OutlinedCheckCircle)
@@ -168,7 +174,7 @@ class UserResource extends Resource
                     ->falseColor('success'),
 
                 TextColumn::make('created_at')
-                    ->label('Joined')
+                    ->label(__('Joined'))
                     ->dateTime('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -176,12 +182,12 @@ class UserResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 TernaryFilter::make('is_banned')
-                    ->label('Banned Status')
-                    ->trueLabel('Banned only')
-                    ->falseLabel('Active only'),
+                    ->label(__('Banned Status'))
+                    ->trueLabel(__('Banned only'))
+                    ->falseLabel(__('Active only')),
 
                 SelectFilter::make('roles')
-                    ->label('Role')
+                    ->label(__('Role'))
                     ->relationship('roles', 'name')
                     ->preload(),
             ])
@@ -189,7 +195,7 @@ class UserResource extends Resource
                 EditAction::make(),
 
                 Action::make('toggleBan')
-                    ->label(fn (User $record) => $record->is_banned ? 'Unban' : 'Ban')
+                    ->label(fn (User $record) => $record->is_banned ? __('Unban') : __('Ban'))
                     ->icon(fn (User $record) => $record->is_banned
                         ? Heroicon::OutlinedCheckCircle
                         : Heroicon::OutlinedNoSymbol)

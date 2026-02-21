@@ -33,9 +33,15 @@ class PostResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedNewspaper;
 
-    protected static ?string $navigationLabel = 'Blog Posts';
+    public static function getNavigationLabel(): string
+    {
+        return __('Blog Posts');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Blog';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Blog');
+    }
 
     protected static ?int $navigationSort = 1;
 
@@ -51,84 +57,84 @@ class PostResource extends Resource
     {
         return $schema->components([
             // ── Main content (2/3 width on desktop) ──────────────────────────
-            Section::make('Content')->schema([
+            Section::make(__('Content'))->schema([
                 TextInput::make('title_ar')
-                    ->label('Title (Arabic)')
+                    ->label(__('Title (Arabic)'))
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
 
                 TextInput::make('title_en')
-                    ->label('Title (English)')
+                    ->label(__('Title (English)'))
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
 
                 TextInput::make('slug')
-                    ->label('Slug')
+                    ->label(__('Slug'))
                     ->required()
                     ->unique(table: 'posts', column: 'slug', ignoreRecord: true)
                     ->maxLength(255)
                     ->columnSpanFull()
-                    ->helperText('URL-friendly identifier.'),
+                    ->helperText(__('URL-friendly identifier.')),
 
                 Textarea::make('excerpt_ar')
-                    ->label('Excerpt (Arabic)')
+                    ->label(__('Excerpt (Arabic)'))
                     ->rows(3)
                     ->maxLength(500),
 
                 Textarea::make('excerpt_en')
-                    ->label('Excerpt (English)')
+                    ->label(__('Excerpt (English)'))
                     ->rows(3)
                     ->maxLength(500),
 
                 RichEditor::make('body_ar')
-                    ->label('Body (Arabic)')
+                    ->label(__('Body (Arabic)'))
                     ->columnSpanFull()
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsDirectory('posts/attachments'),
 
                 RichEditor::make('body_en')
-                    ->label('Body (English)')
+                    ->label(__('Body (English)'))
                     ->columnSpanFull()
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsDirectory('posts/attachments'),
             ])->columns(2),
 
             // ── Sidebar sections ─────────────────────────────────────────────
-            Section::make('Publish')->schema([
+            Section::make(__('Publish'))->schema([
                 Select::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options([
-                        'draft'     => 'Draft',
-                        'published' => 'Published',
+                        'draft'     => __('Draft'),
+                        'published' => __('Published'),
                     ])
                     ->required()
                     ->default('draft'),
 
                 DateTimePicker::make('published_at')
-                    ->label('Publish At')
+                    ->label(__('Publish At'))
                     ->nullable()
-                    ->helperText('Leave blank to publish immediately when status is set to Published.'),
+                    ->helperText(__('Leave blank to publish immediately when status is set to Published.')),
 
                 Select::make('post_category_id')
-                    ->label('Category')
+                    ->label(__('Category'))
                     ->relationship('category', 'name_en')
                     ->searchable()
                     ->preload()
                     ->nullable(),
 
                 Select::make('user_id')
-                    ->label('Author')
+                    ->label(__('Author'))
                     ->relationship('author', 'name')
                     ->searchable()
                     ->preload()
                     ->default(fn () => auth()->id()),
             ])->collapsible(),
 
-            Section::make('Featured Image')->schema([
+            Section::make(__('Featured Image'))->schema([
                 FileUpload::make('featured_image')
-                    ->label('Featured Image')
+                    ->label(__('Featured Image'))
                     ->image()
                     ->disk('public')
                     ->directory('posts/images')
@@ -139,22 +145,22 @@ class PostResource extends Resource
                     ->nullable(),
             ])->collapsible(),
 
-            Section::make('SEO')->schema([
+            Section::make(__('SEO'))->schema([
                 TextInput::make('seo_title_ar')
-                    ->label('SEO Title (Arabic)')
+                    ->label(__('SEO Title (Arabic)'))
                     ->maxLength(70),
 
                 TextInput::make('seo_title_en')
-                    ->label('SEO Title (English)')
+                    ->label(__('SEO Title (English)'))
                     ->maxLength(70),
 
                 Textarea::make('seo_description_ar')
-                    ->label('SEO Description (Arabic)')
+                    ->label(__('SEO Description (Arabic)'))
                     ->rows(2)
                     ->maxLength(160),
 
                 Textarea::make('seo_description_en')
-                    ->label('SEO Description (English)')
+                    ->label(__('SEO Description (English)'))
                     ->rows(2)
                     ->maxLength(160),
             ])->columns(2)->collapsible(),
@@ -166,36 +172,36 @@ class PostResource extends Resource
         return $table
             ->columns([
                 ImageColumn::make('featured_image')
-                    ->label('Image')
+                    ->label(__('Image'))
                     ->disk('public')
                     ->width(60)
                     ->height(40),
 
                 TextColumn::make('title_en')
-                    ->label('Title (EN)')
+                    ->label(__('Title (EN)'))
                     ->searchable()
                     ->sortable()
                     ->limit(50),
 
                 TextColumn::make('title_ar')
-                    ->label('Title (AR)')
+                    ->label(__('Title (AR)'))
                     ->searchable()
                     ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('category.name_en')
-                    ->label('Category')
-                    ->placeholder('—')
+                    ->label(__('Category'))
+                    ->placeholder(__('—'))
                     ->badge()
                     ->sortable(),
 
                 TextColumn::make('author.name')
-                    ->label('Author')
+                    ->label(__('Author'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'published' => 'success',
@@ -204,27 +210,27 @@ class PostResource extends Resource
                     }),
 
                 TextColumn::make('published_at')
-                    ->label('Published')
+                    ->label(__('Published'))
                     ->dateTime('d M Y, H:i')
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder(__('—')),
 
                 TextColumn::make('comments_count')
-                    ->label('Comments')
+                    ->label(__('Comments'))
                     ->counts('comments')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options([
-                        'draft'     => 'Draft',
-                        'published' => 'Published',
+                        'draft'     => __('Draft'),
+                        'published' => __('Published'),
                     ]),
 
                 SelectFilter::make('post_category_id')
-                    ->label('Category')
+                    ->label(__('Category'))
                     ->relationship('category', 'name_en')
                     ->preload(),
             ])

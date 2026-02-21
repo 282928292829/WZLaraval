@@ -3,30 +3,14 @@
     <div class="mb-5">
         <h1 class="text-xl font-bold text-gray-900">{{ __('Register') }}</h1>
         <p class="mt-1 text-sm text-gray-500">
-            @if (app()->getLocale() === 'ar')
-                أنشئ حسابك الجديد
-            @else
-                Create your new account
-            @endif
+            {{ __('Create your new account') }}
         </p>
     </div>
 
+    @include('auth.partials.social-buttons', ['mode' => 'register'])
+
     <form method="POST" action="{{ route('register') }}" class="space-y-3">
         @csrf
-
-        {{-- Name --}}
-        <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name"
-                          class="block mt-1 w-full"
-                          type="text"
-                          name="name"
-                          :value="old('name')"
-                          required
-                          autofocus
-                          autocomplete="name" />
-            <x-input-error :messages="$errors->get('name')" class="mt-1" />
-        </div>
 
         {{-- Email --}}
         <div>
@@ -37,6 +21,7 @@
                           name="email"
                           :value="old('email')"
                           required
+                          autofocus
                           autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-1" />
         </div>

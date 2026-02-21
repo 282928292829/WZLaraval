@@ -12,7 +12,9 @@
 <div
     x-data="newOrderForm(
         @js($exchangeRates),
-        {{ $margin }},
+        {{ $commissionThreshold }},
+        {{ $commissionPct }},
+        {{ $commissionFlat }},
         @js($currencies),
         {{ $maxProducts }},
         @js($defaultCurrency)
@@ -73,25 +75,45 @@
     </div>
 
     {{-- ================================================================
-         Tips banner (dismissible, 30-day localStorage)
+         Tips box — collapsible, 30-day "don't show" localStorage
     ================================================================ --}}
-    <div
-        x-show="showTips"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-end="opacity-0 -translate-y-2"
-        class="bg-orange-50 border-b border-orange-100"
-    >
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-start gap-3">
-            <span class="text-orange-500 text-lg mt-0.5 shrink-0">💡</span>
-            <div class="flex-1 text-sm text-orange-800">
-                <p class="font-medium">{{ __('order.tips_title') }}</p>
-                <p class="mt-0.5 text-orange-700 text-xs">{{ __('order.tips_body') }}</p>
-            </div>
-            <button @click="dismissTips()" class="text-orange-400 hover:text-orange-600 shrink-0 mt-0.5">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    <div x-show="showTips" class="max-w-5xl mx-auto px-4 pt-4">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+             style="border-inline-start: 4px solid #f97316;">
+            {{-- Header (always visible, click to expand/collapse) --}}
+            <button
+                type="button"
+                @click="tipsExpanded = !tipsExpanded"
+                class="w-full flex items-center justify-between px-4 py-3 text-start hover:bg-gray-50 transition-colors"
+            >
+                <h2 class="text-sm font-semibold text-gray-900">{{ __('order.tips_title') }}</h2>
+                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
+                     :class="tipsExpanded ? 'rotate-180' : ''"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
+
+            {{-- Expandable body (collapsed by default) --}}
+            <div x-show="tipsExpanded" x-collapse class="border-t border-gray-100">
+                <div class="px-4 py-4">
+                    <ul class="space-y-2.5 text-sm text-gray-600 leading-relaxed">
+                        <li>{{ __('order.tips_tip1') }}</li>
+                        <li>{{ __('order.tips_tip2') }}</li>
+                        <li>{{ __('order.tips_tip3') }}</li>
+                        <li>{{ __('order.tips_tip4') }}</li>
+                        <li>{{ __('order.tips_tip5') }}</li>
+                        <li>{{ __('order.tips_tip6') }}</li>
+                        <li>{{ __('order.tips_tip7') }}</li>
+                    </ul>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+                            <input type="checkbox" @change="dismissTips()" class="rounded border-gray-300 text-primary-600 cursor-pointer">
+                            <span>{{ __('order.tips_dont_show') }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -140,7 +162,7 @@
                                          bg-gray-100 text-xs font-bold text-gray-500">
                                 {{ $index + 1 }}
                             </span>
-                            <span class="text-sm text-gray-700 truncate max-w-[180px]">
+                            <span class="text-sm text-gray-700 min-w-0 flex-1 break-words line-clamp-2">
                                 @if ($item['url'])
                                     {{ Str::limit($item['url'], 38) }}
                                 @else
@@ -160,8 +182,9 @@
                                     @click.stop="$wire.removeItem({{ $index }})"
                                     class="p-1 text-gray-300 hover:text-red-400 transition-colors rounded"
                                     wire:loading.attr="disabled"
+                                    aria-label="{{ __('order.remove_item') }}"
                                 >
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                     </svg>
                                 </button>
@@ -214,7 +237,7 @@
                                 <button
                                     type="button"
                                     @click="showOptional = !showOptional"
-                                    class="flex items-center gap-1.5 text-xs text-primary-600 font-medium hover:text-primary-700"
+                                    class="flex items-center gap-1.5 text-xs text-primary-700 font-medium hover:text-primary-800"
                                 >
                                     <svg class="w-3.5 h-3.5 transition-transform"
                                          :class="showOptional ? 'rotate-90' : ''"
@@ -295,6 +318,17 @@
             </svg>
             {{ __('order.add_product') }}
         </button>
+
+        <div class="flex justify-end mt-1 px-1">
+            <button
+                type="button"
+                @click="clearDraft(); $wire.set('items', [@js($this->emptyItem($defaultCurrency))]); $wire.set('orderNotes', ''); recalculate()"
+                x-show="filledCount > 0"
+                class="text-xs text-gray-300 hover:text-gray-400 transition-colors"
+            >
+                {{ __('order.clear_all') }}
+            </button>
+        </div>
     </div>
 
     {{-- ================================================================
@@ -505,13 +539,14 @@
          Alpine.js component logic
     ================================================================ --}}
     <script>
-    function newOrderForm(rates, margin, currencies, maxProducts, defaultCurrency) {
+    function newOrderForm(rates, commissionThreshold, commissionPct, commissionFlat, currencies, maxProducts, defaultCurrency) {
         return {
-            rates, margin, currencies, maxProducts,
+            rates, currencies, maxProducts, commissionThreshold, commissionPct, commissionFlat,
             preferredCurrency: localStorage.getItem('wz_preferred_currency') || defaultCurrency,
             estimatedTotal: 0,
             notification: { visible: false, type: 'success', message: '' },
             showTips: true,
+            tipsExpanded: false,
             notifyTimer: null,
 
             init() {
@@ -519,9 +554,14 @@
                 this.loadDraft();
 
                 if (window.innerWidth >= 1024 && this.$wire.items.length < 5) {
-                    const toAdd = 5 - this.$wire.items.length;
+                    const filled  = (this.$wire.items || []).filter(i => (i.url || '').trim() !== '').length;
+                    const canAdd  = Math.max(0, maxProducts - filled);
+                    const toAdd   = Math.min(5 - this.$wire.items.length, canAdd);
                     for (let i = 0; i < toAdd; i++) {
                         this.$wire.addItem(this.preferredCurrency);
+                    }
+                    if (filled >= maxProducts) {
+                        this.showNotify('error', {{ Js::from(__('order.max_products_reached', ['max' => $maxProducts])) }});
                     }
                 }
 
@@ -537,15 +577,21 @@
             recalculate() {
                 this.$nextTick(() => {
                     const items = this.$wire.items || [];
-                    let total = 0;
+                    let rawTotal = 0;
                     items.forEach(item => {
                         if (!item.price || !item.qty) return;
-                        const price = parseFloat(String(item.price).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632)) || 0;
-                        const qty   = parseInt(String(item.qty).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632)) || 1;
+                        // Use global toEnglishDigits() for consistency (handles both Arabic-Indic and Persian digits)
+                        const price = parseFloat(window.toEnglishDigits(String(item.price))) || 0;
+                        const qty   = parseInt(window.toEnglishDigits(String(item.qty))) || 1;
                         const rate  = rates[item.currency || 'USD'] || 0;
-                        if (price > 0 && rate > 0) total += price * qty * rate * (1 + margin);
+                        if (price > 0 && rate > 0) rawTotal += price * qty * rate;
                     });
-                    this.estimatedTotal = Math.round(total * 100) / 100;
+                    // Tiered commission: % if rawTotal >= threshold, else flat fee
+                    const commission = rawTotal <= 0 ? 0
+                        : (rawTotal >= commissionThreshold
+                            ? rawTotal * commissionPct
+                            : commissionFlat);
+                    this.estimatedTotal = Math.round((rawTotal + commission) * 100) / 100;
                 });
             },
 
@@ -558,8 +604,10 @@
             },
 
             convertArabicNumerals(event) {
-                const el  = event.target;
-                const val = el.value.replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632);
+                // Use global toEnglishDigits() for consistency (handles both Arabic-Indic and Persian digits)
+                // Note: This is redundant since global handler converts automatically, but kept as safety net
+                const el = event.target;
+                const val = window.toEnglishDigits(el.value);
                 if (el.value !== val) el.value = val;
             },
 
@@ -582,14 +630,15 @@
                     if (!Array.isArray(draft) || !draft.length) return;
                     const hasContent = (this.$wire.items || []).some(i => (i.url || '').trim() !== '');
                     if (hasContent) return;
-                    draft.forEach((item, i) => {
+                    const setAll = draft.map((item, i) => {
                         if (i === 0) {
-                            this.$wire.set('items.0', item);
+                            return this.$wire.set('items.0', item);
                         } else {
-                            this.$wire.addItem(item.currency || this.preferredCurrency)
+                            return this.$wire.addItem(item.currency || this.preferredCurrency)
                                 .then(() => this.$wire.set(`items.${i}`, item));
                         }
                     });
+                    Promise.all(setAll).then(() => this.recalculate());
                     const notes = localStorage.getItem('wz_order_notes');
                     if (notes) this.$wire.set('orderNotes', notes);
                 } catch (e) {}

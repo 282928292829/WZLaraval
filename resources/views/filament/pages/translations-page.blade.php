@@ -6,7 +6,7 @@
                 <x-filament::input
                     wire:model.live.debounce.300ms="search"
                     type="search"
-                    placeholder="Search keys or values…"
+                    placeholder="{{ __('Search keys or values…') }}"
                 />
             </x-filament::input.wrapper>
         </div>
@@ -30,7 +30,7 @@
             <tbody class="divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-gray-900">
                 @forelse ($this->filteredRows() as $index => $row)
                     @php
-                        {{-- Map filtered index back to real rows index for wire:model binding --}}
+                        // Map filtered index back to real rows index for wire:model binding
                         $realIndex = array_search($row['key'], array_column($rows, 'key'));
                     @endphp
                     <tr wire:key="row-{{ $row['key'] }}" class="hover:bg-gray-50 dark:hover:bg-white/5">
@@ -61,7 +61,7 @@
                                 wire:click="deleteRow('{{ addslashes($row['key']) }}')"
                                 wire:confirm="Delete '{{ addslashes($row['key']) }}'?"
                                 class="text-danger-500 hover:text-danger-700 transition-colors"
-                                title="Delete"
+                                title="{{ __('Delete') }}"
                             >
                                 <x-filament::icon icon="heroicon-o-trash" class="w-4 h-4" />
                             </button>
@@ -80,19 +80,19 @@
 
     {{-- Add new translation row --}}
     <div class="mt-6 rounded-xl border border-dashed border-gray-300 dark:border-white/20 p-4">
-        <p class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Add Translation Key</p>
+        <p class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('Add Translation Key') }}</p>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Key</label>
                 <input
                     wire:model="newKey"
                     type="text"
-                    placeholder="e.g. Order Submitted"
+                    placeholder="{{ __('e.g. Order Submitted') }}"
                     class="block w-full rounded-lg border border-gray-300 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                 />
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Arabic</label>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ __('Arabic') }}</label>
                 <input
                     wire:model="newAr"
                     type="text"
@@ -102,12 +102,12 @@
                 />
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">English</label>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ __('English') }}</label>
                 <input
                     wire:model="newEn"
                     type="text"
                     dir="ltr"
-                    placeholder="English text"
+                    placeholder="{{ __('English text') }}"
                     class="block w-full rounded-lg border border-gray-300 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                 />
             </div>

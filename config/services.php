@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+    ],
+
+    'twitter' => [
+        'client_id'     => env('TWITTER_CLIENT_ID'),
+        'client_secret' => env('TWITTER_CLIENT_SECRET'),
+        'redirect'      => env('TWITTER_REDIRECT_URI', '/auth/twitter/callback'),
+    ],
+
+    'apple' => [
+        'client_id'     => env('APPLE_CLIENT_ID'),        // Bundle ID (com.yourapp.id)
+        'client_secret' => env('APPLE_CLIENT_SECRET'),    // Generated JWT — see docs
+        'redirect'      => env('APPLE_REDIRECT_URI', '/auth/apple/callback'),
+    ],
+
 ];

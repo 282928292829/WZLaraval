@@ -27,6 +27,14 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 - Commit after every feature with small, atomic commits
 - After completing a task, update the `## Current Task` section in `LARAVEL_PLAN.md` with: what was just completed and exactly what the next session should start with. Then tell the user: **"Start next session with: `Read LARAVEL_PLAN.md then continue from the Current Task section.`"**
 
+## Bilingual Rule (ALWAYS ENFORCE)
+- This site is **100% bilingual — Arabic (default) and English**
+- **Never hardcode a user-facing string** in Blade, Livewire, PHP, or Filament — always wrap in `__()`
+- This applies to: labels, titles, headings, button text, helper text, placeholder text, flash/notification messages, nav labels, section titles, and page titles
+- For Filament Resources/Pages: override `getNavigationLabel()`, `getTitle()`, `getNavigationGroup()` as methods returning `__()` — never set them as hardcoded static properties
+- If a translation key is missing from `lang/ar.json` or `lang/en.json`, add it to both files before committing
+- **Never ship a string that doesn't pass through `__()`** — treat hardcoded English strings as bugs
+
 ## Key Architectural Decisions
 - **URLs:** `/orders/{id}` — nginx 301 redirects legacy `/order/(.*)` → `/orders/$1`
 - **Translations:** `lang/ar.json` + `lang/en.json` only — no `translations` DB table

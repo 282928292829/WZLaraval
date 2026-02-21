@@ -1,9 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+@theme {
+    --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-family-arabic: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
+
+    --color-primary-50: #fff7ed;
+    --color-primary-100: #ffedd5;
+    --color-primary-200: #fed7aa;
+    --color-primary-300: #fdba74;
+    --color-primary-400: #fb923c;
+    --color-primary-500: #f97316;
+    --color-primary-600: #ea580c;
+    --color-primary-700: #c2410c;
+    --color-primary-800: #9a3412;
+    --color-primary-900: #7c2d12;
+    --color-primary-950: #431407;
+}
+
+@source "../views/**/*.blade.php";
+@source "../js/**/*.js";
+@source "../../app/**/*.php";
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
 
 @layer base {
-    /* Font switching based on document direction */
     [dir="ltr"] {
         font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     }
@@ -12,23 +32,36 @@
         font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
     }
 
-    /* CSS variables for site-wide theming (configurable via Filament settings later) */
     :root {
-        --color-primary: theme('colors.primary.500');
-        --color-primary-hover: theme('colors.primary.600');
-        --color-primary-light: theme('colors.primary.50');
+        --color-primary: var(--color-primary-500);
+        --color-primary-hover: var(--color-primary-600);
+        --color-primary-light: var(--color-primary-50);
     }
 
-    /* Smooth transitions for language/RTL switches */
     html {
         scroll-behavior: smooth;
     }
 
-    /* Ensure inputs inherit correct font in RTL */
     [dir="rtl"] input,
     [dir="rtl"] textarea,
     [dir="rtl"] select,
     [dir="rtl"] button {
+        font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    [dir="rtl"] .text-gray-400,
+    [dir="rtl"] .text-gray-500,
+    [dir="rtl"] p.text-gray-400,
+    [dir="rtl"] p.text-gray-500,
+    [dir="rtl"] span.text-gray-400,
+    [dir="rtl"] span.text-gray-500 {
+        font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    [dir="rtl"] [dir="ltr"] span.text-gray-400,
+    [dir="rtl"] [dir="ltr"] span.text-gray-500,
+    [dir="rtl"] [dir="ltr"] span.text-white\/70,
+    [dir="rtl"] [dir="ltr"] span.text-white\/80 {
         font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
     }
 }

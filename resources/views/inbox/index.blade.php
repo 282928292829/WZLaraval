@@ -176,9 +176,9 @@
                                                 <button type="submit"
                                                     class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">
                                                     {{ __('inbox.view') }}
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <svg class="w-3 h-3 rtl:-scale-x-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="{{ app()->getLocale() === 'ar' ? 'M10 19l-7-7m0 0l7-7m-7 7h18' : 'M14 5l7 7m0 0l-7 7m7-7H3' }}"/>
+                                                            d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                                                     </svg>
                                                 </button>
                                             </form>

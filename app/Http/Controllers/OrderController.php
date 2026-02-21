@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderConfirmation;
+use App\Models\CommentTemplate;
+use App\Models\EmailLog;
 use App\Models\Order;
 use App\Models\OrderComment;
 use App\Models\OrderCommentRead;
 use App\Models\OrderCommentEdit;
 use App\Models\OrderFile;
 use App\Models\OrderTimeline;
+use App\Models\Setting;
+use App\Models\UserAddress;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -95,9 +101,15 @@ class OrderController extends Controller
         $validated = $request->validate([
             'body'        => ['required', 'string', 'max:5000'],
             'is_internal' => ['sometimes', 'boolean'],
+            'template_id' => ['sometimes', 'nullable', 'integer', 'exists:comment_templates,id'],
             'file'        => ['sometimes', 'file', 'max:10240',
                 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
         ]);
+
+        // Track template usage when staff uses a quick-reply template
+        if ($isStaff && ! empty($validated['template_id'])) {
+            CommentTemplate::where('id', $validated['template_id'])->increment('usage_count');
+        }
 
         $comment = $order->comments()->create([
             'user_id'     => $user->id,
@@ -148,6 +160,7 @@ class OrderController extends Controller
         $comment->edits()->create([
             'old_body'  => $comment->body,
             'edited_by' => $user->id,
+            'edited_at' => now(),
         ]);
 
         $comment->update([
@@ -198,6 +211,29 @@ class OrderController extends Controller
         ]);
 
         return redirect()->route('orders.show', $id)->with('success', __('orders.status_updated'));
+    }
+
+    // ─── Staff: quick-action mark as paid ────────────────────────────────
+
+    public function markPaid(Request $request, int $id)
+    {
+        $this->authorize('update-order-status');
+
+        $order = Order::findOrFail($id);
+
+        if (! $order->is_paid) {
+            $order->update(['is_paid' => true]);
+
+            $order->timeline()->create([
+                'user_id'     => auth()->id(),
+                'type'        => 'payment',
+                'status_from' => null,
+                'status_to'   => null,
+                'body'        => __('orders.marked_paid_by_staff'),
+            ]);
+        }
+
+        return redirect()->route('orders.show', $id)->with('success', __('orders.marked_as_paid'));
     }
 
     // ─── Staff: upload order-level file ──────────────────────────────────
@@ -349,6 +385,55 @@ class OrderController extends Controller
         return redirect()->route('orders.show', $order->id)->with('success', __('orders.merged'));
     }
 
+    // ─── Update shipping address on order ────────────────────────────────
+
+    public function updateShippingAddress(Request $request, int $id)
+    {
+        $user  = auth()->user();
+        $order = Order::findOrFail($id);
+
+        $isOwner = $order->user_id === $user->id;
+        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+
+        if (! $isOwner && ! $isStaff) abort(403);
+
+        // Only allow change while order is in an editable state
+        $editableStatuses = ['pending', 'needs_payment', 'on_hold'];
+        if (! in_array($order->status, $editableStatuses)) {
+            return redirect()->route('orders.show', $id)
+                ->with('error', __('orders.address_change_not_allowed'));
+        }
+
+        $validated = $request->validate([
+            'shipping_address_id' => ['required', 'integer'],
+        ]);
+
+        // Address must belong to the order's owner
+        $address = UserAddress::where('user_id', $order->user_id)
+            ->findOrFail($validated['shipping_address_id']);
+
+        $snapshot = $address->only([
+            'id', 'label', 'recipient_name', 'phone',
+            'country', 'city', 'address',
+        ]);
+
+        $order->update([
+            'shipping_address_id'       => $address->id,
+            'shipping_address_snapshot' => $snapshot,
+        ]);
+
+        $order->timeline()->create([
+            'user_id' => $user->id,
+            'type'    => 'note',
+            'body'    => __('orders.timeline_address_changed', [
+                'address' => $address->label ?: $address->city,
+            ]),
+        ]);
+
+        return redirect()->route('orders.show', $id)
+            ->with('success', __('orders.address_updated'));
+    }
+
     // ─── Staff: send comment notification ────────────────────────────────
 
     public function sendNotification(Request $request, int $orderId, int $commentId)
@@ -375,23 +460,32 @@ class OrderController extends Controller
             return $this->staffIndex($request);
         }
 
-        return $this->customerIndex($user);
+        return $this->customerIndex($user, $request);
     }
 
-    private function customerIndex($user)
+    private function customerIndex($user, Request $request)
     {
-        $orders = Order::where('user_id', $user->id)
-            ->withCount('items')
-            ->latest()
-            ->get();
+        $query = Order::where('user_id', $user->id)->withCount('items');
 
-        $groups = [
-            'needs_action' => $orders->whereIn('status', ['needs_payment', 'on_hold'])->values(),
-            'in_progress'  => $orders->whereIn('status', ['pending', 'processing', 'purchasing', 'shipped', 'delivered'])->values(),
-            'completed'    => $orders->whereIn('status', ['completed', 'cancelled'])->values(),
-        ];
+        if ($search = trim($request->get('search', ''))) {
+            $query->where('order_number', 'like', "%{$search}%");
+        }
 
-        return view('orders.index', compact('orders', 'groups'));
+        if ($status = $request->get('status')) {
+            $query->where('status', $status);
+        }
+
+        $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy('created_at', $sort);
+
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50])
+            ? (int) $request->get('per_page')
+            : 10;
+
+        $orders   = $query->paginate($perPage)->withQueryString();
+        $statuses = Order::getStatuses();
+
+        return view('orders.index', compact('orders', 'statuses', 'sort', 'perPage'));
     }
 
     private function staffIndex(Request $request)
@@ -498,5 +592,72 @@ class OrderController extends Controller
 
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * POST /orders/{id}/send-email
+     * Staff-only: manually send an order confirmation email for a given order.
+     */
+    public function sendEmail(Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $staff = auth()->user();
+
+        if (! $staff->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $order = Order::with('user', 'items')->findOrFail($id);
+
+        if (! $order->user || ! $order->user->email) {
+            return response()->json([
+                'success' => false,
+                'message' => __('No valid recipient email address on this order.'),
+            ], 422);
+        }
+
+        if (! Setting::get('email_enabled', false)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Email sending is disabled. Enable it in Settings.'),
+            ], 422);
+        }
+
+        $log = EmailLog::create([
+            'order_id'        => $order->id,
+            'sent_by'         => $staff->id,
+            'recipient_email' => $order->user->email,
+            'recipient_name'  => $order->user->name,
+            'type'            => 'order_confirmation',
+            'subject'         => "تأكيد الطلب #{$order->order_number} — Wasetzon",
+            'queued'          => true,
+            'status'          => 'queued',
+        ]);
+
+        try {
+            Mail::to($order->user->email, $order->user->name)
+                ->queue(new OrderConfirmation($order));
+
+            $log->update(['status' => 'queued', 'sent_at' => now()]);
+
+            // Add a system timeline entry so staff can see the email was triggered
+            OrderTimeline::create([
+                'order_id' => $order->id,
+                'user_id'  => $staff->id,
+                'type'     => 'note',
+                'body'     => __('Email sent: Order Confirmation') . ' → ' . $order->user->email,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => __('Order confirmation email queued successfully.'),
+            ]);
+        } catch (\Throwable $e) {
+            $log->update(['status' => 'failed', 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('Failed to queue email: ') . $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -14,6 +14,9 @@ class UserAddress extends Model
         'phone',
         'country',
         'city',
+        'street',
+        'district',
+        'short_address',
         'address',
         'is_default',
     ];

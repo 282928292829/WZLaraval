@@ -3,11 +3,7 @@
     <div class="mb-5">
         <h1 class="text-xl font-bold text-gray-900">{{ __('Reset Password') }}</h1>
         <p class="mt-1 text-sm text-gray-500">
-            @if (app()->getLocale() === 'ar')
-                أدخل كلمة مرور جديدة لحسابك
-            @else
-                Choose a new password for your account
-            @endif
+            {{ __('Choose a new password for your account') }}
         </p>
     </div>
 

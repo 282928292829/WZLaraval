@@ -9,6 +9,7 @@
     $hasErrors      = $errors->any();
     $openAddressAdd = $hasErrors && old('_form') === 'add_address';
     $openEditId     = $hasErrors && old('_form') === 'edit_address' ? (int) old('_address_id') : null;
+    $validTabs      = ['profile', 'addresses', 'activity', 'notifications'];
 @endphp
 
 <x-app-layout>
@@ -58,13 +59,30 @@
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ __('account.address_deleted') }}
         </div>
-    @endif
-
-    @if ($hasErrors)
-        <div class="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">
-            @foreach ($errors->all() as $error)
-                <p>{{ $error }}</p>
-            @endforeach
+    @elseif (session('status') === 'deletion-requested')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            {{ __('account.deletion_requested_notice') }}
+        </div>
+    @elseif (session('status') === 'deletion-already-requested')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            {{ __('account.deletion_already_requested') }}
+        </div>
+    @elseif (session('status') === 'deletion-cancelled')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            {{ __('account.deletion_cancelled_notice') }}
+        </div>
+    @elseif (session('status') === 'notifications-updated')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            {{ __('account.notifications_updated') }}
+        </div>
+    @elseif (session('status') === 'email-verified')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            {{ __('account.email_verified') }}
         </div>
     @endif
 
@@ -103,6 +121,15 @@
             </svg>
             {{ __('account.activity_tab') }}
         </button>
+        <button
+            @click="tab = 'notifications'"
+            :class="tab === 'notifications' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            {{ __('account.notifications_tab') }}
+        </button>
     </div>
 
     {{-- ══════════════════════════════════════════════════════════════════════ --}}
@@ -111,144 +138,404 @@
     <div x-show="tab === 'profile'" x-cloak class="space-y-6">
 
         {{-- Personal info --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+             x-data="{
+                editing: '{{ $errors->hasAny(['current_password','password','password_confirmation']) ? 'password' : ($errors->hasAny(['name','email','phone','phone_secondary']) ? (
+                    $errors->has('name') ? 'name' : (
+                        $errors->has('email') ? 'email' : 'phone'
+                    )
+                ) : '') }}',
+                open(field) { this.editing = field; },
+                close()     { this.editing = ''; }
+             }">
+
             <div class="px-5 py-4 border-b border-gray-100">
                 <h2 class="text-sm font-semibold text-gray-900">{{ __('account.personal_info') }}</h2>
             </div>
-            <form method="POST" action="{{ route('account.profile.update') }}" class="px-5 py-5 space-y-4">
-                @csrf
-                @method('PATCH')
 
-                {{-- Name --}}
-                <div>
-                    <label for="name" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('Name') }}
-                    </label>
-                    <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        value="{{ old('name', $user->name) }}"
-                        required
-                        autocomplete="name"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('name')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+            {{-- ── Name row ─────────────────────────────────────────────── --}}
+            <div class="px-5 py-4 border-b border-gray-100/70">
 
-                {{-- Email --}}
-                <div>
-                    <label for="email" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('Email') }}
-                    </label>
-                    <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value="{{ old('email', $user->email) }}"
-                        required
-                        autocomplete="email"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('email')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                    @if ($user->email_verified_at === null)
-                        <p class="mt-1.5 text-xs text-amber-600">{{ __('account.email_unverified') }}</p>
-                    @endif
-                </div>
-
-                {{-- Phone --}}
-                <div>
-                    <label for="phone" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('Phone') }}
-                        <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                    </label>
-                    <input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value="{{ old('phone', $user->phone) }}"
-                        autocomplete="tel"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('phone')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div class="pt-1">
-                    <button type="submit"
-                        class="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors">
-                        {{ __('account.save_changes') }}
+                {{-- Display --}}
+                <div x-show="editing !== 'name'" class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-xs text-gray-400 mb-0.5">{{ __('Name') }}</p>
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $user->name }}</p>
+                    </div>
+                    <button type="button" @click="open('name')"
+                        class="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 transition">
+                        {{ __('account.change') }}
                     </button>
                 </div>
-            </form>
+
+                {{-- Edit --}}
+                <div x-show="editing === 'name'" x-collapse>
+                    <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-3 pt-1">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="email" value="{{ $user->email }}">
+                        <input type="hidden" name="phone" value="{{ $user->phone }}">
+                        <input type="hidden" name="phone_secondary" value="{{ $user->phone_secondary }}">
+                        <div>
+                            <label for="name" class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('Name') }}</label>
+                            <input id="name" name="name" type="text"
+                                value="{{ old('name', $user->name) }}"
+                                required autocomplete="name"
+                                x-init="$watch('editing', v => { if (v === 'name') $nextTick(() => $el.focus()) })"
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                                {{ __('account.save_changes') }}
+                            </button>
+                            <button type="button" @click="close()"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.cancel') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- ── Email row ────────────────────────────────────────────── --}}
+            <div class="px-5 py-4 border-b border-gray-100/70">
+
+                {{-- Display --}}
+                <div x-show="editing !== 'email'" class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-gray-400 mb-0.5">{{ __('Email') }}</p>
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $user->email }}</p>
+                        <div class="mt-1.5">
+                            @if ($user->email_verified_at === null)
+                                @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000')); @endphp
+                                <div x-data="{
+                                    cooldown: {{ session('status') === 'verification-link-sent' ? 60 : 0 }},
+                                    timer: null,
+                                    start() {
+                                        this.cooldown = 60;
+                                        this.timer = setInterval(() => { if (--this.cooldown <= 0) { this.cooldown = 0; clearInterval(this.timer); } }, 1000);
+                                    }
+                                }" x-init="cooldown > 0 && start()" class="flex flex-col gap-1.5">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <form method="POST" action="{{ route('verification.send') }}" @submit="start()">
+                                            @csrf
+                                            <button type="submit" :disabled="cooldown > 0"
+                                                :class="cooldown > 0 ? 'opacity-60 cursor-not-allowed' : 'hover:bg-amber-100'"
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-50 border border-amber-200 text-amber-700 transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                                                </svg>
+                                                <span x-text="cooldown > 0 ? '{{ __('account.email_not_confirmed') }} (' + cooldown + 's)' : '{{ __('account.email_not_confirmed') }}'"></span>
+                                            </button>
+                                        </form>
+                                        @if (session('status') === 'verification-link-sent')
+                                            <p class="text-xs text-green-600 font-medium">{{ __('account.verification_sent') }}</p>
+                                        @endif
+                                    </div>
+                                    <p class="text-xs text-gray-400">
+                                        {{ app()->getLocale() === 'ar' ? 'لم يصلك البريد؟' : "Didn't receive it?" }}
+                                        <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
+                                            class="text-green-600 hover:text-green-700 font-medium underline underline-offset-2 transition">
+                                            {{ app()->getLocale() === 'ar' ? 'تواصل معنا عبر واتساب' : 'Contact us on WhatsApp' }}
+                                        </a>
+                                    </p>
+                                </div>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-green-50 border border-green-200 text-green-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    {{ __('account.email_confirmed') }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                    <button type="button" @click="open('email')"
+                        class="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 transition">
+                        {{ __('account.change') }}
+                    </button>
+                </div>
+
+                {{-- Edit --}}
+                <div x-show="editing === 'email'" x-collapse>
+                    <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-3 pt-1">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="name" value="{{ $user->name }}">
+                        <input type="hidden" name="phone" value="{{ $user->phone }}">
+                        <input type="hidden" name="phone_secondary" value="{{ $user->phone_secondary }}">
+                        <div>
+                            <label for="email" class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('Email') }}</label>
+                            <input id="email" name="email" type="email"
+                                value="{{ old('email', $user->email) }}"
+                                required autocomplete="email"
+                                x-init="$watch('editing', v => { if (v === 'email') $nextTick(() => $el.focus()) })"
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                                {{ __('account.save_changes') }}
+                            </button>
+                            <button type="button" @click="close()"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.cancel') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- ── Password row ──────────────────────────────────────────── --}}
+            <div class="px-5 py-4 border-b border-gray-100/70">
+
+                {{-- Display --}}
+                <div x-show="editing !== 'password'" class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-xs text-gray-400 mb-0.5">{{ __('account.password_label') }}</p>
+                        <p class="text-sm font-medium text-gray-900 tracking-widest">••••••••</p>
+                    </div>
+                    <button type="button" @click="open('password')"
+                        class="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 transition">
+                        {{ __('account.change') }}
+                    </button>
+                </div>
+
+                {{-- Edit --}}
+                <div x-show="editing === 'password'" x-collapse>
+                    <form method="POST" action="{{ route('account.password.update') }}" class="space-y-3 pt-1">
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <label for="current_password" class="block text-xs font-medium text-gray-600 mb-1.5">
+                                {{ __('account.current_password') }}
+                            </label>
+                            <input
+                                x-ref="currentPassword"
+                                x-init="$watch('editing', v => { if (v === 'password') $nextTick(() => $refs.currentPassword.focus()) })"
+                                id="current_password" name="current_password" type="password"
+                                autocomplete="current-password"
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('current_password')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="password" class="block text-xs font-medium text-gray-600 mb-1.5">
+                                {{ __('account.new_password') }}
+                            </label>
+                            <input id="password" name="password" type="password" autocomplete="new-password"
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('password')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="password_confirmation" class="block text-xs font-medium text-gray-600 mb-1.5">
+                                {{ __('account.confirm_password') }}
+                            </label>
+                            <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password"
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('password_confirmation')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                                {{ __('account.update_password') }}
+                            </button>
+                            <button type="button" @click="close()"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.cancel') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- ── Phone row ────────────────────────────────────────────── --}}
+            <div class="px-5 py-4">
+
+                {{-- Display --}}
+                <div x-show="editing !== 'phone'" class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1 space-y-1">
+                        <div>
+                            <p class="text-xs text-gray-400">{{ __('account.mobile_primary_label') }}</p>
+                            <p class="text-sm font-medium text-gray-900">{{ $user->phone ?: '—' }}</p>
+                        </div>
+                        @if ($user->phone_secondary)
+                        <div>
+                            <p class="text-xs text-gray-400">{{ __('account.mobile_secondary_label') }}</p>
+                            <p class="text-sm font-medium text-gray-900">{{ $user->phone_secondary }}</p>
+                        </div>
+                        @endif
+                    </div>
+                    <button type="button" @click="open('phone')"
+                        class="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 transition">
+                        {{ __('account.change') }}
+                    </button>
+                </div>
+
+                {{-- Edit --}}
+                <div x-show="editing === 'phone'" x-collapse>
+                    <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-3 pt-1">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="name" value="{{ $user->name }}">
+                        <input type="hidden" name="email" value="{{ $user->email }}">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="phone" class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('account.mobile') }}</label>
+                                <div dir="ltr" class="flex rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500 transition overflow-hidden">
+                                    <input type="text" name="phone_code"
+                                        value="{{ old('phone_code', '+966') }}"
+                                        maxlength="6"
+                                        x-init="$watch('editing', v => { if (v === 'phone') $nextTick(() => $refs.phoneInput.focus()) })"
+                                        class="shrink-0 w-16 px-2.5 py-2.5 text-sm text-center bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none focus:bg-white transition">
+                                    <input x-ref="phoneInput" id="phone" name="phone" type="tel"
+                                        value="{{ old('phone', $user->phone) }}"
+                                        placeholder="{{ __('account.mobile_placeholder') }}"
+                                        autocomplete="tel" inputmode="numeric"
+                                        class="block w-full px-3 py-2.5 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0">
+                                </div>
+                                @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="phone_secondary" class="block text-xs font-medium text-gray-600 mb-1.5">
+                                    {{ __('account.mobile_secondary') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <div dir="ltr" class="flex rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500 transition overflow-hidden">
+                                    <input type="text" name="phone_secondary_code"
+                                        value="{{ old('phone_secondary_code', '+966') }}"
+                                        maxlength="6"
+                                        class="shrink-0 w-16 px-2.5 py-2.5 text-sm text-center bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none focus:bg-white transition">
+                                    <input id="phone_secondary" name="phone_secondary" type="tel"
+                                        value="{{ old('phone_secondary', $user->phone_secondary) }}"
+                                        placeholder="{{ __('account.mobile_placeholder') }}"
+                                        autocomplete="tel" inputmode="numeric"
+                                        class="block w-full px-3 py-2.5 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0">
+                                </div>
+                                @error('phone_secondary') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                                {{ __('account.save_changes') }}
+                            </button>
+                            <button type="button" @click="close()"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.cancel') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
 
-        {{-- Change password --}}
+        {{-- Sign Out --}}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="text-sm font-semibold text-gray-900">{{ __('account.change_password') }}</h2>
+                <h2 class="text-sm font-semibold text-gray-900">{{ __('account.sign_out') }}</h2>
             </div>
-            <form method="POST" action="{{ route('account.password.update') }}" class="px-5 py-5 space-y-4">
-                @csrf
-                @method('PATCH')
-
-                {{-- Current password --}}
-                <div>
-                    <label for="current_password" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('account.current_password') }}
-                    </label>
-                    <input
-                        id="current_password"
-                        name="current_password"
-                        type="password"
-                        autocomplete="current-password"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('current_password')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- New password --}}
-                <div>
-                    <label for="password" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('account.new_password') }}
-                    </label>
-                    <input
-                        id="password"
-                        name="password"
-                        type="password"
-                        autocomplete="new-password"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('password')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Confirm password --}}
-                <div>
-                    <label for="password_confirmation" class="block text-xs font-medium text-gray-600 mb-1.5">
-                        {{ __('account.confirm_password') }}
-                    </label>
-                    <input
-                        id="password_confirmation"
-                        name="password_confirmation"
-                        type="password"
-                        autocomplete="new-password"
-                        class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                    @error('password_confirmation')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div class="pt-1">
+            <div class="px-5 py-5">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
                     <button type="submit"
-                        class="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-xl transition-colors">
-                        {{ __('account.update_password') }}
+                            class="w-full flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        {{ __('account.sign_out') }}
                     </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Delete Account --}}
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+             x-data="{ showDeleteModal: false }">
+            <div class="px-5 py-4">
+                @if ($user->deletion_requested)
+                    <p class="text-sm text-gray-500">
+                        {{ __('account.deletion_pending') }}
+                        &nbsp;·&nbsp;
+                        <form method="POST" action="{{ route('account.cancel-deletion') }}" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                class="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2 transition-colors">
+                                {{ __('account.cancel_deletion') }}
+                            </button>
+                        </form>
+                    </p>
+                @else
+                    <p class="text-sm text-gray-500">
+                        <span class="font-medium text-gray-700">{{ __('account.danger_zone') }}:</span>
+                        {{ __('account.delete_account_description') }}
+                        <button type="button" @click="showDeleteModal = true"
+                            class="text-red-500 hover:text-red-600 underline underline-offset-2 transition-colors">
+                            {{ __('account.delete_account_button') }}
+                        </button>
+                    </p>
+                @endif
+            </div>
+
+            {{-- Confirmation modal --}}
+            <div
+                x-show="showDeleteModal"
+                x-cloak
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0">
+
+                {{-- Backdrop --}}
+                <div class="absolute inset-0 bg-black/40" @click="showDeleteModal = false"></div>
+
+                {{-- Dialog --}}
+                <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 z-10"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100">
+
+                    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+                        <svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+
+                    <h3 class="text-base font-bold text-gray-900 text-center mb-1">{{ __('account.delete_account_confirm_title') }}</h3>
+                    <p class="text-sm text-gray-500 text-center mb-6">{{ __('account.delete_account_confirm_body') }}</p>
+
+                    <div class="flex gap-3">
+                        <button type="button" @click="showDeleteModal = false"
+                            class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                            {{ __('account.cancel') }}
+                        </button>
+                        <form method="POST" action="{{ route('account.request-deletion') }}" class="flex-1">
+                            @csrf
+                            <button type="submit"
+                                class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors">
+                                {{ __('account.confirm_delete') }}
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </form>
+            </div>
         </div>
 
     </div>
@@ -357,49 +644,109 @@
 
                         <p class="text-xs font-semibold text-gray-700 uppercase tracking-wide">{{ __('account.edit_address') }}</p>
 
+                        {{-- Label + Recipient --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address_label') }}</label>
                                 <input type="text" name="label"
-                                    value="{{ old('label', $openEditId === $address->id ? old('label') : $address->label) }}"
+                                    value="{{ $openEditId === $address->id ? old('label') : $address->label }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
                                     placeholder="{{ __('account.label_placeholder') }}">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }}</label>
-                                <input type="text" name="recipient_name"
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
+                                <input type="text" name="recipient_name" required
                                     value="{{ $openEditId === $address->id ? old('recipient_name') : $address->recipient_name }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('recipient_name')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
+                        {{-- Country + City --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }} <span class="text-red-400">*</span></label>
-                                <input type="text" name="country" required
-                                    value="{{ $openEditId === $address->id ? old('country') : $address->country }}"
-                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }}</label>
+                                <input type="text" name="country"
+                                    value="{{ $openEditId === $address->id ? old('country', 'المملكة العربية السعودية') : ($address->country ?: 'المملكة العربية السعودية') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-500 cursor-default"
+                                    readonly>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.city') }} <span class="text-red-400">*</span></label>
-                                <input type="text" name="city" required
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.city') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <input type="text" name="city"
                                     value="{{ $openEditId === $address->id ? old('city') : $address->city }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('city')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address') }} <span class="text-red-400">*</span></label>
-                            <textarea name="address" required rows="2"
-                                class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition resize-none">{{ $openEditId === $address->id ? old('address') : $address->address }}</textarea>
-                        </div>
-
+                        {{-- Street + District (optional) --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Phone') }}</label>
-                                <input type="tel" name="phone"
-                                    value="{{ $openEditId === $address->id ? old('phone') : $address->phone }}"
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.street') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <input type="text" name="street"
+                                    value="{{ $openEditId === $address->id ? old('street') : $address->street }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.district') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <input type="text" name="district"
+                                    value="{{ $openEditId === $address->id ? old('district') : $address->district }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                        </div>
+
+                        {{-- Short address + Address details --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.short_address') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <input type="text" name="short_address" maxlength="20"
+                                    value="{{ $openEditId === $address->id ? old('short_address') : $address->short_address }}"
+                                    placeholder="{{ __('account.short_address_placeholder') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.address') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
+                                <input type="text" name="address"
+                                    value="{{ $openEditId === $address->id ? old('address') : $address->address }}"
+                                    placeholder="{{ __('account.address_placeholder') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('address')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Phone (required) + Default --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.mobile') }} <span class="text-red-400">*</span></label>
+                                <input type="tel" name="phone" required
+                                    value="{{ $openEditId === $address->id ? old('phone') : $address->phone }}"
+                                    placeholder="{{ __('account.mobile_placeholder') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('phone')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                             <div class="flex items-end pb-1">
                                 <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
@@ -467,6 +814,7 @@
                 @csrf
                 <input type="hidden" name="_form" value="add_address">
 
+                {{-- Label + Recipient --}}
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address_label') }}</label>
@@ -475,40 +823,94 @@
                             placeholder="{{ __('account.label_placeholder') }}">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }}</label>
-                        <input type="text" name="recipient_name" value="{{ old('recipient_name') }}"
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
+                        <input type="text" name="recipient_name" required value="{{ old('recipient_name') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('recipient_name')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
+                {{-- Country + City --}}
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }} <span class="text-red-400">*</span></label>
-                        <input type="text" name="country" required value="{{ old('country') }}"
-                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }}</label>
+                        <input type="text" name="country"
+                            value="{{ old('country', 'المملكة العربية السعودية') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-500 cursor-default"
+                            readonly>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.city') }} <span class="text-red-400">*</span></label>
-                        <input type="text" name="city" required value="{{ old('city') }}"
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.city') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
+                        <input type="text" name="city" value="{{ old('city') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('city')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address') }} <span class="text-red-400">*</span></label>
-                    <textarea name="address" required rows="2"
-                        class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition resize-none"
-                        placeholder="{{ __('account.address_placeholder') }}">{{ old('address') }}</textarea>
-                    @error('address')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
+                {{-- Street + District (optional) --}}
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Phone') }}</label>
-                        <input type="tel" name="phone" value="{{ old('phone') }}"
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.street') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
+                        <input type="text" name="street" value="{{ old('street') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.district') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
+                        <input type="text" name="district" value="{{ old('district') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                    </div>
+                </div>
+
+                {{-- Short address (Saudi national address) + Address details --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.short_address') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
+                        <input type="text" name="short_address" value="{{ old('short_address') }}"
+                            maxlength="20"
+                            placeholder="{{ __('account.short_address_placeholder') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.address') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
+                        <input type="text" name="address" value="{{ old('address') }}"
+                            placeholder="{{ __('account.address_placeholder') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('address')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                {{-- Phone (required, pre-fill from profile) + Default checkbox --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.mobile') }} <span class="text-red-400">*</span></label>
+                        <input type="tel" name="phone" required
+                            value="{{ old('phone', $user->phone) }}"
+                            placeholder="{{ __('account.mobile_placeholder') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('phone')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="flex items-end pb-1">
                         <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
@@ -587,6 +989,92 @@
                 @endif
             </div>
         @endif
+
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════ --}}
+    {{-- NOTIFICATIONS TAB                                                      --}}
+    {{-- ══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="tab === 'notifications'" x-cloak class="space-y-4">
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h2 class="text-sm font-semibold text-gray-900">{{ __('account.notifications_heading') }}</h2>
+                <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notifications_hint') }}</p>
+            </div>
+
+            <form method="POST" action="{{ route('account.notifications.update') }}" class="px-5 py-5 space-y-5">
+                @csrf
+                @method('PATCH')
+
+                {{-- Order Updates — always on, not toggleable --}}
+                <div class="flex items-start gap-3">
+                    <div class="pt-0.5 shrink-0">
+                        <div class="w-4 h-4 rounded bg-primary-500 flex items-center justify-center">
+                            <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 12 12">
+                                <path d="M10 3L5 8.5 2 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <p class="text-sm font-medium text-gray-800">{{ __('account.notify_orders') }}</p>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-600 border border-primary-100">
+                                {{ __('account.notify_required') }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notify_orders_hint') }}</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-50"></div>
+
+                {{-- Promotions --}}
+                <label class="flex items-start gap-3 cursor-pointer group">
+                    <div class="pt-0.5">
+                        <input
+                            type="checkbox"
+                            name="notify_promotions"
+                            value="1"
+                            {{ old('notify_promotions', $user->notify_promotions ?? true) ? 'checked' : '' }}
+                            class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 focus:ring-offset-0 transition">
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 group-hover:text-gray-900 transition-colors">
+                            {{ __('account.notify_promotions') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notify_promotions_hint') }}</p>
+                    </div>
+                </label>
+
+                <div class="border-t border-gray-50"></div>
+
+                {{-- WhatsApp --}}
+                <label class="flex items-start gap-3 cursor-pointer group">
+                    <div class="pt-0.5">
+                        <input
+                            type="checkbox"
+                            name="notify_whatsapp"
+                            value="1"
+                            {{ old('notify_whatsapp', $user->notify_whatsapp ?? true) ? 'checked' : '' }}
+                            class="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 focus:ring-offset-0 transition">
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 group-hover:text-gray-900 transition-colors">
+                            {{ __('account.notify_whatsapp') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notify_whatsapp_hint') }}</p>
+                    </div>
+                </label>
+
+                <div class="pt-1">
+                    <button type="submit"
+                        class="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors">
+                        {{ __('account.save_changes') }}
+                    </button>
+                </div>
+            </form>
+        </div>
 
     </div>
 

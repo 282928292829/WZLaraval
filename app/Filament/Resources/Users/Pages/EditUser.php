@@ -43,7 +43,7 @@ class EditUser extends EditRecord
         $record->syncPermissions($directPermissions);
 
         Notification::make()
-            ->title('User saved')
+            ->title(__('User saved'))
             ->success()
             ->send();
     }

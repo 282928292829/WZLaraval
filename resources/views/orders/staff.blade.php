@@ -4,10 +4,7 @@
             <div>
                 <h1 class="text-xl font-semibold text-gray-900">{{ __('All Orders') }}</h1>
                 <p class="mt-0.5 text-sm text-gray-500">
-                    {{ $orders->total() }} {{ app()->getLocale() === 'ar' ? 'طلب' : Str::plural('order', $orders->total()) }}
-                    @if (request()->hasAny(['search', 'status', 'from', 'to']))
-                        — <a href="{{ route('orders.index') }}" class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
-                            {{ app()->getLocale() === 'ar' ? 'إزالة الفلاتر' : 'Clear filters' }}
+                    {{ $orders->total() }} {{ __('staff.clear_filters') }}
                         </a>
                     @endif
                 </p>
@@ -59,7 +56,7 @@
              x-transition:enter-end="opacity-100 translate-y-0"
              class="sticky top-0 z-30 bg-primary-600 text-white shadow-lg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 flex-wrap">
-                <span class="text-sm font-semibold" x-text="selected.length + ' {{ app()->getLocale() === 'ar' ? 'محدد' : 'selected' }}'"></span>
+                <span class="text-sm font-semibold" x-text="selected.length + ' {{ __('staff.selected') }}'"></span>
                 <div class="flex-1"></div>
                 <span class="text-sm text-primary-200">{{ __('orders.bulk_change_status') }}:</span>
                 <select x-model="bulkStatus"
@@ -147,7 +144,7 @@
                     {{-- Search submit --}}
                     <button type="submit"
                             class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors">
-                        {{ app()->getLocale() === 'ar' ? 'بحث' : 'Search' }}
+                        {{ __('staff.search') }}
                     </button>
                 </div>
 
@@ -175,7 +172,7 @@
                     {{-- Sort --}}
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
-                            {{ app()->getLocale() === 'ar' ? 'الترتيب' : 'Sort' }}
+                            {{ __('staff.sort') }}
                         </label>
                         <select name="sort"
                                 class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
@@ -208,13 +205,13 @@
                     <p class="text-sm font-medium text-gray-500">{{ __('No orders yet') }}</p>
                     <p class="text-xs text-gray-400 mt-1">
                         {{ request()->hasAny(['search','status','from','to'])
-                            ? (app()->getLocale() === 'ar' ? 'لا توجد نتائج تطابق البحث' : 'No orders match your filters')
-                            : (app()->getLocale() === 'ar' ? 'لا توجد طلبات في النظام بعد' : 'No orders in the system yet') }}
+                            ? (__('staff.no_orders_match_your_filters'))
+                            : (__('staff.no_orders_in_the_system')) }}
                     </p>
                     @if (request()->hasAny(['search','status','from','to']))
                         <a href="{{ route('orders.index') }}"
                            class="mt-4 text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">
-                            {{ app()->getLocale() === 'ar' ? 'إزالة الفلاتر' : 'Clear filters' }}
+                            {{ __('staff.clear_filters') }}
                         </a>
                     @endif
                 </div>
@@ -233,22 +230,22 @@
                                                class="rounded border-gray-300 text-primary-500 focus:ring-primary-400 cursor-pointer">
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'الطلب' : 'Order' }}
+                                        {{ __('staff.order') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'العميل' : 'Customer' }}
+                                        {{ __('staff.customer') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'التاريخ' : 'Date' }}
+                                        {{ __('staff.date') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'الحالة' : 'Status' }}
+                                        {{ __('staff.status') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'الإجمالي' : 'Total' }}
+                                        {{ __('staff.total') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ app()->getLocale() === 'ar' ? 'الدفع' : 'Payment' }}
+                                        {{ __('staff.payment') }}
                                     </th>
                                     <th class="ps-3 pe-4 py-3"></th>
                                 </tr>
@@ -320,10 +317,10 @@
                                                     <svg class="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                                     </svg>
-                                                    {{ app()->getLocale() === 'ar' ? 'مدفوع' : 'Paid' }}
+                                                    {{ __('staff.paid') }}
                                                 </span>
                                             @else
-                                                <span class="text-xs text-gray-400">{{ app()->getLocale() === 'ar' ? 'غير مدفوع' : 'Unpaid' }}</span>
+                                                <span class="text-xs text-gray-400">{{ __('staff.unpaid') }}</span>
                                             @endif
                                         </td>
                                         <td class="ps-3 pe-4 py-3">
@@ -389,7 +386,7 @@
                                     <span>{{ $order->created_at->format('Y/m/d') }}</span>
                                     @if ($order->is_paid)
                                         <span class="text-gray-300">·</span>
-                                        <span class="text-green-600 font-medium">{{ app()->getLocale() === 'ar' ? 'مدفوع' : 'Paid' }}</span>
+                                        <span class="text-green-600 font-medium">{{ __('staff.paid') }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -405,11 +402,7 @@
                 @if ($orders->hasPages())
                     <div class="flex items-center justify-between gap-4 pt-1">
                         <p class="text-xs text-gray-400">
-                            @if (app()->getLocale() === 'ar')
-                                عرض {{ $orders->firstItem() }}–{{ $orders->lastItem() }} من {{ $orders->total() }}
-                            @else
-                                Showing {{ $orders->firstItem() }}–{{ $orders->lastItem() }} of {{ $orders->total() }}
-                            @endif
+                            {{ __('Showing') }} {{ $orders->firstItem() }}–{{ $orders->lastItem() }} {{ __('of') }} {{ $orders->total() }}
                         </p>
                         <div class="flex items-center gap-1">
                             {{-- Previous --}}

@@ -1,13 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-3">
             <div>
                 <h1 class="text-xl font-semibold text-gray-900">{{ __('My Orders') }}</h1>
                 <p class="mt-0.5 text-sm text-gray-500">
-                    @if ($orders->isEmpty())
-                        {{ __('No orders yet') }}
-                    @else
-                        {{ $orders->count() }} {{ __('order(s)') }}
+                    {{ $orders->total() }}
+                    {{ $orders->total() === 1 ? __('Order') : __('Orders') }}
+                    @if (request()->hasAny(['search', 'status']))
+                        — <a href="{{ route('orders.index') }}"
+                             class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
+                            {{ __('Clear filters') }}
+                        </a>
                     @endif
                 </p>
             </div>
@@ -21,225 +24,287 @@
         </div>
     </x-slot>
 
-    @if ($orders->isEmpty())
-        {{-- ── Full page empty state ──────────────────────────────────────────── --}}
-        <div class="flex flex-col items-center justify-center py-24 px-6 text-center">
-            <div class="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                <svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7"/>
-                </svg>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+        {{-- ── Filters card ──────────────────────────────────────────────── --}}
+        <div x-data="{ open: {{ request()->hasAny(['search','status','sort','per_page']) ? 'true' : 'false' }} }"
+             class="bg-white rounded-xl shadow-sm border border-gray-100">
+
+            <div class="flex items-center justify-between px-4 py-3">
+                <span class="text-sm font-semibold text-gray-700">
+                    {{ __('Filters') }}
+                </span>
+                <button type="button" @click="open = !open"
+                        class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+                    <template x-if="open"><span>{{ __('▲ Hide') }}</span></template>
+                    <template x-if="!open"><span>{{ __('▼ Filter') }}</span></template>
+                </button>
             </div>
-            <h2 class="text-lg font-semibold text-gray-700">{{ __('No orders yet') }}</h2>
-            <p class="mt-2 text-sm text-gray-400 max-w-xs leading-relaxed">
-                {{ __('Your orders will appear here once you place one.') }}
-            </p>
-            <a href="{{ route('new-order') }}"
-               class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors shadow-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                {{ __('Place your first order') }}
-            </a>
+
+            <form method="GET" action="{{ route('orders.index') }}"
+                  x-show="open" x-cloak
+                  class="border-t border-gray-50">
+                <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+                    {{-- Search --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                            {{ __('Search') }}
+                        </label>
+                        <input type="text" name="search" value="{{ request('search') }}"
+                               placeholder="{{ __('Order number...') }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                    </div>
+
+                    {{-- Status --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                            {{ __('Status') }}
+                        </label>
+                        <select name="status"
+                                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                            <option value="">{{ __('All Statuses') }}</option>
+                            @foreach ($statuses as $value => $label)
+                                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Sort --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                            {{ __('Sort') }}
+                        </label>
+                        <select name="sort"
+                                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                            <option value="desc" @selected(request('sort', 'desc') === 'desc')>
+                                {{ __('Newest first') }}
+                            </option>
+                            <option value="asc" @selected(request('sort') === 'asc')>
+                                {{ __('Oldest first') }}
+                            </option>
+                        </select>
+                    </div>
+
+                    {{-- Per page --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                            {{ __('Per page') }}
+                        </label>
+                        <select name="per_page"
+                                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                            <option value="10"  @selected(request('per_page', '10') === '10')>10</option>
+                            <option value="25"  @selected(request('per_page') === '25')>25</option>
+                            <option value="50"  @selected(request('per_page') === '50')>50</option>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="px-4 pb-4 flex gap-2">
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                        {{ __('Apply') }}
+                    </button>
+                    <a href="{{ route('orders.index') }}"
+                       class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">
+                        {{ __('Reset') }}
+                    </a>
+                </div>
+            </form>
         </div>
 
-    @else
-        {{-- ── Kanban board ───────────────────────────────────────────────────── --}}
-        @php
-            $needsActionCount = $groups['needs_action']->count();
-            $inProgressCount  = $groups['in_progress']->count();
-            $completedCount   = $groups['completed']->count();
-
-            // Default active tab: needs_action if has items, otherwise in_progress
-            $defaultTab = $needsActionCount > 0 ? 'needs_action' : 'in_progress';
-        @endphp
-
-        <div x-data="{ tab: '{{ $defaultTab }}' }">
-
-            {{-- ── Mobile: Tab bar ───────────────────────────────────────────── --}}
-            <div class="sm:hidden sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
-                <div class="flex">
-                    {{-- Needs Action --}}
-                    <button type="button"
-                            @click="tab = 'needs_action'"
-                            :class="tab === 'needs_action'
-                                ? 'border-b-2 border-primary-500 text-primary-600 bg-primary-50/50'
-                                : 'border-b-2 border-transparent text-gray-500'"
-                            class="flex-1 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                        <span>{{ __('Needs Action') }}</span>
-                        @if ($needsActionCount)
-                            <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white">
-                                {{ $needsActionCount }}
-                            </span>
-                        @endif
-                    </button>
-
-                    {{-- In Progress --}}
-                    <button type="button"
-                            @click="tab = 'in_progress'"
-                            :class="tab === 'in_progress'
-                                ? 'border-b-2 border-primary-500 text-primary-600 bg-primary-50/50'
-                                : 'border-b-2 border-transparent text-gray-500'"
-                            class="flex-1 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span>{{ __('In Progress') }}</span>
-                        @if ($inProgressCount)
-                            <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
-                                {{ $inProgressCount }}
-                            </span>
-                        @endif
-                    </button>
-
-                    {{-- Completed --}}
-                    <button type="button"
-                            @click="tab = 'completed'"
-                            :class="tab === 'completed'
-                                ? 'border-b-2 border-primary-500 text-primary-600 bg-primary-50/50'
-                                : 'border-b-2 border-transparent text-gray-500'"
-                            class="flex-1 flex items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        <span>{{ __('Completed') }}</span>
-                        @if ($completedCount)
-                            <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
-                                {{ $completedCount }}
-                            </span>
-                        @endif
-                    </button>
+        {{-- ── Orders list ───────────────────────────────────────────────── --}}
+        @if ($orders->isEmpty())
+            {{-- Empty state --}}
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-16 px-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7"/>
+                    </svg>
                 </div>
+                <h2 class="text-base font-semibold text-gray-700">
+                    {{ request()->hasAny(['search','status']) ? __('No orders found') : __('No orders yet') }}
+                </h2>
+                <p class="mt-1.5 text-sm text-gray-400 max-w-xs mx-auto leading-relaxed">
+                    @if (request()->hasAny(['search','status']))
+                        {{ __('No orders match your filters. Try different criteria.') }}
+                    @else
+                        {{ __('Your orders will appear here once you place one.') }}
+                    @endif
+                </p>
+                @unless (request()->hasAny(['search','status']))
+                    <a href="{{ route('new-order') }}"
+                       class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors shadow-sm">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        {{ __('Place your first order') }}
+                    </a>
+                @endunless
             </div>
 
-            {{-- ── Mobile: Tab content panels ────────────────────────────────── --}}
-            <div class="sm:hidden">
+        @else
 
-                {{-- Needs Action panel --}}
-                <div x-show="tab === 'needs_action'" x-cloak>
-                    @if ($groups['needs_action']->isEmpty())
-                        @include('orders._empty-group', ['icon' => 'check', 'message' => __('No orders need your attention right now.')])
-                    @else
-                        <div class="divide-y divide-gray-50">
-                            @foreach ($groups['needs_action'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => true])
-                            @endforeach
+            {{-- ── Mobile cards (< md) ───────────────────────────────────── --}}
+            <div class="md:hidden space-y-3">
+                @foreach ($orders as $order)
+                    @php
+                        $borderColor = match ($order->status) {
+                            'completed'     => '#22c55e',
+                            'cancelled'     => '#ef4444',
+                            'needs_payment' => '#06b6d4',
+                            'on_hold'       => '#f97316',
+                            'shipped'       => '#10b981',
+                            'delivered'     => '#22c55e',
+                            'purchasing'    => '#8b5cf6',
+                            'processing'    => '#3b82f6',
+                            default         => '#f59e0b',
+                        };
+                        $statusClasses = match ($order->status) {
+                            'pending'       => 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+                            'needs_payment' => 'bg-cyan-50 text-cyan-700 ring-cyan-200',
+                            'processing'    => 'bg-blue-50 text-blue-700 ring-blue-200',
+                            'purchasing'    => 'bg-purple-50 text-purple-700 ring-purple-200',
+                            'shipped'       => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+                            'delivered'     => 'bg-green-50 text-green-700 ring-green-200',
+                            'completed'     => 'bg-green-50 text-green-700 ring-green-200',
+                            'cancelled'     => 'bg-red-50 text-red-700 ring-red-200',
+                            'on_hold'       => 'bg-orange-50 text-orange-700 ring-orange-200',
+                            default         => 'bg-gray-50 text-gray-600 ring-gray-200',
+                        };
+                    @endphp
+                    <a href="{{ route('orders.show', $order->id) }}"
+                       class="block bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                       style="border-inline-start-width: 4px; border-inline-start-style: solid; border-inline-start-color: {{ $borderColor }};">
+                        <div class="p-4 space-y-3">
+
+                            {{-- Row 1: Order # + Date --}}
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block">
+                                        {{ __('Order #') }}
+                                    </span>
+                                    <span class="text-sm font-bold text-primary-600">{{ $order->order_number }}</span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block">
+                                        {{ __('Date') }}
+                                    </span>
+                                    <span class="text-sm font-medium text-gray-600">{{ $order->created_at->format('Y-m-d') }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Row 2: Status + Items --}}
+                            <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-50">
+                                <div>
+                                    <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block mb-1">
+                                        {{ __('Status') }}
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
+                                        {{ $order->statusLabel() }}
+                                    </span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block">
+                                        {{ __('Items') }}
+                                    </span>
+                                    <span class="text-sm font-medium text-gray-600">{{ $order->items_count }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Open button --}}
+                            <div class="pt-1">
+                                <span class="block w-full text-center py-2 text-sm font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+                                    {{ __('Open') }}
+                                </span>
+                            </div>
+
                         </div>
-                    @endif
-                </div>
-
-                {{-- In Progress panel --}}
-                <div x-show="tab === 'in_progress'" x-cloak>
-                    @if ($groups['in_progress']->isEmpty())
-                        @include('orders._empty-group', ['icon' => 'clock', 'message' => __('No orders currently in progress.')])
-                    @else
-                        <div class="divide-y divide-gray-50">
-                            @foreach ($groups['in_progress'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => false])
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Completed panel --}}
-                <div x-show="tab === 'completed'" x-cloak>
-                    @if ($groups['completed']->isEmpty())
-                        @include('orders._empty-group', ['icon' => 'archive', 'message' => __('No completed orders yet.')])
-                    @else
-                        <div class="divide-y divide-gray-50">
-                            @foreach ($groups['completed'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => false, 'muted' => true])
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-
+                    </a>
+                @endforeach
             </div>
 
-            {{-- ── Desktop: 3-column Kanban ───────────────────────────────────── --}}
-            <div class="hidden sm:block py-6 px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-3 gap-5 items-start">
-
-                    {{-- Column: Needs Action --}}
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2 px-1">
-                            <span class="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0"></span>
-                            <h2 class="text-sm font-semibold text-gray-700">{{ __('Needs Action') }}</h2>
-                            <span class="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold
-                                {{ $needsActionCount ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400' }}">
-                                {{ $needsActionCount }}
-                            </span>
-                        </div>
-
-                        @if ($groups['needs_action']->isEmpty())
-                            <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 flex flex-col items-center justify-center py-10 px-4 text-center">
-                                <svg class="w-7 h-7 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <p class="text-xs text-gray-400">{{ __('All clear!') }}</p>
-                            </div>
-                        @else
-                            @foreach ($groups['needs_action'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => true, 'desktop' => true])
-                            @endforeach
-                        @endif
-                    </div>
-
-                    {{-- Column: In Progress --}}
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2 px-1">
-                            <span class="w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0"></span>
-                            <h2 class="text-sm font-semibold text-gray-700">{{ __('In Progress') }}</h2>
-                            <span class="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold
-                                {{ $inProgressCount ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400' }}">
-                                {{ $inProgressCount }}
-                            </span>
-                        </div>
-
-                        @if ($groups['in_progress']->isEmpty())
-                            <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 flex flex-col items-center justify-center py-10 px-4 text-center">
-                                <svg class="w-7 h-7 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <p class="text-xs text-gray-400">{{ __('orders.no_orders_in_group') }}</p>
-                            </div>
-                        @else
-                            @foreach ($groups['in_progress'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => false, 'desktop' => true])
-                            @endforeach
-                        @endif
-                    </div>
-
-                    {{-- Column: Completed --}}
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2 px-1">
-                            <span class="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0"></span>
-                            <h2 class="text-sm font-semibold text-gray-700">{{ __('Completed') }}</h2>
-                            <span class="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500">
-                                {{ $completedCount }}
-                            </span>
-                        </div>
-
-                        @if ($groups['completed']->isEmpty())
-                            <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 flex flex-col items-center justify-center py-10 px-4 text-center">
-                                <svg class="w-7 h-7 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                </svg>
-                                <p class="text-xs text-gray-400">{{ __('orders.no_orders_in_group') }}</p>
-                            </div>
-                        @else
-                            @foreach ($groups['completed'] as $order)
-                                @include('orders._card', ['order' => $order, 'highlight' => false, 'muted' => true, 'desktop' => true])
-                            @endforeach
-                        @endif
-                    </div>
-
-                </div>
+            {{-- ── Desktop table (>= md) ─────────────────────────────────── --}}
+            <div class="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {{ __('Order #') }}
+                            </th>
+                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {{ __('Date') }}
+                            </th>
+                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {{ __('Items') }}
+                            </th>
+                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                {{ __('Status') }}
+                            </th>
+                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide w-24">
+                                {{ __('Actions') }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @foreach ($orders as $order)
+                            @php
+                                $borderColor = match ($order->status) {
+                                    'completed'     => '#22c55e',
+                                    'cancelled'     => '#ef4444',
+                                    'needs_payment' => '#06b6d4',
+                                    'on_hold'       => '#f97316',
+                                    'shipped'       => '#10b981',
+                                    'delivered'     => '#22c55e',
+                                    'purchasing'    => '#8b5cf6',
+                                    'processing'    => '#3b82f6',
+                                    default         => '#f59e0b',
+                                };
+                                $statusClasses = match ($order->status) {
+                                    'pending'       => 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+                                    'needs_payment' => 'bg-cyan-50 text-cyan-700 ring-cyan-200',
+                                    'processing'    => 'bg-blue-50 text-blue-700 ring-blue-200',
+                                    'purchasing'    => 'bg-purple-50 text-purple-700 ring-purple-200',
+                                    'shipped'       => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+                                    'delivered'     => 'bg-green-50 text-green-700 ring-green-200',
+                                    'completed'     => 'bg-green-50 text-green-700 ring-green-200',
+                                    'cancelled'     => 'bg-red-50 text-red-700 ring-red-200',
+                                    'on_hold'       => 'bg-orange-50 text-orange-700 ring-orange-200',
+                                    default         => 'bg-gray-50 text-gray-600 ring-gray-200',
+                                };
+                            @endphp
+                            <tr class="hover:bg-gray-50/60 transition-colors cursor-pointer"
+                                onclick="location.href='{{ route('orders.show', $order->id) }}'"
+                                style="border-inline-start-width: 3px; border-inline-start-style: solid; border-inline-start-color: {{ $borderColor }};">
+                                <td class="px-4 py-3 font-bold text-primary-600">{{ $order->order_number }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ $order->created_at->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ $order->items_count }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
+                                        {{ $order->statusLabel() }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3" onclick="event.stopPropagation()">
+                                    <a href="{{ route('orders.show', $order->id) }}"
+                                       class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+                                        {{ __('Open') }}
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
 
-        </div>{{-- end x-data --}}
-    @endif
+            {{-- ── Pagination ─────────────────────────────────────────────── --}}
+            @if ($orders->hasPages())
+                <div class="flex justify-center">
+                    {{ $orders->links() }}
+                </div>
+            @endif
+
+        @endif
+
+    </div>
 
 </x-app-layout>

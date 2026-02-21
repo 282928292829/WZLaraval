@@ -1,0 +1,87 @@
+
+  GET|HEAD  / ................................................................................................................................................. 
+  POST      _boost/browser-logs ............................................................................................................ boost.browser-logs
+  GET|HEAD  _debugbar/assets .......................................................... debugbar.assets › Fruitcake\LaravelDebugbar › AssetController@getAssets
+  DELETE    _debugbar/cache/{key} .................................................. debugbar.cache.delete › Fruitcake\LaravelDebugbar › CacheController@delete
+  GET|HEAD  _debugbar/clockwork/{id} ......................................... debugbar.clockwork › Fruitcake\LaravelDebugbar › OpenHandlerController@clockwork
+  GET|HEAD  _debugbar/open .................................................... debugbar.openhandler › Fruitcake\LaravelDebugbar › OpenHandlerController@handle
+  POST      _debugbar/queries/explain ........................................ debugbar.queries.explain › Fruitcake\LaravelDebugbar › QueriesController@explain
+  POST      _dev/login-as ................................................................................................ dev.login-as › DevController@loginAs
+  GET|HEAD  account ................................................................................................... account.index › AccountController@index
+  POST      account/addresses ........................................................................ account.addresses.store › AccountController@storeAddress
+  PATCH     account/addresses/{address} ............................................................ account.addresses.update › AccountController@updateAddress
+  DELETE    account/addresses/{address} .......................................................... account.addresses.destroy › AccountController@destroyAddress
+  POST      account/addresses/{address}/default ............................................... account.addresses.default › AccountController@setDefaultAddress
+  PATCH     account/password ....................................................................... account.password.update › AccountController@updatePassword
+  PATCH     account/profile .......................................................................... account.profile.update › AccountController@updateProfile
+  GET|HEAD  admin ................................................................................. filament.admin.pages.dashboard › Filament\Pages › Dashboard
+  GET|HEAD  admin/blog/post-categories filament.admin.resources.blog.post-categories.index › App\Filament\Resources\Blog\PostCategoryResource\Pages\ListPostCa…
+  GET|HEAD  admin/blog/post-categories/create filament.admin.resources.blog.post-categories.create › App\Filament\Resources\Blog\PostCategoryResource\Pages\Cr…
+  GET|HEAD  admin/blog/post-categories/{record}/edit filament.admin.resources.blog.post-categories.edit › App\Filament\Resources\Blog\PostCategoryResource\Pag…
+  GET|HEAD  admin/blog/post-comments filament.admin.resources.blog.post-comments.index › App\Filament\Resources\Blog\PostCommentResource\Pages\ListPostComments
+  GET|HEAD  admin/blog/posts ............................. filament.admin.resources.blog.posts.index › App\Filament\Resources\Blog\PostResource\Pages\ListPosts
+  GET|HEAD  admin/blog/posts/create .................... filament.admin.resources.blog.posts.create › App\Filament\Resources\Blog\PostResource\Pages\CreatePost
+  GET|HEAD  admin/blog/posts/{record}/edit ................. filament.admin.resources.blog.posts.edit › App\Filament\Resources\Blog\PostResource\Pages\EditPost
+  GET|HEAD  admin/content/pages .................... filament.admin.resources.content.pages.index › App\Filament\Resources\Content\PageResource\Pages\ListPages
+  GET|HEAD  admin/content/pages/create ........... filament.admin.resources.content.pages.create › App\Filament\Resources\Content\PageResource\Pages\CreatePage
+  GET|HEAD  admin/content/pages/{record}/edit ........ filament.admin.resources.content.pages.edit › App\Filament\Resources\Content\PageResource\Pages\EditPage
+  GET|HEAD  admin/login ..................................................................................... filament.admin.auth.login › Filament\Auth › Login
+  POST      admin/logout ........................................................................ filament.admin.auth.logout › Filament\Auth › LogoutController
+  GET|HEAD  admin/settings-page .......................................................... filament.admin.pages.settings-page › App\Filament\Pages\SettingsPage
+  GET|HEAD  admin/translations-page .............................................. filament.admin.pages.translations-page › App\Filament\Pages\TranslationsPage
+  GET|HEAD  admin/users ................................................... filament.admin.resources.users.index › App\Filament\Resources\Users\Pages\ListUsers
+  GET|HEAD  admin/users/{record}/edit ....................................... filament.admin.resources.users.edit › App\Filament\Resources\Users\Pages\EditUser
+  GET|HEAD  blog ............................................................................................................ blog.index › BlogController@index
+  POST      blog/{post}/comments ............................................................................ blog.comments.store › BlogController@storeComment
+  GET|HEAD  blog/{slug} ....................................................................................................... blog.show › BlogController@show
+  GET|HEAD  confirm-password ....................................................................... password.confirm › Auth\ConfirmablePasswordController@show
+  POST      confirm-password ......................................................................................... Auth\ConfirmablePasswordController@store
+  GET|HEAD  dashboard ......................................................................................................... dashboard › DashboardController
+  POST      email/verification-notification ............................................ verification.send › Auth\EmailVerificationNotificationController@store
+  GET|HEAD  filament/exports/{export}/download .................................................. filament.exports.download › Filament\Actions › DownloadExport
+  GET|HEAD  filament/imports/{import}/failed-rows/download ................ filament.imports.failed-rows.download › Filament\Actions › DownloadImportFailureCsv
+  GET|HEAD  forgot-password ........................................................................ password.request › Auth\PasswordResetLinkController@create
+  POST      forgot-password ........................................................................... password.email › Auth\PasswordResetLinkController@store
+  GET|HEAD  inbox ......................................................................................................... inbox.index › InboxController@index
+  POST      inbox/mark-all-read ............................................................................. inbox.mark-all-read › InboxController@markAllRead
+  POST      inbox/{activity}/mark-read ............................................................................. inbox.mark-read › InboxController@markRead
+  POST      language/{locale} ................................................................................................................. language.switch
+  GET|HEAD  livewire/livewire.js .................................................................. Livewire\Mechanisms › FrontendAssets@returnJavaScriptAsFile
+  GET|HEAD  livewire/livewire.min.js.map ............................................................................ Livewire\Mechanisms › FrontendAssets@maps
+  GET|HEAD  livewire/preview-file/{filename} ......................................... livewire.preview-file › Livewire\Features › FilePreviewController@handle
+  POST      livewire/update ....................................................... default.livewire.update › Livewire\Mechanisms › HandleRequests@handleUpdate
+  POST      livewire/upload-file ....................................................... livewire.upload-file › Livewire\Features › FileUploadController@handle
+  GET|HEAD  login .......................................................................................... login › Auth\AuthenticatedSessionController@create
+  POST      login ................................................................................................... Auth\AuthenticatedSessionController@store
+  POST      logout ....................................................................................... logout › Auth\AuthenticatedSessionController@destroy
+  GET|HEAD  new-order ....................................................................................................... new-order › App\Livewire\NewOrder
+  GET|HEAD  offline ................................................................................................................................... offline
+  GET|HEAD  orders ....................................................................................................... orders.index › OrderController@index
+  POST      orders/bulk ....................................................................................... orders.bulk-update › OrderController@bulkUpdate
+  GET|HEAD  orders/{id} .................................................................................................... orders.show › OrderController@show
+  POST      orders/{id}/comments ......................................................................... orders.comments.store › OrderController@storeComment
+  POST      orders/{id}/files .................................................................................. orders.files.store › OrderController@storeFile
+  POST      orders/{id}/invoice ..................................................................... orders.invoice.generate › OrderController@generateInvoice
+  POST      orders/{id}/merge ............................................................................................ orders.merge › OrderController@merge
+  POST      orders/{id}/prices ............................................................................ orders.prices.update › OrderController@updatePrices
+  POST      orders/{id}/status ............................................................................ orders.status.update › OrderController@updateStatus
+  PATCH     orders/{orderId}/comments/{commentId} ...................................................... orders.comments.update › OrderController@updateComment
+  DELETE    orders/{orderId}/comments/{commentId} .................................................... orders.comments.destroy › OrderController@destroyComment
+  POST      orders/{orderId}/comments/{commentId}/notify ............................................ orders.comments.notify › OrderController@sendNotification
+  GET|HEAD  pages/{slug} ..................................................................................................... pages.show › PageController@show
+  PUT       password ......................................................................................... password.update › Auth\PasswordController@update
+  GET|HEAD  profile ..................................................................................................... profile.edit › ProfileController@edit
+  PATCH     profile ................................................................................................. profile.update › ProfileController@update
+  DELETE    profile ............................................................................................... profile.destroy › ProfileController@destroy
+  GET|HEAD  register .......................................................................................... register › Auth\RegisteredUserController@create
+  POST      register ...................................................................................................... Auth\RegisteredUserController@store
+  POST      reset-password .................................................................................. password.store › Auth\NewPasswordController@store
+  GET|HEAD  reset-password/{token} ......................................................................... password.reset › Auth\NewPasswordController@create
+  GET|HEAD  storage/{path} ...................................................................................................................... storage.local
+  PUT       storage/{path} ............................................................................................................... storage.local.upload
+  GET|HEAD  up ................................................................................................................................................ 
+  GET|HEAD  verify-email ......................................................................... verification.notice › Auth\EmailVerificationPromptController
+  GET|HEAD  verify-email/{id}/{hash} ......................................................................... verification.verify › Auth\VerifyEmailController
+
+                                                                                                                                            Showing [83] routes
+

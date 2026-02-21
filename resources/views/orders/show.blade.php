@@ -453,6 +453,107 @@
         </div>
     @endcan
 
+    {{-- ── Staff: quick actions ──────────────────────────────────────────── --}}
+    @can('update-order-status')
+        @php
+            $showMarkPaid    = (bool) \App\Models\Setting::get('qa_mark_paid', true);
+            $showMarkShipped = (bool) \App\Models\Setting::get('qa_mark_shipped', true);
+            $showRequestInfo = (bool) \App\Models\Setting::get('qa_request_info', true);
+            $showCancel      = (bool) \App\Models\Setting::get('qa_cancel_order', true);
+            $hasAnyQA        = $showMarkPaid || $showMarkShipped || $showRequestInfo || $showCancel;
+        @endphp
+
+        @if ($hasAnyQA)
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ __('orders.quick_actions') }}</h3>
+                <div class="flex flex-wrap gap-2">
+
+                    {{-- Mark Paid --}}
+                    @if ($showMarkPaid)
+                        <form action="{{ route('orders.mark-paid', $order->id) }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                @if ($order->is_paid) disabled title="{{ __('orders.already_paid') }}" @endif
+                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors
+                                    {{ $order->is_paid
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                </svg>
+                                {{ __('orders.mark_paid') }}
+                            </button>
+                        </form>
+                    @endif
+
+                    {{-- Mark Shipped --}}
+                    @if ($showMarkShipped)
+                        <form action="{{ route('orders.status.update', $order->id) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="status" value="shipped">
+                            <button type="submit"
+                                @if ($order->status === 'shipped') disabled @endif
+                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors
+                                    {{ $order->status === 'shipped'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12h12l1-12"/>
+                                </svg>
+                                {{ __('orders.mark_shipped') }}
+                            </button>
+                        </form>
+                    @endif
+
+                    {{-- Request Info (→ on_hold) --}}
+                    @if ($showRequestInfo)
+                        <form action="{{ route('orders.status.update', $order->id) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="status" value="on_hold">
+                            <button type="submit"
+                                @if ($order->status === 'on_hold') disabled @endif
+                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors
+                                    {{ $order->status === 'on_hold'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                {{ __('orders.request_info') }}
+                            </button>
+                        </form>
+                    @endif
+
+                    {{-- Cancel Order --}}
+                    @if ($showCancel)
+                        <form action="{{ route('orders.status.update', $order->id) }}" method="POST"
+                            x-data
+                            @submit.prevent="if (confirm('{{ addslashes(__('orders.confirm_cancel')) }}')) $el.submit()">
+                            @csrf
+                            <input type="hidden" name="status" value="cancelled">
+                            <button type="submit"
+                                @if ($order->status === 'cancelled') disabled @endif
+                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors
+                                    {{ $order->status === 'cancelled'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                {{ __('orders.quick_cancel') }}
+                            </button>
+                        </form>
+                    @endif
+
+                </div>
+            </div>
+        @endif
+    @endcan
+
     {{-- ── Staff: status change ──────────────────────────────────────────── --}}
     @can('update-order-status')
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4" x-data="{ open: false }">

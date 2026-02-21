@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\OrderTimeline;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
@@ -16,7 +17,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Layout('layouts.app')]
+#[Layout('layouts.guest')]
 #[Title('New Order')]
 class NewOrder extends Component
 {
@@ -41,11 +42,13 @@ class NewOrder extends Component
     // Settings (loaded on mount, passed to JS)
     // -------------------------------------------------------------------------
 
-    public int    $maxProducts     = 30;
-    public string $defaultCurrency = 'USD';
-    public float  $margin          = 0.03;
-    public array  $currencies      = [];
-    public array  $exchangeRates   = [];
+    public int    $maxProducts          = 30;
+    public string $defaultCurrency      = 'USD';
+    public float  $commissionThreshold  = 500.0;
+    public float  $commissionPct        = 0.08;
+    public float  $commissionFlat       = 50.0;
+    public array  $currencies           = [];
+    public array  $exchangeRates        = [];
 
     // -------------------------------------------------------------------------
     // Field configuration (loaded from settings, drives view rendering)
@@ -91,11 +94,13 @@ class NewOrder extends Component
 
     public function mount(): void
     {
-        $this->maxProducts     = (int)   Setting::get('max_products', 30);
-        $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
-        $this->margin          = (float)  Setting::get('order_margin', 0.03);
-        $this->currencies      = $this->buildCurrencies();
-        $this->exchangeRates   = $this->buildExchangeRates();
+        $this->maxProducts         = (int)   Setting::get('max_products_per_order', 30);
+        $this->defaultCurrency     = (string) Setting::get('default_currency', 'USD');
+        $this->commissionThreshold = (float)  Setting::get('commission_threshold', 500);
+        $this->commissionPct       = (float)  Setting::get('commission_pct', 0.08);
+        $this->commissionFlat      = (float)  Setting::get('commission_flat', 50);
+        $this->currencies          = $this->buildCurrencies();
+        $this->exchangeRates       = $this->buildExchangeRates();
         $this->loadFieldConfig();
 
         // Start with one empty item; pre-fill URL if passed from hero form
@@ -143,6 +148,23 @@ class NewOrder extends Component
             return;
         }
 
+        // Daily order limit check (skip for staff)
+        $user = Auth::user();
+        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            $maxPerDay = (int) Setting::get('max_orders_per_day', 5);
+            if ($maxPerDay > 0) {
+                $todayCount = Order::where('user_id', $user->id)
+                    ->whereDate('created_at', today())
+                    ->count();
+
+                if ($todayCount >= $maxPerDay) {
+                    $this->dispatch('notify', type: 'error',
+                        message: __('order.daily_limit_reached', ['max' => $maxPerDay]));
+                    return;
+                }
+            }
+        }
+
         $this->validate($this->validationRules());
 
         // Strip empty rows (no URL)
@@ -167,23 +189,43 @@ class NewOrder extends Component
             return;
         }
 
-        DB::transaction(function () use ($itemsWithOriginalIndex) {
-            $rates  = $this->exchangeRates;
-            $margin = $this->margin;
+        $createdOrder = null;
+
+        DB::transaction(function () use ($itemsWithOriginalIndex, &$createdOrder) {
+            $rates     = $this->exchangeRates;
+            $threshold = $this->commissionThreshold;
+            $pct       = $this->commissionPct;
+            $flat      = $this->commissionFlat;
+
+            // Resolve default shipping address for snapshot
+            $defaultAddress = Auth::user()
+                ->addresses()
+                ->where('is_default', true)
+                ->first();
+
+            $addressSnapshot = $defaultAddress
+                ? $defaultAddress->only([
+                    'id', 'label', 'recipient_name', 'phone',
+                    'country', 'city', 'address',
+                  ])
+                : null;
 
             $order = Order::create([
-                'order_number'   => $this->generateOrderNumber(),
-                'user_id'        => Auth::id(),
-                'status'         => 'pending',
-                'layout_option'  => Setting::get('order_new_layout', '1'),
-                'notes'          => trim($this->orderNotes) ?: null,
-                'subtotal'       => 0,
-                'total_amount'   => 0,
-                'currency'       => 'SAR',
-                'can_edit_until' => now()->addMinutes((int) Setting::get('order_modification_minutes', 60)),
+                'order_number'              => $this->generateOrderNumber(),
+                'user_id'                   => Auth::id(),
+                'status'                    => 'pending',
+                'layout_option'             => Setting::get('order_new_layout', '1'),
+                'notes'                     => trim($this->orderNotes) ?: null,
+                'shipping_address_id'       => $defaultAddress?->id,
+                'shipping_address_snapshot' => $addressSnapshot,
+                'subtotal'                  => 0,
+                'total_amount'              => 0,
+                'currency'                  => 'SAR',
+                'can_edit_until'            => now()->addMinutes((int) Setting::get('order_edit_window_minutes', 10)),
             ]);
 
-            $subtotal = 0;
+            // Accumulate raw product total (before commission)
+            $rawSubtotal = 0;
 
             foreach ($itemsWithOriginalIndex as $sortOrder => $entry) {
                 $item       = $entry['data'];
@@ -195,7 +237,7 @@ class NewOrder extends Component
                 $rate  = $rates[$curr] ?? 0;
 
                 if ($price && $rate > 0) {
-                    $subtotal += $price * $qty * $rate * (1 + $margin);
+                    $rawSubtotal += $price * $qty * $rate;
                 }
 
                 $orderItem = OrderItem::create([
@@ -233,9 +275,17 @@ class NewOrder extends Component
                 }
             }
 
+            // Tiered commission: 8% if total >= threshold, else flat fee
+            $commission = 0;
+            if ($rawSubtotal > 0) {
+                $commission = $rawSubtotal >= $threshold
+                    ? $rawSubtotal * $pct
+                    : $flat;
+            }
+
             $order->update([
-                'subtotal'     => round($subtotal, 2),
-                'total_amount' => round($subtotal, 2),
+                'subtotal'     => round($rawSubtotal, 2),
+                'total_amount' => round($rawSubtotal + $commission, 2),
             ]);
 
             OrderTimeline::create([
@@ -245,9 +295,24 @@ class NewOrder extends Component
                 'status_to' => 'pending',
             ]);
 
-            $this->dispatch('order-created', orderNumber: $order->order_number);
-            $this->redirectRoute('orders.show', $order->id);
+            $createdOrder = $order;
         });
+
+        if ($createdOrder) {
+            UserActivityLog::fromRequest(request(), [
+                'user_id'      => Auth::id(),
+                'subject_type' => Order::class,
+                'subject_id'   => $createdOrder->id,
+                'event'        => 'order_created',
+                'properties'   => [
+                    'order_number' => $createdOrder->order_number,
+                    'total_amount' => $createdOrder->total_amount,
+                ],
+            ]);
+
+            $this->dispatch('order-created', orderNumber: $createdOrder->order_number);
+            $this->redirectRoute('orders.show', $createdOrder->id);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -294,7 +359,7 @@ class NewOrder extends Component
         $this->validate([
             'modalName'     => 'required|string|max:255',
             'modalEmail'    => 'required|email|unique:users,email',
-            'modalPassword' => 'required|min:8',
+            'modalPassword' => 'required|min:4',
         ], [], [
             'modalName'     => __('Name'),
             'modalEmail'    => __('Email'),
@@ -423,16 +488,7 @@ class NewOrder extends Component
 
     private function buildExchangeRates(): array
     {
-        $stored = Setting::get('exchange_rates');
-
-        if ($stored) {
-            $parsed = is_array($stored) ? $stored : json_decode($stored, true);
-            if (is_array($parsed) && count($parsed)) {
-                return $parsed;
-            }
-        }
-
-        return [
+        $fallback = [
             'SAR'   => 1.0,
             'USD'   => 3.86,
             'EUR'   => 4.22,
@@ -444,6 +500,35 @@ class NewOrder extends Component
             'AED'   => 1.05,
             'OTHER' => 0,
         ];
+
+        $stored = Setting::get('exchange_rates');
+        if (! $stored) {
+            return $fallback;
+        }
+
+        $parsed = is_array($stored) ? $stored : json_decode($stored, true);
+        if (! is_array($parsed)) {
+            return $fallback;
+        }
+
+        // Stored format: {"rates": {"USD": {"final": 3.86}, ...}, "markup_percent": 3}
+        // Flatten to: {"USD": 3.86, ...}
+        $ratesNode = $parsed['rates'] ?? null;
+        if (is_array($ratesNode)) {
+            $flat = [];
+            foreach ($ratesNode as $code => $data) {
+                $flat[$code] = is_array($data) ? (float) ($data['final'] ?? 0) : (float) $data;
+            }
+            $flat['OTHER'] = $flat['OTHER'] ?? 0;
+            return array_filter($flat, fn($v) => $v >= 0) + ['OTHER' => 0];
+        }
+
+        // Already flat map (legacy / manually set)
+        if (isset($parsed['USD']) && ! is_array($parsed['USD'])) {
+            return array_map('floatval', $parsed) + ['OTHER' => 0];
+        }
+
+        return $fallback;
     }
 
     private function validationRules(): array
@@ -461,7 +546,7 @@ class NewOrder extends Component
             'items.*.currency' => "nullable|string|in:{$currencyList}",
             'items.*.notes'    => 'nullable|string|max:1000',
             'itemFiles'        => 'nullable|array',
-            'itemFiles.*'      => 'nullable|file|mimes:jpg,jpeg,png,gif,bmp,pdf,xlsx,xls|max:2048',
+            'itemFiles.*'      => 'nullable|file|mimes:jpg,jpeg,png,gif,bmp,pdf,xlsx,xls|max:' . (Setting::get('max_file_size_mb', 2) * 1024),
         ];
     }
 

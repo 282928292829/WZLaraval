@@ -16,18 +16,18 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
                 @php
                 $images = [
-                    'https://wasetzon.com/wp-content/uploads/2020/10/12.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/11.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/10.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/9.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/8.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/7.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/6.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/5-1.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/4.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/3.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/2.png',
-                    'https://wasetzon.com/wp-content/uploads/2020/10/1.png',
+                    asset('images/testimonials/12.png'),
+                    asset('images/testimonials/11.png'),
+                    asset('images/testimonials/10.png'),
+                    asset('images/testimonials/9.png'),
+                    asset('images/testimonials/8.png'),
+                    asset('images/testimonials/7.png'),
+                    asset('images/testimonials/6.png'),
+                    asset('images/testimonials/5-1.png'),
+                    asset('images/testimonials/4.png'),
+                    asset('images/testimonials/3.png'),
+                    asset('images/testimonials/2.png'),
+                    asset('images/testimonials/1.png'),
                 ];
                 @endphp
 
@@ -102,7 +102,7 @@
             <h2 class="text-2xl font-bold text-gray-900 mb-2">هل أنت مستعد لتجربة خدماتنا؟</h2>
             <p class="text-gray-500 mb-6">انضم إلى آلاف العملاء الراضين عن خدماتنا</p>
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <a href="{{ route('orders.create') }}" class="inline-flex items-center justify-center px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
+                <a href="{{ route('new-order') }}" class="inline-flex items-center justify-center px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
                     ابدأ طلبك الآن
                 </a>
                 <a href="{{ route('pages.show', 'how-to-order') }}" class="inline-flex items-center justify-center px-6 py-3 bg-white text-primary-600 font-semibold rounded-xl border-2 border-primary-500 hover:bg-primary-50 transition">

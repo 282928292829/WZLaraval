@@ -15,43 +15,27 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
-    <body class="antialiased bg-gray-50 text-gray-900 min-h-screen">
+    <body class="antialiased bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-        {{-- Top bar: logo + language toggle --}}
-        <div class="flex items-center justify-between px-4 pt-4 pb-2 max-w-sm mx-auto">
-            <a href="{{ url('/') }}"
-               class="text-xl font-bold text-primary-600 tracking-tight">
-                {{ __('app.name') }}
-            </a>
+        @include('layouts.navigation')
 
-            <div class="flex items-center gap-1">
-                @if (app()->getLocale() === 'ar')
-                    <form method="POST" action="{{ route('language.switch', 'en') }}">
-                        @csrf
-                        <button type="submit"
-                                class="text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
-                            English
-                        </button>
-                    </form>
-                @else
-                    <form method="POST" action="{{ route('language.switch', 'ar') }}">
-                        @csrf
-                        <button type="submit"
-                                class="text-sm font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
-                                style="font-family: 'IBM Plex Sans Arabic', sans-serif;">
-                            العربية
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </div>
-
-        {{-- Auth card --}}
-        <div class="flex flex-col items-center px-4 pt-2 pb-8">
-            <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
+        @if(request()->routeIs('new-order') || request()->routeIs('caldue1'))
+            {{-- Full-width content for order form pages --}}
+            <main class="flex-1">
                 {{ $slot }}
+            </main>
+        @else
+            {{-- Auth card for other guest pages --}}
+            <div class="flex flex-col items-center px-4 pt-8 pb-12 flex-1">
+                <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
+                    {{ $slot }}
+                </div>
             </div>
-        </div>
+        @endif
+
+        <footer class="py-5 text-center text-xs text-gray-400">
+            <span>&copy; {{ date('Y') }} {{ __('app.name') }}</span>
+        </footer>
 
         @livewireScripts
 

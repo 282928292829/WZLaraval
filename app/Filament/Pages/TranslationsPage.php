@@ -15,13 +15,22 @@ class TranslationsPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLanguage;
 
-    protected static ?string $navigationLabel = 'Translations';
+    public static function getNavigationLabel(): string
+    {
+        return __('Translations');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administration';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Administration');
+    }
 
     protected static ?int $navigationSort = 11;
 
-    protected static ?string $title = 'Translations Editor';
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        return __('Translations Editor');
+    }
 
     /** @var array<int, array{key: string, ar: string, en: string}> */
     public array $rows = [];
@@ -87,7 +96,7 @@ class TranslationsPage extends Page
         $this->writeFiles($this->rows);
 
         Notification::make()
-            ->title('Translations saved')
+            ->title(__('Translations saved'))
             ->success()
             ->send();
     }
@@ -97,7 +106,7 @@ class TranslationsPage extends Page
         $key = trim($this->newKey);
 
         if (empty($key)) {
-            Notification::make()->title('Key is required')->warning()->send();
+            Notification::make()->title(__('Key is required'))->warning()->send();
 
             return;
         }
@@ -105,7 +114,7 @@ class TranslationsPage extends Page
         // Check for duplicate key
         foreach ($this->rows as $row) {
             if ($row['key'] === $key) {
-                Notification::make()->title('Key already exists')->warning()->send();
+                Notification::make()->title(__('Key already exists'))->warning()->send();
 
                 return;
             }
@@ -126,7 +135,7 @@ class TranslationsPage extends Page
 
         $this->writeFiles($this->rows);
 
-        Notification::make()->title('Translation added')->success()->send();
+        Notification::make()->title(__('Translation added'))->success()->send();
     }
 
     public function deleteRow(string $key): void
@@ -138,7 +147,7 @@ class TranslationsPage extends Page
 
         $this->writeFiles($this->rows);
 
-        Notification::make()->title('Translation deleted')->success()->send();
+        Notification::make()->title(__('Translation deleted'))->success()->send();
     }
 
     /** @param array<int, array{key: string, ar: string, en: string}> $rows */

@@ -8,11 +8,7 @@
         </div>
         <h1 class="text-xl font-bold text-gray-900">
             {{ __('Confirm') }}
-            @if (app()->getLocale() === 'ar')
-                كلمة مرورك
-            @else
-                your password
-            @endif
+            {{ __('your password') }}
         </h1>
         <p class="mt-2 text-sm text-gray-500 leading-relaxed">
             {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}

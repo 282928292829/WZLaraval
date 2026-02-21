@@ -3,16 +3,14 @@
     <div class="mb-5">
         <h1 class="text-xl font-bold text-gray-900">{{ __('Log in') }}</h1>
         <p class="mt-1 text-sm text-gray-500">
-            @if (app()->getLocale() === 'ar')
-                أدخل بياناتك للدخول إلى حسابك
-            @else
-                Enter your credentials to access your account
-            @endif
+            {{ __('Enter your credentials to access your account') }}
         </p>
     </div>
 
     {{-- Session status --}}
     <x-auth-session-status class="mb-4" :status="session('status')" />
+
+    @include('auth.partials.social-buttons', ['mode' => 'login'])
 
     <form method="POST" action="{{ route('login') }}" class="space-y-3">
         @csrf
@@ -69,11 +67,7 @@
 
         {{-- Register link --}}
         <p class="text-center text-sm text-gray-500 pt-1">
-            @if (app()->getLocale() === 'ar')
-                ليس لديك حساب؟
-            @else
-                Don't have an account?
-            @endif
+            {{ __("Don't have an account?") }}
             <a href="{{ route('register') }}"
                class="font-medium text-primary-600 hover:text-primary-700 transition-colors">
                 {{ __('Register') }}

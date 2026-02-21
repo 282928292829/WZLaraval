@@ -31,9 +31,21 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'phone',
+        'phone_secondary',
+        'google_id',
+        'twitter_id',
+        'apple_id',
+        'avatar',
         'is_banned',
         'banned_at',
         'banned_reason',
+        'notify_orders',
+        'notify_promotions',
+        'notify_whatsapp',
+        'unsubscribed_all',
+        'deletion_requested',
+        'ad_campaign_id',
+        'google_click_id',
     ];
 
     /**
@@ -56,10 +68,20 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
-            'is_banned'         => 'boolean',
-            'banned_at'         => 'datetime',
-            'last_login_at'     => 'datetime',
+            'is_banned'          => 'boolean',
+            'banned_at'          => 'datetime',
+            'last_login_at'      => 'datetime',
+            'notify_orders'      => 'boolean',
+            'notify_promotions'  => 'boolean',
+            'notify_whatsapp'    => 'boolean',
+            'unsubscribed_all'   => 'boolean',
+            'deletion_requested' => 'boolean',
         ];
+    }
+
+    public function adCampaign(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(AdCampaign::class);
     }
 
     public function addresses(): HasMany

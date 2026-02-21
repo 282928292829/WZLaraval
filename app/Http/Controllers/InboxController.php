@@ -8,12 +8,6 @@ use Illuminate\Http\Request;
 
 class InboxController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-        $this->middleware('can:view-all-orders');
-    }
-
     public function index(Request $request)
     {
         $validTypes = ['new_order', 'comment', 'payment', 'contact_form', 'status_change'];

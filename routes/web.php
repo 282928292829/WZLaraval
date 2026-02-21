@@ -8,6 +8,7 @@ use App\Http\Controllers\InboxController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
+use App\Livewire\Caldue1;
 use App\Livewire\NewOrder;
 use Illuminate\Support\Facades\Route;
 
@@ -41,8 +42,10 @@ Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
 Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
 
 Route::get('/new-order', NewOrder::class)
-    ->middleware('throttle:60,1')
     ->name('new-order');
+
+Route::get('/caldue1', Caldue1::class)
+    ->name('caldue1');
 
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
@@ -53,11 +56,14 @@ Route::middleware('auth')->group(function () {
     Route::patch('/orders/{orderId}/comments/{commentId}', [OrderController::class, 'updateComment'])->name('orders.comments.update');
     Route::delete('/orders/{orderId}/comments/{commentId}', [OrderController::class, 'destroyComment'])->name('orders.comments.destroy');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.status.update');
+    Route::post('/orders/{id}/mark-paid', [OrderController::class, 'markPaid'])->name('orders.mark-paid');
     Route::post('/orders/{id}/files', [OrderController::class, 'storeFile'])->name('orders.files.store');
     Route::post('/orders/{id}/prices', [OrderController::class, 'updatePrices'])->name('orders.prices.update');
     Route::post('/orders/{id}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
     Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->name('orders.merge');
     Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderController::class, 'sendNotification'])->name('orders.comments.notify');
+    Route::patch('/orders/{id}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
+    Route::post('/orders/{id}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
 });
 
 Route::get('/dashboard', DashboardController::class)
@@ -72,6 +78,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/account/addresses/{address}', [AccountController::class, 'updateAddress'])->name('account.addresses.update');
     Route::delete('/account/addresses/{address}', [AccountController::class, 'destroyAddress'])->name('account.addresses.destroy');
     Route::post('/account/addresses/{address}/default', [AccountController::class, 'setDefaultAddress'])->name('account.addresses.default');
+    Route::patch('/account/notifications', [AccountController::class, 'updateNotifications'])->name('account.notifications.update');
+    Route::post('/account/request-deletion', [AccountController::class, 'requestDeletion'])->name('account.request-deletion');
+    Route::delete('/account/request-deletion', [AccountController::class, 'cancelDeletion'])->name('account.cancel-deletion');
 });
 
 Route::middleware(['auth', 'can:view-all-orders'])->group(function () {

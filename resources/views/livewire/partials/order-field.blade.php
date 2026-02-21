@@ -20,6 +20,7 @@
         <input
             id="field-url-{{ $index }}"
             type="text"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.url"
             placeholder="{{ $index === 0 ? __('order.url_placeholder') : '' }}"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
@@ -40,6 +41,7 @@
         <input
             id="field-qty-{{ $index }}"
             type="tel"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.qty"
             class="w-full rounded-lg border border-gray-200 px-2 py-2.5 text-sm text-center
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
@@ -59,6 +61,7 @@
         <input
             id="field-size-{{ $index }}"
             type="text"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.size"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
@@ -77,6 +80,7 @@
         <input
             id="field-color-{{ $index }}"
             type="text"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.color"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
@@ -96,6 +100,7 @@
             id="field-price-{{ $index }}"
             type="text"
             inputmode="decimal"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.price"
             placeholder="0.00"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm
@@ -115,6 +120,7 @@
         @endif
         <select
             id="field-currency-{{ $index }}"
+            aria-label="{{ $label }}"
             wire:model="items.{{ $index }}.currency"
             class="w-full rounded-lg border border-gray-200 px-2 py-2.5 text-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
@@ -137,6 +143,7 @@
         <input
             id="field-notes-{{ $index }}"
             type="text"
+            aria-label="{{ $label }}"
             wire:model.blur="items.{{ $index }}.notes"
             placeholder="{{ $index === 0 ? __('order.notes_placeholder') : '' }}"
             class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm

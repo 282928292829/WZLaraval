@@ -7,7 +7,6 @@ use App\Models\PostComment;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -16,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -27,9 +25,15 @@ class PostCommentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
-    protected static ?string $navigationLabel = 'Blog Comments';
+    public static function getNavigationLabel(): string
+    {
+        return __('Blog Comments');
+    }
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Blog';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Blog');
+    }
 
     protected static ?int $navigationSort = 3;
 
@@ -44,30 +48,30 @@ class PostCommentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Comment')->schema([
+            Section::make(__('Comment'))->schema([
                 TextInput::make('post.title_en')
-                    ->label('Post')
+                    ->label(__('Post'))
                     ->disabled(),
 
                 Select::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options([
-                        'pending'  => 'Pending',
-                        'approved' => 'Approved',
-                        'spam'     => 'Spam',
+                        'pending'  => __('Pending'),
+                        'approved' => __('Approved'),
+                        'spam'     => __('Spam'),
                     ])
                     ->required(),
 
                 TextInput::make('guest_name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->disabled(),
 
                 TextInput::make('guest_email')
-                    ->label('Email')
+                    ->label(__('Email'))
                     ->disabled(),
 
                 Textarea::make('body')
-                    ->label('Comment')
+                    ->label(__('Comment'))
                     ->rows(5)
                     ->disabled()
                     ->columnSpanFull(),
@@ -80,13 +84,13 @@ class PostCommentResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('post.title_en')
-                    ->label('Post')
+                    ->label(__('Post'))
                     ->limit(40)
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('author_display')
-                    ->label('Author')
+                    ->label(__('Author'))
                     ->getStateUsing(fn (PostComment $record): string => $record->getAuthorName())
                     ->searchable(query: function ($query, string $search) {
                         $query->where(function ($q) use ($search) {
@@ -96,18 +100,18 @@ class PostCommentResource extends Resource
                     }),
 
                 TextColumn::make('email_display')
-                    ->label('Email')
+                    ->label(__('Email'))
                     ->getStateUsing(fn (PostComment $record): ?string => $record->getAuthorEmail())
                     ->copyable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('body')
-                    ->label('Comment')
+                    ->label(__('Comment'))
                     ->limit(80)
                     ->wrap(),
 
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'approved' => 'success',
@@ -117,47 +121,47 @@ class PostCommentResource extends Resource
                     }),
 
                 TextColumn::make('parent_id')
-                    ->label('Reply')
-                    ->getStateUsing(fn (PostComment $record): string => $record->parent_id ? 'Reply' : 'Top-level')
+                    ->label(__('Reply'))
+                    ->getStateUsing(fn (PostComment $record): string => $record->parent_id ? __('Reply') : __('Top-level'))
                     ->badge()
                     ->color(fn (string $state): string => $state === 'Reply' ? 'info' : 'gray')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
-                    ->label('Date')
+                    ->label(__('Date'))
                     ->dateTime('d M Y, H:i')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->options([
-                        'pending'  => 'Pending',
-                        'approved' => 'Approved',
-                        'spam'     => 'Spam',
+                        'pending'  => __('Pending'),
+                        'approved' => __('Approved'),
+                        'spam'     => __('Spam'),
                     ]),
             ])
             ->recordActions([
                 Action::make('approve')
-                    ->label('Approve')
+                    ->label(__('Approve'))
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->color('success')
                     ->visible(fn (PostComment $record): bool => $record->status !== 'approved')
                     ->action(function (PostComment $record): void {
                         $record->update(['status' => 'approved']);
-                        Notification::make()->title('Comment approved')->success()->send();
+                        Notification::make()->title(__('Comment approved'))->success()->send();
                     }),
 
                 Action::make('spam')
-                    ->label('Spam')
+                    ->label(__('Spam'))
                     ->icon(Heroicon::OutlinedExclamationTriangle)
                     ->color('warning')
                     ->visible(fn (PostComment $record): bool => $record->status !== 'spam')
                     ->requiresConfirmation()
                     ->action(function (PostComment $record): void {
                         $record->update(['status' => 'spam']);
-                        Notification::make()->title('Marked as spam')->warning()->send();
+                        Notification::make()->title(__('Marked as spam'))->warning()->send();
                     }),
 
                 DeleteAction::make(),

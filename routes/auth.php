@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -10,6 +11,17 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
+
+// Social OAuth — publicly accessible, each method checks its own setting toggle
+Route::get('auth/google',           [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('auth/google/callback',  [SocialAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
+Route::get('auth/twitter',          [SocialAuthController::class, 'redirectToTwitter'])->name('auth.twitter');
+Route::get('auth/twitter/callback', [SocialAuthController::class, 'handleTwitterCallback'])->name('auth.twitter.callback');
+
+// Apple uses POST for callback (required by Apple's spec)
+Route::get('auth/apple',            [SocialAuthController::class, 'redirectToApple'])->name('auth.apple');
+Route::post('auth/apple/callback',  [SocialAuthController::class, 'handleAppleCallback'])->name('auth.apple.callback')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -36,6 +48,10 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('register/success', function () {
+        return view('auth.success');
+    })->name('register.success');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

@@ -21,7 +21,7 @@ todos:
     content: "Build shared Blade layouts: header (role-aware nav), footer, base app layout"
     status: completed
   - id: new-order
-    content: Build /new-order as Livewire component (3 layout options), mobile-first, PWA-ready, rewrite from scratch
+    content: Build /new-order as Livewire component (Option 1 — Responsive only), mobile-first, PWA-ready, rewrite from scratch. Options 2 (Cart) and 3 (Cards everywhere) deferred — build only if explicitly requested.
     status: completed
   - id: orders-list
     content: Build /orders with two Blade templates — orders/index.blade.php (customer, mobile-first Kanban) and orders/staff.blade.php (staff, search/filter/bulk/export)
@@ -52,13 +52,13 @@ isProject: false
 # Laravel Full Rebuild — Wasetzon
 
 ## Current Task
-> **Settings + Pages seeded, footer and static page routing verified.**
+> **Orders list page (`/orders`) rebuilt to match WordPress reference — Kanban removed.**
 >
 > **What was built:**
-> - `database/seeders/SettingsSeeder.php` — Added `whatsapp`, `contact_email`, `commercial_registration`, `show_partners` keys to the `settings` table (groups: `contact` / `general`). Footer now renders all contact info dynamically.
-> - `database/seeders/PageSeeder.php` (new) — Seeds 3 bilingual static pages: `how-to-order`, `faq`, `payment-methods`. All published, uses `updateOrCreate` for idempotency.
-> - `database/seeders/DatabaseSeeder.php` — `PageSeeder` registered in call chain.
-> - **Verified in browser:** Footer shows `966500000000` + `info@wasetzon.com` from DB. `/pages/how-to-order` loads correctly with SEO title + bilingual body. "General Info" nav dropdown → "How to Order" → resolves to `/pages/how-to-order`. ✓
+> - `resources/views/orders/index.blade.php` — Completely rewritten. Removed the invented Kanban board. Now matches the WordPress reference (`template-list.php`) with: collapsible filter panel (البحث, الحالة, الترتيب, عدد الطلبات بالصفحة), mobile card layout (flex cards with colored inline-start border per status, labeled fields: رقم الطلب / التاريخ / الحالة / المنتجات, full-width "فتح" button), desktop table layout (thead + tbody with proper columns, click-any-row to open), pagination, empty state with CTA. All labels fully bilingual (inline locale check).
+> - `app/Http/Controllers/OrderController.php` — `customerIndex()` updated to accept `search`, `status`, `sort`, `per_page` query params; paginates results (10/25/50 per page); passes `$statuses` to view.
+> - Deleted `resources/views/orders/_card.blade.php` and `resources/views/orders/_empty-group.blade.php` (Kanban-only partials, no longer needed).
+> - **Verified in browser:** Customer view shows table with colored left borders, collapsible filters, "فتح" button. Staff/Editor view (staff.blade.php) unchanged — shows 66,605 orders with all filters, bulk select, CSV export, pagination. ✓
 >
 > **Next session should start with:** Build the blog system — `/blog` index (paginated, card grid) and `/blog/{slug}` show (full post with HTML body, SEO meta). The `posts`, `post_categories`, and `post_comments` tables are already migrated and the `Post`, `PostCategory`, `PostComment` models exist. Create `BlogController` with `index` and `show` methods, add routes, build `blog/index.blade.php` and `blog/show.blade.php` views (bilingual titles/bodies, published-only filter, responsive card grid). Also audit the new WordPress site (`pwa3/app/public/`) blog pages before building to capture any behaviour or edge cases.
 
@@ -102,7 +102,7 @@ isProject: false
 - WordPress DB is accessible for migration.
 - **Features reference:** New WordPress site (`pwa3/app/public/`) — replicate functionality only, design UI from scratch with modern clean aesthetic (AI has full creative freedom for layout, spacing, placement).
 - **Data migration source:** Legacy site (`pwa3/old-wordpress/wasetzonjan302026.sql`) — migration scripts must transform legacy custom post types/meta into proper Laravel relational schema.
-- **100% bilingual:** Every page/string translatable (Arabic/English), language toggle in header, RTL auto-switches with Arabic.
+- **100% bilingual:** Every page/string translatable (Arabic/English), language toggle in **footer only** (bottom bar), RTL auto-switches with Arabic. **Default language is always Arabic** (`APP_LOCALE=ar`).
 - **Mobile-first:** 95% of users on mobile — all customer-facing pages designed mobile-first, desktop secondary. Filament admin is desktop-first.
 - **Rewrite all templates from scratch** — no copy/paste from WordPress, build clean Laravel/Livewire components.
 - **PWA features:** Offline support, service worker, app manifest, performance optimizations (lazy loading, code splitting).
@@ -191,27 +191,19 @@ Key design constraints:
 
 Three most complex pages, built first — **rewrite all templates from scratch, no WordPress copy/paste**:
 
-`**/new-order**` — Livewire component (3 layout options, admin chooses)
+`**/new-order**` — Livewire component, Option 1 only (built). Options 2 and 3 deferred — do not build unless explicitly requested.
 
-**Option 1: Responsive (mobile cards, desktop table)** — site default (admin sets site-wide default in Filament settings; no per-user override)
+**Option 1: Responsive (mobile cards, desktop table)** ✅ Built
 
 - Mobile: card-based, stacked
-- Desktop: table with columns
-- Desktop toggle: "Cards | Table" (session-only, configurable by admin)
+- Desktop: flex row (all fields in one line, column headers above)
+- Admin sets site-wide default layout in Filament settings
 
-**Option 2: Cart system** (mobile + desktop)
+**Option 2: Cart system** — deferred
 
-- Add products one-by-one to cart
-- Cart icon in header with count badge
-- Cart drawer shows all items
-- Review and submit from cart
+**Option 3: Cards everywhere** — deferred
 
-**Option 3: Cards everywhere**
-
-- Card-based on all devices
-- Desktop toggle: "Cards | Table" (session-only, configurable by admin)
-
-**All 3 options have identical fields** — layout only changes visual arrangement, never the fields. Per-product fields are always: URL/text, qty, color, size, notes, image upload (1 per product), currency dropdown.
+**Fields are identical regardless of layout** — URL/text, qty, color, size, notes, image upload (1 per product), currency dropdown.
 
 **All options include:**
 

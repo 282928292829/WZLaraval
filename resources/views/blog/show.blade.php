@@ -12,11 +12,11 @@
                 <nav class="flex items-center gap-1.5 text-sm text-gray-400 mb-6 flex-wrap">
                     <a href="{{ route('blog.index') }}" class="hover:text-gray-600 transition-colors">{{ __('blog.blog') }}</a>
                     @if ($post->category)
-                        <svg class="w-3.5 h-3.5 shrink-0 {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        <svg class="w-3.5 h-3.5 shrink-0 {{ __('blog_show.text') }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                         <a href="{{ route('blog.index', ['category' => $post->category->slug]) }}"
                            class="hover:text-gray-600 transition-colors">{{ $post->category->getName() }}</a>
                     @endif
-                    <svg class="w-3.5 h-3.5 shrink-0 {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-3.5 h-3.5 shrink-0 {{ __('blog_show.text') }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     <span class="text-gray-600 truncate max-w-[200px]">{{ $post->getTitle() }}</span>
                 </nav>
 
@@ -202,7 +202,7 @@
                 {{-- Back to blog --}}
                 <a href="{{ route('blog.index') }}"
                    class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors group px-1">
-                    <svg class="w-4 h-4 {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }} group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    <svg class="w-4 h-4 {{ __('blog_show.text') }} group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                     {{ __('blog.back_to_blog') }}
                 </a>
 
@@ -216,7 +216,7 @@
         <div class="max-w-7xl mx-auto px-4 py-4">
             <a href="{{ route('blog.index') }}"
                class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-                <svg class="w-4 h-4 {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                <svg class="w-4 h-4 {{ __('blog_show.text') }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 {{ __('blog.back_to_blog') }}
             </a>
         </div>
