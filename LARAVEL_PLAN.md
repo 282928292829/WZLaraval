@@ -59,6 +59,16 @@ isProject: false
 > - `resources/views/orders/show.blade.php` — Added customer-visible tracking card between the timeline and the order items section. Reads carrier URL template from settings, replaces `{tracking}` with `urlencode($order->tracking_number)`. Shows: carrier badge, tracking number in monospace, copy-to-clipboard button (Alpine.js, 2s "Copied ✓" feedback), and a primary "Track Shipment" button linking to the carrier's tracking page (only rendered when a URL template is set and carrier is known). Card is visible to all users whenever `$order->tracking_number` is set — not gated to staff.
 > - `lang/ar.json` + `lang/en.json` — Added 4 new keys: `orders.tracking_card_title`, `orders.track_shipment`, `orders.copy`, `orders.copied`.
 >
+> **Duplicate order, product_url pre-fill, and success screen implemented.**
+>
+> **What was built:**
+> - `app/Livewire/NewOrder.php` — `mount()` now accepts `?duplicate_from={id}`: loads referenced order's items (url/qty/color/size/notes/currency) and order notes, staff can duplicate any order, customers only their own. Accepts `?product_url=...` and pre-fills the first item's URL field server-side. `submitOrder()` now shows full-page success screen for first 3 orders; order 4+ gets toast + redirect. `generateOrderNumber()` guarded with DB driver check (SQLite uses GLOB, MySQL uses REGEXP).
+> - `resources/views/livewire/new-order.blade.php` — Added full-page animated success screen (green checkmark, order number, 45s countdown with auto-redirect). Wrapped form in `@if/$showSuccessScreen/@else/@endif`. Duplicate pre-fill fires a success toast via Alpine `$nextTick`.
+> - `lang/ar.json` + `lang/en.json` — 7 new keys: `order.success_title`, `order.success_subtitle`, `order.success_message`, `order.success_go_to_order`, `order.success_redirect_countdown`, `order.duplicate_prefilled`.
+> - `tests/Feature/DuplicateOrderAndSuccessScreenTest.php` — 6 passing tests.
+>
+> **Next session should start with:** Add "Duplicate" button on `/orders/{id}` show page → links to `/new-order?duplicate_from={id}`. Then implement admin customer notes (staff-only field on order show page).
+
 > **Hourly order rate limiting implemented and tested.**
 >
 > **What was built:**
