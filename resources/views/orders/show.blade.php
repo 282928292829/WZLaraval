@@ -1,9 +1,15 @@
 @php
     // Build the gallery array for the lightbox (all image URLs on this page)
     $lightboxImages = [];
+    // Order-level product_image files (for items that have no image_path — e.g. attach on submit)
+    $productImageFiles = $order->files->whereNull('comment_id')->where('type', 'product_image')->filter(fn ($f) => str_starts_with($f->mime_type ?? '', 'image/'))->values();
+    $productImageIndex = 0;
     foreach ($order->items as $item) {
         if ($item->image_path) {
             $lightboxImages[] = Storage::disk('public')->url($item->image_path);
+        } elseif ($productImageFiles->has($productImageIndex)) {
+            $lightboxImages[] = $productImageFiles[$productImageIndex]->url();
+            $productImageIndex++;
         }
     }
     foreach ($order->files->whereNull('comment_id') as $file) {
@@ -93,77 +99,106 @@
         </div>
     @endif
 
-    {{-- ── Order header card ─────────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
-        <div class="flex items-start justify-between gap-3 flex-wrap">
-            <div class="space-y-1">
-                {{-- Back + number --}}
-                <div class="flex items-center gap-2">
-                    <span class="text-lg font-bold text-gray-900">
-                        {{ __('orders.order_number', ['number' => $order->order_number]) }}
-                    </span>
-                    <button
-                        type="button"
-                        x-data="{ copied: false }"
-                        @click="(async () => {
-                            try {
-                                await navigator.clipboard.writeText('{{ $order->order_number }}');
-                            } catch(e) {
-                                const ta = document.createElement('textarea');
-                                ta.value = '{{ $order->order_number }}';
-                                ta.style.position = 'fixed';
-                                ta.style.opacity = '0';
-                                document.body.appendChild(ta);
-                                ta.focus(); ta.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(ta);
-                            }
-                            copied = true;
-                            setTimeout(() => copied = false, 2000);
-                        })()"
-                        class="inline-flex items-center gap-1 transition-colors text-xs"
-                        :class="copied ? 'text-green-600 font-medium' : 'text-gray-400 hover:text-primary-500'"
-                        title="{{ __('orders.copy_number') }}"
-                    >
-                        <template x-if="!copied">
-                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                        </template>
-                        <template x-if="copied">
-                            <span class="inline-flex items-center gap-1">
-                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                {{ __('orders.number_copied') }}
-                            </span>
-                        </template>
-                    </button>
-                </div>
-                {{-- Date + time + customer (staff only) --}}
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
-                    <span><strong>{{ __('orders.order_date') }}</strong> {{ $order->created_at->format('Y/m/d') }}</span>
-                    <span><strong>{{ __('orders.order_time') }}</strong> {{ $order->created_at->format('H:i') }}</span>
-                    @if ($isStaff)
-                        <span class="text-gray-300">|</span>
-                        <span>{{ $order->user->name }}</span>
-                        <span class="text-gray-300">|</span>
-                        <span>{{ $order->user->email }}</span>
-                    @endif
+    {{-- Comments discovery banner: first 2 visits only (same as WP: top of order, link to comments at bottom) --}}
+    @if($showCommentsDiscovery ?? true)
+    <div id="comments-discovery-banner"
+         class="rounded-xl mb-4 flex items-center justify-between gap-3 flex-wrap"
+         style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); color: #fff; padding: 12px 16px; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);"
+         x-data="{ hidden: sessionStorage.getItem('commentsDiscoveryBannerDismissed') === '1' }"
+         x-show="!hidden"
+         x-transition>
+        <div class="flex flex-1 items-center gap-2 min-w-0">
+            <span class="text-lg shrink-0">💬</span>
+            <div class="min-w-0">
+                <div class="font-semibold mb-0.5">{{ __('orders.comments_discovery_title') }}</div>
+                <div class="text-sm opacity-95">
+                    {{ __('orders.comments_discovery_description') }}
+                    <a href="#comments" class="text-white underline font-semibold cursor-pointer hover:opacity-90">{{ __('orders.comments_discovery_link') }}</a>
                 </div>
             </div>
+        </div>
+        <button type="button"
+                class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-lg transition-colors hover:bg-white/20"
+                title="{{ __('common.dismiss') }}"
+                @click="sessionStorage.setItem('commentsDiscoveryBannerDismissed', '1'); hidden = true">
+            ✕
+        </button>
+    </div>
+    @endif
 
-            {{-- Status badge + payment badge --}}
-            <div class="flex flex-wrap items-center gap-2 shrink-0">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ring-1 ring-inset {{ $statusClasses }}">
-                    <span class="w-1.5 h-1.5 rounded-full {{ $statusDot }}"></span>
-                    {{ $order->statusLabel() }}
-                </span>
-                @if ($order->is_paid)
-                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200">
-                        ✓ {{ __('orders.paid') }}
+    {{-- ── Order header card ─────────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+        {{-- 1 line on desktop; 2 lines on mobile (identity row + status/payment row) --}}
+        <div class="overflow-x-auto">
+            <div class="flex flex-col gap-1.5 md:flex-row md:flex-nowrap md:items-center md:gap-x-3 md:min-w-max">
+                {{-- Row 1 (mobile) / inline (desktop): number, date, time, (+ staff: name, email) --}}
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-lg font-bold text-gray-900 whitespace-nowrap">
+                            {{ __('orders.order_number', ['number' => $order->order_number]) }}
+                        </span>
+                        <button
+                            type="button"
+                            x-data="{ copied: false }"
+                            @click="(async () => {
+                                try {
+                                    await navigator.clipboard.writeText('{{ $order->order_number }}');
+                                } catch(e) {
+                                    const ta = document.createElement('textarea');
+                                    ta.value = '{{ $order->order_number }}';
+                                    ta.style.position = 'fixed';
+                                    ta.style.opacity = '0';
+                                    document.body.appendChild(ta);
+                                    ta.focus(); ta.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(ta);
+                                }
+                                copied = true;
+                                setTimeout(() => copied = false, 2000);
+                            })()"
+                            class="inline-flex items-center gap-1 transition-colors text-xs"
+                            :class="copied ? 'text-green-600 font-medium' : 'text-gray-400 hover:text-primary-500'"
+                            title="{{ __('orders.copy_number') }}"
+                        >
+                            <template x-if="!copied">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </template>
+                            <template x-if="copied">
+                                <span class="inline-flex items-center gap-1">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ __('orders.number_copied') }}
+                                </span>
+                            </template>
+                        </button>
+                    </div>
+                    <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
+                    <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_date') }}</strong> {{ $order->created_at->format('Y/m/d') }}</span>
+                    @if ($isStaff)
+                        <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
+                        <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_time') }}</strong> {{ $order->created_at->format('H:i') }}</span>
+                        <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
+                        <span class="text-xs text-gray-400 whitespace-nowrap shrink-0">{{ $order->user->name }}</span>
+                        <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
+                        <span class="text-xs text-gray-400 truncate min-w-0 max-w-[160px] md:max-w-[200px]">{{ $order->user->email }}</span>
+                    @endif
+                </div>
+                <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
+                {{-- Row 2 (mobile) / same line (desktop): status + payment --}}
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ring-1 ring-inset shrink-0 {{ $statusClasses }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $statusDot }}"></span>
+                        {{ $order->statusLabel() }}
                     </span>
-                @else
-                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 ring-1 ring-gray-200">
-                        {{ __('orders.unpaid') }}
-                    </span>
-                @endif
+                    @if ($order->is_paid)
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200 shrink-0">
+                            ✓ {{ __('orders.paid') }}
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 ring-1 ring-gray-200 shrink-0">
+                            {{ __('orders.unpaid') }}
+                        </span>
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -456,22 +491,34 @@
                             <span class="absolute -start-2 flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 text-primary-600 ring-4 ring-white">
                                 {!! $timelineIcon($entry->type) !!}
                             </span>
-                            <div class="text-xs text-gray-400 mb-0.5">
-                                {{ $entry->created_at?->format('Y/m/d H:i') }}
-                                @if ($entry->user)
-                                    — {{ $entry->user->name }}
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs text-gray-400 mb-0.5">
+                                        {{ $entry->created_at?->format('Y/m/d H:i') }}
+                                        @if ($entry->user)
+                                            — {{ $entry->user->name }}
+                                        @endif
+                                    </div>
+                                    @if ($entry->type === 'status_change')
+                                        <p class="text-sm text-gray-700">
+                                            {{ __('orders.status_changed_from') }}
+                                            <span class="font-medium">{{ $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : '—' }}</span>
+                                            {{ __('orders.to') }}
+                                            <span class="font-medium text-primary-600">{{ $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : '—' }}</span>
+                                        </p>
+                                    @elseif ($entry->body)
+                                        <p class="text-sm text-gray-700">{{ $entry->body }}</p>
+                                    @endif
+                                </div>
+                                @if ($isStaff)
+                                    <form action="{{ route('orders.timeline.add-as-comment', [$order->id, $entry->id]) }}" method="POST" class="shrink-0">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-gray-400 hover:text-primary-600 transition-colors whitespace-nowrap">
+                                            {{ __('orders.add_as_comment') }}
+                                        </button>
+                                    </form>
                                 @endif
                             </div>
-                            @if ($entry->type === 'status_change')
-                                <p class="text-sm text-gray-700">
-                                    {{ __('orders.status_changed_from') }}
-                                    <span class="font-medium">{{ $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : '—' }}</span>
-                                    {{ __('orders.to') }}
-                                    <span class="font-medium text-primary-600">{{ $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : '—' }}</span>
-                                </p>
-                            @elseif ($entry->body)
-                                <p class="text-sm text-gray-700">{{ $entry->body }}</p>
-                            @endif
                         </li>
                     @endforeach
                 </ol>
@@ -560,52 +607,29 @@
         </div>
     @endif
 
-    {{-- ── Staff Notes (staff only) ───────────────────────────────────────── --}}
+    {{-- ── Staff Notes (staff only) — always show form + Save so button is visible --}}
     @if ($isStaff)
-    <div class="bg-amber-50 border border-amber-100 rounded-2xl shadow-sm overflow-hidden"
-         x-data="{ editing: false }">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-amber-100">
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b border-amber-100">
             <h2 class="text-sm font-semibold text-amber-800 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                 </svg>
                 {{ __('orders.staff_notes_title') }}
             </h2>
-            <button type="button" @click="editing = !editing"
-                class="text-xs font-medium text-amber-700 hover:text-amber-900 transition">
-                <span x-show="!editing">{{ __('orders.edit') }}</span>
-                <span x-show="editing">{{ __('account.cancel') }}</span>
-            </button>
         </div>
-
-        {{-- Display --}}
-        <div x-show="!editing" class="px-4 py-3">
-            @if ($order->staff_notes)
-                <p class="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">{{ $order->staff_notes }}</p>
-            @else
-                <p class="text-sm text-amber-400 italic">{{ __('orders.staff_notes_empty') }}</p>
-            @endif
-        </div>
-
-        {{-- Edit form --}}
-        <div x-show="editing" x-collapse>
-            <form action="{{ route('orders.staff-notes.update', $order->id) }}" method="POST" class="px-4 py-3 space-y-2">
-                @csrf @method('PATCH')
-                <textarea name="staff_notes" rows="4"
-                    class="w-full text-sm px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition resize-none"
-                    placeholder="{{ __('orders.staff_notes_placeholder') }}">{{ old('staff_notes', $order->staff_notes) }}</textarea>
-                <div class="flex gap-2">
-                    <button type="submit"
-                        class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors">
-                        {{ __('account.save_changes') }}
-                    </button>
-                    <button type="button" @click="editing = false"
-                        class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
-                        {{ __('account.cancel') }}
-                    </button>
-                </div>
-            </form>
-        </div>
+        <form action="{{ route('orders.staff-notes.update', $order->id) }}" method="POST" class="px-4 py-3 space-y-3">
+            @csrf @method('PATCH')
+            <textarea name="staff_notes" rows="4"
+                class="w-full text-sm px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition resize-none"
+                placeholder="{{ __('orders.staff_notes_placeholder') }}">{{ old('staff_notes', $order->staff_notes) }}</textarea>
+            <div class="flex items-center gap-2 pt-1">
+                <button type="submit"
+                    class="shrink-0 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2.5 px-5 rounded-xl transition-colors">
+                    {{ __('orders.save') }}
+                </button>
+            </div>
+        </form>
     </div>
     @endif
 
@@ -626,11 +650,11 @@
 
         {{-- Items table --}}
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm table-fixed">
                 <thead>
                     <tr class="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50/50">
                         <th class="px-4 py-2 font-medium text-start w-8">#</th>
-                        <th class="px-4 py-2 font-medium text-start">{{ __('orders.product') }}</th>
+                        <th class="px-4 py-2 font-medium text-start w-[40%] min-w-0">{{ __('orders.product') }}</th>
                         <th class="px-4 py-2 font-medium text-center w-14">{{ __('orders.qty') }}</th>
                         <th class="px-4 py-2 font-medium text-start w-24 hidden sm:table-cell">{{ __('orders.color') }}</th>
                         <th class="px-4 py-2 font-medium text-start w-24 hidden sm:table-cell">{{ __('orders.size') }}</th>
@@ -642,8 +666,23 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
+                    @php
+                        $productImageFilesForItems = $order->files->whereNull('comment_id')->where('type', 'product_image')->filter(fn ($f) => str_starts_with($f->mime_type ?? '', 'image/'))->values();
+                        $productImageIdx = 0;
+                        $itemDisplayImageUrls = [];
+                        foreach ($order->items as $it) {
+                            if ($it->image_path) {
+                                $itemDisplayImageUrls[] = Storage::disk('public')->url($it->image_path);
+                            } elseif ($productImageFilesForItems->has($productImageIdx)) {
+                                $itemDisplayImageUrls[] = $productImageFilesForItems[$productImageIdx]->url();
+                                $productImageIdx++;
+                            } else {
+                                $itemDisplayImageUrls[] = null;
+                            }
+                        }
+                    @endphp
                     @forelse ($order->items as $i => $item)
-                        @php $itemImgUrl = $item->image_path ? Storage::disk('public')->url($item->image_path) : null; @endphp
+                        @php $itemImgUrl = $itemDisplayImageUrls[$i] ?? ($item->image_path ? Storage::disk('public')->url($item->image_path) : null); @endphp
                         <tr class="hover:bg-gray-50/50 transition-colors">
 
                             {{-- # + thumbnail --}}
@@ -660,16 +699,43 @@
                                 @endif
                             </td>
 
-                            {{-- URL / description --}}
-                            <td class="px-4 py-3 align-middle max-w-0">
-                                <div class="truncate">
-                                    @if ($item->is_url)
+                            {{-- URL / description: show domain only + Open + Copy --}}
+                            <td class="px-4 py-3 align-middle min-w-0">
+                                @if ($item->is_url)
+                                    @php
+                                        $itemHost = parse_url($item->url, PHP_URL_HOST) ?: $item->url;
+                                        $itemHost = preg_replace('/^www\./i', '', $itemHost);
+                                    @endphp
+                                    <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                                        <span class="text-gray-800 font-medium truncate shrink-0 max-w-full" title="{{ $item->url }}">{{ $itemHost }}</span>
                                         <a href="{{ $item->url }}" target="_blank" rel="noopener"
-                                            class="text-primary-600 hover:underline font-medium">{{ Str::limit($item->url, 60) }}</a>
-                                    @else
+                                            class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+                                            {{ __('orders.view') }}
+                                        </a>
+                                        <button type="button"
+                                            x-data="{ copied: false }"
+                                            data-copy-url="{{ e($item->url) }}"
+                                            @click="(async () => {
+                                                const url = $el.getAttribute('data-copy-url');
+                                                try { await navigator.clipboard.writeText(url); } catch(e) {
+                                                    const ta = document.createElement('textarea'); ta.value = url;
+                                                    ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta);
+                                                    ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                                                }
+                                                copied = true; setTimeout(() => copied = false, 2000);
+                                            })()"
+                                            class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
+                                            :class="copied && '!border-green-200 !bg-green-50 !text-green-700'"
+                                            title="{{ __('orders.copy') }}">
+                                            <span x-show="!copied">{{ __('orders.copy') }}</span>
+                                            <span x-show="copied" x-cloak>{{ __('orders.copied') }}</span>
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="truncate min-w-0">
                                         <span class="text-gray-800">{{ $item->url }}</span>
-                                    @endif
-                                </div>
+                                    </div>
+                                @endif
                                 {{-- Mobile-only: show hidden columns inline --}}
                                 <div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-400 sm:hidden">
                                     @if ($item->color)
@@ -1394,7 +1460,7 @@
     @endif
 
     {{-- ── Comments & conversation ────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" id="comments">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden order-comments-section" id="comments" data-order-id="{{ $order->id }}" data-mark-read-url="{{ route('orders.comments.mark-read', $order->id) }}">
         <div class="px-4 py-3 border-b border-gray-100">
             <h2 class="text-sm font-semibold text-gray-700">
                 {{ __('orders.comments') }}
@@ -1416,8 +1482,8 @@
 
                 {{-- System / automated comments get a distinct teal-tinted treatment --}}
                 @if ($comment->is_system)
-                <div class="px-4 py-4 bg-teal-50/60 {{ $comment->deleted_at ? 'opacity-60' : '' }}"
-                    id="comment-{{ $comment->id }}">
+                <div class="comment-item px-4 py-4 bg-teal-50/60 {{ $comment->deleted_at ? 'opacity-60' : '' }}"
+                    id="comment-{{ $comment->id }}" data-comment-id="{{ $comment->id }}">
                     <div class="flex items-start gap-3">
                         <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-teal-100 text-teal-700 mt-0.5">
                             🤖
@@ -1435,10 +1501,10 @@
                     </div>
                 </div>
                 @else
-                <div class="px-4 py-4 space-y-2
+                <div class="comment-item px-4 py-4 space-y-2
                     {{ $comment->is_internal ? 'bg-amber-50/50' : '' }}
                     {{ $comment->deleted_at ? 'opacity-60' : '' }}"
-                    id="comment-{{ $comment->id }}">
+                    id="comment-{{ $comment->id }}" data-comment-id="{{ $comment->id }}">
 
                     {{-- Author row --}}
                     <div class="flex items-center justify-between gap-2 flex-wrap">
@@ -1460,6 +1526,39 @@
                         </div>
                         <span class="text-xs text-gray-400 tabular-nums">{{ $comment->created_at->format('Y/m/d H:i') }}</span>
                     </div>
+
+                    {{-- Read receipts (staff only) — same placement & UI as WordPress — above body --}}
+                    @if ($isStaff && auth()->user()->can('view-comment-reads') && ($customerReads->count() || $staffReads->count()))
+                        @php
+                            $firstCustomerRead = $customerReads->sortBy('read_at')->first();
+                            $staffReadsDeduped = $staffReads->sortByDesc('read_at')->unique('user_id')->values();
+                        @endphp
+                        <div style="display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap;">
+                            @if ($firstCustomerRead)
+                                <span style="font-size: 0.75rem; padding: 4px 8px; background: #10b981; border-radius: 4px; color: #fff; font-weight: 500;">
+                                    ✓ {{ __('orders.read_by_customer_at', ['date' => $firstCustomerRead->read_at->format('Y/m/d'), 'time' => $firstCustomerRead->read_at->format('H:i')]) }}
+                                </span>
+                            @endif
+                            @if ($staffReadsDeduped->count() > 0)
+                                <div style="position: relative;" x-data="{ open: false }">
+                                    <button type="button" class="comment-read-toggle" style="font-size: 0.7rem; padding: 3px 6px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; color: #64748b; cursor: pointer;" data-comment-id="{{ $comment->id }}" @click="open = !open">
+                                        {{ __('orders.team_reads_label', ['count' => $staffReadsDeduped->count()]) }}
+                                    </button>
+                                    <div class="comment-read-list" id="comment-read-{{ $comment->id }}" x-show="open" x-cloak style="position: absolute; top: 100%; right: 0; margin-top: 4px; padding: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10; min-width: 200px;" @click.outside="open = false">
+                                        @foreach ($staffReadsDeduped as $read)
+                                            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+                                                <strong>{{ optional($read->user)->name ?? 'user#'.$read->user_id }}</strong>
+                                                @if (optional($read->user)->email)
+                                                    <br><span style="color: #64748b; font-size: 0.9em;">{{ $read->user->email }}</span>
+                                                @endif
+                                                <br><span style="color: #64748b; font-size: 0.9em;">{{ __('orders.read_by_team_at', ['date' => $read->read_at->format('Y/m/d'), 'time' => $read->read_at->format('H:i')]) }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     {{-- Body --}}
                     @if ($comment->deleted_at)
@@ -1486,34 +1585,6 @@
                                         </a>
                                     @endif
                                 @endforeach
-                            </div>
-                        @endif
-
-                        {{-- Read receipts (staff only) --}}
-                        @if ($isStaff && auth()->user()->can('view-comment-reads'))
-                            <div class="flex flex-wrap gap-1 mt-1">
-                                @if ($customerReads->count())
-                                    <span class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-50 text-green-700">
-                                        ✓✓ {{ __('orders.read_by_customer') }}
-                                    </span>
-                                @endif
-                                @if ($staffReads->count())
-                                    <span x-data="{ open: false }" class="relative inline-block">
-                                        <button @click="open = !open"
-                                            class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-gray-200">
-                                            {{ $staffReads->count() }} {{ __('orders.team_members') }}
-                                        </button>
-                                        <div x-show="open" @click.outside="open = false"
-                                            class="absolute z-10 mt-1 p-2 bg-white border border-gray-200 rounded-xl shadow-lg text-xs min-w-40 space-y-1">
-                                            @foreach ($staffReads as $read)
-                                                <div class="text-gray-600">
-                                                    <span class="font-medium">{{ optional($read->user)->name }}</span>
-                                                    <span class="text-gray-400 ms-1">{{ $read->read_at->format('H:i') }}</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </span>
-                                @endif
                             </div>
                         @endif
 
@@ -1550,7 +1621,7 @@
                                     </form>
                                 @endcan
 
-                                {{-- WhatsApp notify (staff, non-internal) --}}
+                                {{-- WhatsApp: log send then open wa.me (staff, non-internal) --}}
                                 @can('send-comment-notification')
                                     @php
                                         $customerPhone = optional($order->user)->phone;
@@ -1558,19 +1629,40 @@
                                             'order' => $order->order_number,
                                             'body'  => $comment->body,
                                         ]);
-                                        $waUrl = $customerPhone
+                                        $waUrl = $customerPhone && preg_match('/[0-9]/', (string) $customerPhone)
                                             ? 'https://wa.me/' . preg_replace('/\D/', '', $customerPhone) . '?text=' . rawurlencode($waText)
                                             : null;
+                                        $waLogUrl = route('orders.comments.log-whatsapp', [$order->id, $comment->id]);
+                                        $waLogs = $comment->notificationLogs->where('channel', 'whatsapp');
                                     @endphp
                                     @if ($waUrl)
-                                        <a href="{{ $waUrl }}" target="_blank" rel="noopener"
-                                            class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 transition-colors">
+                                        <button type="button"
+                                            x-data="{ loading: false }"
+                                            @click="loading = true; fetch('{{ $waLogUrl }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()).then(() => { window.open('{{ $waUrl }}', '_blank'); }).finally(() => loading = false)"
+                                            :disabled="loading"
+                                            class="inline-flex items-center gap-1 text-xs transition-colors"
+                                            :class="loading ? 'text-gray-300 cursor-wait' : 'text-gray-400 hover:text-green-600'">
                                             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                                                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.86L.057 23.86a.5.5 0 00.617.61l6.162-1.617A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.503-5.24-1.383l-.376-.214-3.896 1.022 1.01-3.797-.234-.39A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
                                             </svg>
-                                            WhatsApp
-                                        </a>
+                                            {{ __('orders.send_by_whatsapp') }}
+                                        </button>
+                                        @if ($waLogs->isNotEmpty())
+                                            <span x-data="{ open: false }" class="relative inline-flex items-center gap-1">
+                                                <button type="button" @click="open = !open"
+                                                    class="text-xs text-gray-400 hover:text-green-600 transition-colors">
+                                                    {{ __('orders.whatsapp_history') }} ({{ $waLogs->count() }})
+                                                </button>
+                                                <div x-show="open" x-collapse
+                                                    class="absolute left-0 top-full z-10 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow text-xs text-gray-600 space-y-1 max-h-32 overflow-y-auto min-w-[180px]"
+                                                    @click.outside="open = false">
+                                                    @foreach ($waLogs->sortByDesc('sent_at') as $log)
+                                                        <div>{{ optional($log->user)->name }} — {{ $log->sent_at->format('Y/m/d H:i') }}</div>
+                                                    @endforeach
+                                                </div>
+                                            </span>
+                                        @endif
                                     @else
                                         <span title="{{ __('orders.whatsapp_no_phone') }}"
                                             class="inline-flex items-center gap-1 text-xs text-gray-300 cursor-not-allowed">
@@ -1578,7 +1670,7 @@
                                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                                                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.86L.057 23.86a.5.5 0 00.617.61l6.162-1.617A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.503-5.24-1.383l-.376-.214-3.896 1.022 1.01-3.797-.234-.39A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
                                             </svg>
-                                            WhatsApp
+                                            {{ __('orders.send_by_whatsapp') }}
                                         </span>
                                     @endif
                                 @endcan
@@ -1898,8 +1990,10 @@
 {{-- 💰 Payment Notification Modal --}}
 @if ($isOwner)
 <div
-    x-data="{ show: false, init() { window.addEventListener('open-payment-notify', () => this.show = true) } }"
+    x-data="{ show: false }"
+    @open-payment-notify.window="show = true"
     x-show="show" x-cloak
+    :class="{ 'pointer-events-none': !show }"
     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
     @keydown.escape.window="show = false">
     <div @click.outside="show = false"
@@ -1970,8 +2064,10 @@ window.addEventListener('open-address-selector', () => {
 
 {{-- 📝 Similar Order Modal --}}
 <div
-    x-data="{ show: false, init() { window.addEventListener('open-similar-order', () => this.show = true) } }"
+    x-data="{ show: false }"
+    @open-similar-order.window="show = true"
     x-show="show" x-cloak
+    :class="{ 'pointer-events-none': !show }"
     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
     @keydown.escape.window="show = false">
     <div @click.outside="show = false"
@@ -2014,8 +2110,10 @@ window.addEventListener('open-address-selector', () => {
 {{-- 🔀 Customer Merge Request Modal --}}
 @if ($customerRecentOrders->isNotEmpty())
 <div
-    x-data="{ show: false, init() { window.addEventListener('open-customer-merge', () => this.show = true) } }"
+    x-data="{ show: false }"
+    @open-customer-merge.window="show = true"
     x-show="show" x-cloak
+    :class="{ 'pointer-events-none': !show }"
     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
     @keydown.escape.window="show = false">
     <div @click.outside="show = false"
@@ -2062,8 +2160,10 @@ window.addEventListener('open-address-selector', () => {
 {{-- ❌ Customer Cancel Confirmation Modal --}}
 @if ($order->isCancellable())
 <div
-    x-data="{ show: false, init() { window.addEventListener('open-customer-cancel', () => this.show = true) } }"
+    x-data="{ show: false }"
+    @open-customer-cancel.window="show = true"
     x-show="show" x-cloak
+    :class="{ 'pointer-events-none': !show }"
     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
     @keydown.escape.window="show = false">
     <div @click.outside="show = false"
@@ -2148,7 +2248,31 @@ window.addEventListener('open-address-selector', () => {
 {{-- Transfer: new user credentials modal (shown after redirect when new account was created) --}}
 @if (session('transfer_new_user'))
     @php $creds = session('transfer_new_user'); @endphp
-<div x-data="{ show: true }"
+<div x-data="{
+    show: true,
+    copiedEmail: false,
+    copiedPass: false,
+    async copyToClipboard(id, trigger) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const text = (el.textContent || el.innerText || '').trim();
+        if (!text) return;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                if (!document.execCommand('copy')) throw new Error('execCommand failed');
+                window.getSelection().removeAllRanges();
+            }
+            if (trigger === 'email') { this.copiedEmail = true; setTimeout(() => this.copiedEmail = false, 2000); }
+            else { this.copiedPass = true; setTimeout(() => this.copiedPass = false, 2000); }
+        } catch (e) {}
+    }
+}"
     x-show="show" x-cloak
     class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
     <div @click.outside="show = false"
@@ -2160,16 +2284,24 @@ window.addEventListener('open-address-selector', () => {
                 <p class="text-xs text-gray-400 mb-1">{{ __('orders.transfer_creds_email') }}</p>
                 <div class="flex items-center gap-2">
                     <code id="tc-email" class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm" dir="ltr">{{ $creds['email'] }}</code>
-                    <button type="button" @click="navigator.clipboard?.writeText('{{ $creds['email'] }}')"
-                        class="text-xs border border-gray-200 rounded-lg px-2 py-2 hover:bg-gray-100 transition-colors">📋</button>
+                    <span role="button" tabindex="0"
+                        @click="copyToClipboard('tc-email', 'email')"
+                        @keydown.enter.prevent="copyToClipboard('tc-email', 'email')"
+                        class="text-sm text-blue-600 cursor-pointer hover:underline whitespace-nowrap"
+                        :class="copiedEmail && 'text-green-600'"
+                        x-text="copiedEmail ? copiedLabel : copyLabel"></span>
                 </div>
             </div>
             <div>
                 <p class="text-xs text-gray-400 mb-1">{{ __('orders.transfer_creds_password') }}</p>
                 <div class="flex items-center gap-2">
                     <code id="tc-pass" class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm tracking-widest" dir="ltr">{{ $creds['password'] }}</code>
-                    <button type="button" @click="navigator.clipboard?.writeText('{{ $creds['password'] }}')"
-                        class="text-xs border border-gray-200 rounded-lg px-2 py-2 hover:bg-gray-100 transition-colors">📋</button>
+                    <span role="button" tabindex="0"
+                        @click="copyToClipboard('tc-pass', 'pass')"
+                        @keydown.enter.prevent="copyToClipboard('tc-pass', 'pass')"
+                        class="text-sm text-blue-600 cursor-pointer hover:underline whitespace-nowrap"
+                        :class="copiedPass && 'text-green-600'"
+                        x-text="copiedPass ? copiedLabel : copyLabel"></span>
                 </div>
             </div>
         </div>
@@ -2182,5 +2314,62 @@ window.addEventListener('open-address-selector', () => {
 @endif
 
 @endif {{-- end $isStaff --}}
+
+@push('scripts')
+<script>
+(function() {
+  var commentsSection = document.querySelector('.order-comments-section');
+  if (!commentsSection || typeof IntersectionObserver === 'undefined') return;
+  var orderId = commentsSection.getAttribute('data-order-id');
+  var markReadUrl = commentsSection.getAttribute('data-mark-read-url');
+  if (!orderId || !markReadUrl) return;
+
+  var viewedComments = new Set();
+  var pendingComments = new Set();
+  var batchTimer = null;
+  var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function sendBatch() {
+    if (pendingComments.size === 0) return;
+    var ids = Array.from(pendingComments);
+    pendingComments.clear();
+    if (!csrfToken) return;
+    fetch(markReadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ comment_ids: ids })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) { ids.forEach(function(id) { viewedComments.add(String(id)); }); }
+    }).catch(function() {});
+  }
+
+  function scheduleBatch() {
+    if (batchTimer) clearTimeout(batchTimer);
+    batchTimer = setTimeout(sendBatch, 3000);
+  }
+
+  var commentObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var commentId = entry.target.getAttribute('data-comment-id');
+      if (!commentId || viewedComments.has(commentId)) return;
+      viewedComments.add(commentId);
+      pendingComments.add(commentId);
+      scheduleBatch();
+    });
+  }, { threshold: 0.3 });
+
+  var commentItems = document.querySelectorAll('.comment-item[data-comment-id]');
+  commentItems.forEach(function(item) { commentObserver.observe(item); });
+
+  window.addEventListener('beforeunload', sendBatch);
+})();
+</script>
+@endpush
 
 </x-app-layout>

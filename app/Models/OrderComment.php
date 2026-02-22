@@ -49,6 +49,11 @@ class OrderComment extends Model
         return $this->hasMany(OrderCommentRead::class, 'comment_id');
     }
 
+    public function notificationLogs(): HasMany
+    {
+        return $this->hasMany(OrderCommentNotificationLog::class, 'comment_id');
+    }
+
     public function isVisibleTo(\App\Models\User $user): bool
     {
         if ($this->is_internal && ! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {

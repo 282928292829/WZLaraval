@@ -59,6 +59,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{id}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
     Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->name('orders.merge');
     Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderController::class, 'sendNotification'])->name('orders.comments.notify');
+    Route::post('/orders/{orderId}/comments/{commentId}/log-whatsapp', [OrderController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
+    Route::post('/orders/{orderId}/comments/mark-read', [OrderController::class, 'markCommentsRead'])->name('orders.comments.mark-read');
+    Route::post('/orders/{id}/timeline/{timelineId}/add-as-comment', [OrderController::class, 'addTimelineAsComment'])->name('orders.timeline.add-as-comment');
     Route::patch('/orders/{id}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
     Route::post('/orders/{id}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
 

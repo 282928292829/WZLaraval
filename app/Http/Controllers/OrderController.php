@@ -27,7 +27,7 @@ class OrderController extends Controller
             'files' => fn ($q) => $q->orderBy('created_at'),
             'timeline' => fn ($q) => $q->with('user')->orderBy('created_at'),
             'comments' => fn ($q) => $q
-                ->with(['user', 'edits.editor', 'reads.user'])
+                ->with(['user', 'edits.editor', 'reads.user', 'notificationLogs.user'])
                 ->withTrashed()
                 ->orderBy('created_at'),
         ])->findOrFail($id);
@@ -39,26 +39,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        // Mark all visible comments as read — single bulk upsert (no N+1)
-        $visibleCommentIds = $order->comments
-            ->filter(fn ($c) => ! $c->is_internal || $isStaff)
-            ->filter(fn ($c) => ! $c->deleted_at)
-            ->pluck('id');
-
-        if ($visibleCommentIds->isNotEmpty()) {
-            $now = now();
-            $rows = $visibleCommentIds->map(fn ($cid) => [
-                'comment_id' => $cid,
-                'user_id' => $user->id,
-                'read_at' => $now,
-            ])->all();
-
-            OrderCommentRead::upsert(
-                $rows,
-                ['comment_id', 'user_id'],
-                ['read_at']
-            );
-        }
+        // Read state is recorded by viewport-based tracking (JS), not on page load (matches WordPress).
 
         if ($isOwner && ! $order->is_paid && $order->can_edit_until === null) {
             \App\Livewire\NewOrder::initEditWindow($order);
@@ -102,8 +83,16 @@ class OrderController extends Controller
                 ->first();
         }
 
+        // Comments discovery banner: show only on first 2 visits to this order (per user, cookie)
+        $cookieName = 'order_discovery_visits_'.$order->id;
+        $visits = (int) $request->cookie($cookieName, 0);
+        $showCommentsDiscovery = $visits < 2;
+        if ($showCommentsDiscovery) {
+            cookie()->queue($cookieName, (string) ($visits + 1), 60 * 24 * 365); // 1 year
+        }
+
         return view('orders.show', compact(
-            'order', 'isOwner', 'isStaff', 'canEditItems', 'recentOrders', 'customerRecentOrders', 'orderCreationLog'
+            'order', 'isOwner', 'isStaff', 'canEditItems', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery'
         ));
     }
 
@@ -504,6 +493,129 @@ class OrderController extends Controller
             return redirect()->route('orders.show', $orderId)
                 ->with('error', __('orders.notification_failed').': '.$e->getMessage());
         }
+    }
+
+    /** Staff: log that comment was sent via WhatsApp (opens wa.me in front; this records the action). */
+    public function logWhatsAppSend(Request $request, int $orderId, int $commentId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorize('send-comment-notification');
+
+        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        if ($comment->is_internal) {
+            return response()->json(['success' => false, 'message' => __('orders.cannot_notify_internal')], 422);
+        }
+
+        $order = $comment->order;
+        if (! $order->user || ! preg_match('/[0-9]/', (string) $order->user->phone)) {
+            return response()->json(['success' => false, 'message' => __('orders.whatsapp_no_phone')], 422);
+        }
+
+        \App\Models\OrderCommentNotificationLog::create([
+            'order_id' => $orderId,
+            'comment_id' => $commentId,
+            'user_id' => auth()->id(),
+            'channel' => 'whatsapp',
+            'sent_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => __('orders.whatsapp_send_logged')]);
+    }
+
+    /** Staff: add a timeline entry as a comment (visible to customer). */
+    public function addTimelineAsComment(Request $request, int $orderId, int $timelineId)
+    {
+        $user = auth()->user();
+        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $order = Order::findOrFail($orderId);
+        $entry = $order->timeline()->findOrFail($timelineId);
+
+        $body = $this->formatTimelineEntryAsCommentText($entry);
+
+        $order->comments()->create([
+            'user_id' => $user->id,
+            'body' => $body,
+            'is_internal' => false,
+        ]);
+
+        return redirect()->route('orders.show', $orderId)->with('success', __('orders.timeline_added_as_comment'));
+    }
+
+    /** Viewport-based: mark comments as read (batch). */
+    public function markCommentsRead(Request $request, int $orderId): \Illuminate\Http\JsonResponse
+    {
+        $user = auth()->user();
+        $order = Order::with('comments')->findOrFail($orderId);
+        $isOwner = $order->user_id === $user->id;
+        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        if (! $isOwner && ! $isStaff) {
+            return response()->json(['success' => false], 403);
+        }
+
+        $commentIds = $request->input('comment_ids', []);
+        if (! is_array($commentIds)) {
+            $commentIds = [];
+        }
+        $commentIds = array_unique(array_filter(array_map('intval', $commentIds)));
+
+        $visibleCommentIds = $order->comments
+            ->filter(fn ($c) => ! $c->is_internal || $isStaff)
+            ->filter(fn ($c) => ! $c->deleted_at)
+            ->pluck('id')
+            ->flip();
+
+        $toUpsert = [];
+        $now = now();
+        foreach ($commentIds as $cid) {
+            if (! $visibleCommentIds->has($cid)) {
+                continue;
+            }
+            $toUpsert[] = [
+                'comment_id' => $cid,
+                'user_id' => $user->id,
+                'read_at' => $now,
+            ];
+        }
+
+        if (! empty($toUpsert)) {
+            OrderCommentRead::upsert(
+                $toUpsert,
+                ['comment_id', 'user_id'],
+                ['read_at']
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function formatTimelineEntryAsCommentText(OrderTimeline $entry): string
+    {
+        $prefix = '📋 ';
+        if ($entry->type === 'status_change') {
+            $from = $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : '—';
+            $to = $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : '—';
+
+            return $prefix.__('orders.timeline_label_status_change').": {$from} → {$to}\n\n— ".optional($entry->user)->name.' — '.$entry->created_at?->format('Y/m/d H:i');
+        }
+
+        $label = match ($entry->type) {
+            'comment' => __('orders.timeline_label_comment'),
+            'note' => __('orders.timeline_label_note'),
+            'payment' => __('orders.timeline_label_payment'),
+            'merge' => __('orders.timeline_label_merge'),
+            'file_upload' => __('orders.timeline_label_file_upload'),
+            default => $entry->type,
+        };
+
+        $text = $prefix.$label;
+        if ($entry->body) {
+            $text .= ': '.$entry->body;
+        }
+        $text .= "\n\n— ".optional($entry->user)->name.' — '.$entry->created_at?->format('Y/m/d H:i');
+
+        return $text;
     }
 
     public function index(Request $request)
