@@ -102,10 +102,12 @@ class SettingsPage extends Page
             'max_products_per_order' => '30',
             'order_edit_window_minutes' => '10',
             'order_new_layout' => '1',
-            'orders_per_hour_customer' => '10',
+            'orders_per_hour_customer' => '50',
             'orders_per_hour_admin' => '50',
             'max_file_size_mb' => '2',
-            'max_orders_per_day' => '5',
+            'max_orders_per_day' => '200',
+            'comment_max_files' => '5',
+            'comment_max_file_size_mb' => '10',
 
             // Email (disabled by default, SMTP not configured)
             'email_enabled' => '0',
@@ -188,10 +190,10 @@ class SettingsPage extends Page
 
             // Carrier tracking URL templates ({tracking} replaced with the actual number)
             'carrier_url_aramex' => 'https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}',
-            'carrier_url_smsa'   => 'https://www.smsaexpress.com/track/?tracknumbers={tracking}',
-            'carrier_url_dhl'    => 'https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}',
-            'carrier_url_fedex'  => 'https://www.fedextrack/?trknbr={tracking}',
-            'carrier_url_ups'    => 'https://www.ups.com/track?tracknum={tracking}',
+            'carrier_url_smsa' => 'https://www.smsaexpress.com/track/?tracknumbers={tracking}',
+            'carrier_url_dhl' => 'https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}',
+            'carrier_url_fedex' => 'https://www.fedextrack/?trknbr={tracking}',
+            'carrier_url_ups' => 'https://www.ups.com/track?tracknum={tracking}',
         ];
     }
 
@@ -325,6 +327,20 @@ class SettingsPage extends Page
                             ->minValue(1)
                             ->maxValue(100)
                             ->helperText(__('Maximum size per uploaded file. Default: 2 MB.')),
+
+                        TextInput::make('data.comment_max_files')
+                            ->label(__('Max Files per Comment'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(20)
+                            ->helperText(__('Max number of files a user can attach to one comment. Default: 5.')),
+
+                        TextInput::make('data.comment_max_file_size_mb')
+                            ->label(__('Max Comment File Size (MB)'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(100)
+                            ->helperText(__('Maximum size per file attached to a comment. Default: 10 MB.')),
 
                         Toggle::make('data.url_validation_strict')
                             ->label(__('Strict URL Validation'))
@@ -793,6 +809,8 @@ class SettingsPage extends Page
             'orders_per_hour_admin' => 'orders',
             'max_file_size_mb' => 'orders',
             'max_orders_per_day' => 'orders',
+            'comment_max_files' => 'orders',
+            'comment_max_file_size_mb' => 'orders',
             'url_validation_strict' => 'orders',
             'order_form_fields' => 'orders',
             'email_enabled' => 'email',
@@ -857,10 +875,10 @@ class SettingsPage extends Page
             'domestic_delivery_days' => 'shipping',
             // Carrier tracking URLs
             'carrier_url_aramex' => 'shipping',
-            'carrier_url_smsa'   => 'shipping',
-            'carrier_url_dhl'    => 'shipping',
-            'carrier_url_fedex'  => 'shipping',
-            'carrier_url_ups'    => 'shipping',
+            'carrier_url_smsa' => 'shipping',
+            'carrier_url_dhl' => 'shipping',
+            'carrier_url_fedex' => 'shipping',
+            'carrier_url_ups' => 'shipping',
         ];
 
         $booleanKeys = [
@@ -880,6 +898,7 @@ class SettingsPage extends Page
             'smtp_port', 'max_products_per_order', 'order_edit_window_minutes',
             'orders_per_hour_customer', 'orders_per_hour_admin',
             'max_file_size_mb', 'max_orders_per_day',
+            'comment_max_files', 'comment_max_file_size_mb',
             'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg',
             'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg',
             'domestic_first_half_kg', 'domestic_rest_half_kg',

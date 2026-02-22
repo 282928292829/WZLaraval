@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{id}/transfer', [OrderController::class, 'transferOrder'])->name('orders.transfer');
     Route::post('/orders/{id}/shipping-tracking', [OrderController::class, 'updateShippingTracking'])->name('orders.shipping-tracking');
     Route::post('/orders/{id}/update-payment', [OrderController::class, 'updatePayment'])->name('orders.update-payment');
+    Route::patch('/orders/{id}/staff-notes', [OrderController::class, 'updateStaffNotes'])->name('orders.staff-notes.update');
 });
 
 Route::get('/dashboard', DashboardController::class)
@@ -88,6 +89,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/account/notifications', [AccountController::class, 'updateNotifications'])->name('account.notifications.update');
     Route::post('/account/request-deletion', [AccountController::class, 'requestDeletion'])->name('account.request-deletion');
     Route::delete('/account/request-deletion', [AccountController::class, 'cancelDeletion'])->name('account.cancel-deletion');
+    Route::post('/account/email-change/request', [AccountController::class, 'requestEmailChange'])->name('account.email-change.request');
+    Route::post('/account/email-change/verify', [AccountController::class, 'verifyEmailChange'])->name('account.email-change.verify');
 });
 
 Route::middleware(['auth', 'can:view-all-orders'])->group(function () {

@@ -41,7 +41,20 @@ class AccountController extends Controller
 
         $balanceTotals = UserBalance::totalsForUser($user->id);
 
-        return view('account.index', compact('user', 'tab', 'addresses', 'activityLogs', 'balanceTransactions', 'balanceTotals'));
+        $orderStats = [
+            'total' => Order::where('user_id', $user->id)->count(),
+            'active' => Order::where('user_id', $user->id)
+                ->whereNotIn('status', ['cancelled', 'delivered', 'completed'])
+                ->count(),
+            'shipped' => Order::where('user_id', $user->id)
+                ->where('status', 'shipped')
+                ->count(),
+            'cancelled' => Order::where('user_id', $user->id)
+                ->where('status', 'cancelled')
+                ->count(),
+        ];
+
+        return view('account.index', compact('user', 'tab', 'addresses', 'activityLogs', 'balanceTransactions', 'balanceTotals', 'orderStats'));
     }
 
     public function updateProfile(Request $request): RedirectResponse
@@ -88,6 +101,27 @@ class AccountController extends Controller
             'user_id' => $user->id,
             'event' => 'profile_updated',
         ]);
+
+        // Post system comment on latest active order to alert the team
+        $activeOrder = $user->orders()
+            ->whereNotIn('status', ['cancelled', 'delivered', 'completed'])
+            ->latest()
+            ->first();
+
+        if ($activeOrder) {
+            $changes = array_filter([
+                $emailChanged ? __('account.comment_email_changed') : null,
+            ]);
+
+            $changeList = implode('، ', $changes) ?: __('account.comment_profile_general');
+
+            OrderComment::create([
+                'order_id' => $activeOrder->id,
+                'user_id' => null,
+                'body' => __('account.comment_profile_updated', ['changes' => $changeList]),
+                'is_internal' => true,
+            ]);
+        }
 
         return redirect()->route('account.index')->with('status', 'profile-updated');
     }
@@ -355,6 +389,101 @@ class AccountController extends Controller
         ]);
 
         return redirect()->route('account.index')->with('status', 'deletion-requested');
+    }
+
+    public function requestEmailChange(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validateWithBag('emailChange', [
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+        ], [
+            'email.required' => __('account.validation_email_required'),
+            'email.email' => __('account.validation_email_invalid'),
+            'email.unique' => __('account.validation_email_taken'),
+        ]);
+
+        $code = (string) random_int(100000, 999999);
+
+        $user->update([
+            'email_change_pending' => $validated['email'],
+            'email_change_code' => $code,
+            'email_change_expires_at' => now()->addMinutes(15),
+        ]);
+
+        // TODO: send $code via email when SMTP is configured
+        // For now, show the code in the session flash so staff can relay it manually
+        session()->flash('email_change_code_debug', $code);
+
+        UserActivityLog::fromRequest($request, [
+            'user_id' => $user->id,
+            'event' => 'email_change_requested',
+        ]);
+
+        return redirect()->route('account.index', ['tab' => 'profile'])
+            ->with('status', 'email-change-requested');
+    }
+
+    public function verifyEmailChange(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $request->validateWithBag('emailChange', [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        if (
+            ! $user->email_change_pending ||
+            ! $user->email_change_code ||
+            ! $user->email_change_expires_at ||
+            now()->gt($user->email_change_expires_at)
+        ) {
+            return redirect()->route('account.index', ['tab' => 'profile'])
+                ->withErrors(['code' => __('account.email_change_expired')], 'emailChange');
+        }
+
+        if (! hash_equals($user->email_change_code, $request->input('code'))) {
+            return redirect()->route('account.index', ['tab' => 'profile'])
+                ->withErrors(['code' => __('account.email_change_invalid_code')], 'emailChange');
+        }
+
+        $oldEmail = $user->email;
+        $newEmail = $user->email_change_pending;
+
+        $user->update([
+            'email' => $newEmail,
+            'email_verified_at' => null,
+            'email_change_pending' => null,
+            'email_change_code' => null,
+            'email_change_expires_at' => null,
+        ]);
+
+        UserActivityLog::fromRequest($request, [
+            'user_id' => $user->id,
+            'event' => 'email_changed',
+            'properties' => ['old_email' => $oldEmail, 'new_email' => $newEmail],
+        ]);
+
+        // Post system comment on latest active order
+        $activeOrder = $user->orders()
+            ->whereNotIn('status', ['cancelled', 'delivered', 'completed'])
+            ->latest()
+            ->first();
+
+        if ($activeOrder) {
+            OrderComment::create([
+                'order_id' => $activeOrder->id,
+                'user_id' => null,
+                'body' => __('account.comment_email_changed_detail', [
+                    'old' => $oldEmail,
+                    'new' => $newEmail,
+                ]),
+                'is_internal' => true,
+            ]);
+        }
+
+        return redirect()->route('account.index', ['tab' => 'profile'])
+            ->with('status', 'email-changed');
     }
 
     public function cancelDeletion(Request $request): RedirectResponse

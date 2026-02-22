@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\AdCampaign;
 use App\Models\Order;
 use App\Models\OrderComment;
 use App\Models\OrderFile;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Models\UserActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -332,6 +334,12 @@ class NewOrder extends Component
         if ($createdOrder) {
             $this->insertSystemComment($createdOrder);
 
+            // Increment campaign order count if the user was attributed to a campaign
+            $campaignId = Auth::user()?->ad_campaign_id;
+            if ($campaignId) {
+                AdCampaign::where('id', $campaignId)->increment('order_count');
+            }
+
             UserActivityLog::fromRequest(request(), [
                 'user_id' => Auth::id(),
                 'subject_type' => Order::class,
@@ -470,6 +478,22 @@ class NewOrder extends Component
         $this->showLoginModal = false;
         $this->modalPassword = '';
         $this->submitOrder();
+    }
+
+    public function sendModalResetLink(): void
+    {
+        $this->modalError = '';
+        $this->modalSuccess = '';
+
+        $this->validate(['modalEmail' => 'required|email'], [], ['modalEmail' => __('Email')]);
+
+        $status = Password::sendResetLink(['email' => $this->modalEmail]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            $this->modalSuccess = __('opus46.reset_link_sent');
+        } else {
+            $this->modalError = __('passwords.user');
+        }
     }
 
     public function setModalStep(string $step): void

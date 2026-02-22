@@ -193,6 +193,7 @@
                             @foreach ([25, 50, 100] as $n)
                                 <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }}</option>
                             @endforeach
+                            <option value="0" @selected($perPage === 0)>{{ __('orders.per_page_all') }}</option>
                         </select>
                     </div>
                 </div>

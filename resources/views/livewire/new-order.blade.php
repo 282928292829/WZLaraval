@@ -409,15 +409,28 @@
             </form>
 
             {{-- Step: Reset --}}
-            <div class="modal-form" :class="{ 'active': $wire.modalStep === 'reset' }"
-                 x-show="$wire.modalStep === 'reset'" x-cloak>
+            <form class="modal-form" :class="{ 'active': $wire.modalStep === 'reset' }"
+                  x-show="$wire.modalStep === 'reset'" x-cloak
+                  @submit.prevent="$wire.sendModalResetLink()">
                 <div class="form-group">
-                    <p style="font-size:0.9rem;color:#475569;">{{ __('opus46.reset_desc') }}</p>
+                    <p style="font-size:0.9rem;color:#475569;margin-bottom:12px;">{{ __('opus46.reset_desc') }}</p>
+                    <input type="email" wire:model="modalEmail" required autocomplete="email"
+                           class="form-control" placeholder="{{ __('Email') }}">
+                    @if ($modalError && $modalStep === 'reset')
+                        <p style="color:#ef4444;font-size:0.8rem;margin-top:4px;">{{ $modalError }}</p>
+                    @endif
+                    @if ($modalSuccess)
+                        <p style="color:#16a34a;font-size:0.8rem;margin-top:4px;">{{ $modalSuccess }}</p>
+                    @endif
                 </div>
+                <button type="submit" class="btn btn-success" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="sendModalResetLink">{{ __('opus46.reset_send_link') }}</span>
+                    <span wire:loading wire:target="sendModalResetLink">...</span>
+                </button>
                 <div style="text-align:center;margin-top:15px;">
-                    <a href="#" class="form-link" @click.prevent="$wire.set('modalStep', 'email')">{{ __('Return') }}</a>
+                    <a href="#" class="form-link" @click.prevent="$wire.set('modalStep', 'email'); $wire.set('modalError', ''); $wire.set('modalSuccess', '')">{{ __('Return') }}</a>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>

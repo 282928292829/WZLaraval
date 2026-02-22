@@ -18,6 +18,7 @@ class Order extends Model
         'status',
         'layout_option',
         'notes',
+        'staff_notes',
         'shipping_address_id',
         'shipping_address_snapshot',
         'is_paid',

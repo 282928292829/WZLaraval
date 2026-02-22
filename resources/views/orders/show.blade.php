@@ -13,9 +13,10 @@
     }
     $allVisibleComments = $order->comments->filter(fn ($c) => $c->isVisibleTo(auth()->user()));
     foreach ($allVisibleComments as $c) {
-        $cf = $order->files->where('comment_id', $c->id)->first();
-        if ($cf && $cf->isImage()) {
-            $lightboxImages[] = $cf->url();
+        foreach ($order->files->where('comment_id', $c->id) as $cf) {
+            if ($cf->isImage()) {
+                $lightboxImages[] = $cf->url();
+            }
         }
     }
 @endphp
@@ -76,6 +77,12 @@
         <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ session('success') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5h2v2h-2v-2zm0-8h2v6h-2V5z" clip-rule="evenodd"/></svg>
+            {{ session('error') }}
         </div>
     @endif
     @if ($errors->any())
@@ -551,6 +558,55 @@
                 @endif
             </div>
         </div>
+    @endif
+
+    {{-- ── Staff Notes (staff only) ───────────────────────────────────────── --}}
+    @if ($isStaff)
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl shadow-sm overflow-hidden"
+         x-data="{ editing: false }">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-amber-100">
+            <h2 class="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+                {{ __('orders.staff_notes_title') }}
+            </h2>
+            <button type="button" @click="editing = !editing"
+                class="text-xs font-medium text-amber-700 hover:text-amber-900 transition">
+                <span x-show="!editing">{{ __('orders.edit') }}</span>
+                <span x-show="editing">{{ __('account.cancel') }}</span>
+            </button>
+        </div>
+
+        {{-- Display --}}
+        <div x-show="!editing" class="px-4 py-3">
+            @if ($order->staff_notes)
+                <p class="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">{{ $order->staff_notes }}</p>
+            @else
+                <p class="text-sm text-amber-400 italic">{{ __('orders.staff_notes_empty') }}</p>
+            @endif
+        </div>
+
+        {{-- Edit form --}}
+        <div x-show="editing" x-collapse>
+            <form action="{{ route('orders.staff-notes.update', $order->id) }}" method="POST" class="px-4 py-3 space-y-2">
+                @csrf @method('PATCH')
+                <textarea name="staff_notes" rows="4"
+                    class="w-full text-sm px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition resize-none"
+                    placeholder="{{ __('orders.staff_notes_placeholder') }}">{{ old('staff_notes', $order->staff_notes) }}</textarea>
+                <div class="flex gap-2">
+                    <button type="submit"
+                        class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors">
+                        {{ __('account.save_changes') }}
+                    </button>
+                    <button type="button" @click="editing = false"
+                        class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                        {{ __('account.cancel') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     @endif
 
     {{-- ── Order Items ────────────────────────────────────────────────────── --}}
@@ -1278,6 +1334,65 @@
         @endcan
     </div>
 
+    {{-- ── Device / IP metadata (staff only) ─────────────────────────────── --}}
+    @if ($isStaff && $orderCreationLog)
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+         x-data="{ open: false }">
+        <button type="button" @click="open = !open"
+            class="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+            <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                {{ __('orders.device_info_title') }}
+            </span>
+            <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div x-show="open" x-collapse>
+            <div class="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs text-gray-600 border-t border-gray-50 pt-3">
+                @if ($orderCreationLog->ip_address)
+                <div class="flex justify-between sm:flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_ip') }}</span>
+                    <span class="font-mono">{{ $orderCreationLog->ip_address }}</span>
+                </div>
+                @endif
+                @if ($orderCreationLog->device)
+                <div class="flex justify-between sm:flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_type') }}</span>
+                    <span>{{ $orderCreationLog->device }}{{ $orderCreationLog->device_model ? ' — ' . $orderCreationLog->device_model : '' }}</span>
+                </div>
+                @endif
+                @if ($orderCreationLog->browser)
+                <div class="flex justify-between sm:flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_browser') }}</span>
+                    <span>{{ $orderCreationLog->browser }}{{ $orderCreationLog->browser_version ? ' ' . $orderCreationLog->browser_version : '' }}</span>
+                </div>
+                @endif
+                @if ($orderCreationLog->os)
+                <div class="flex justify-between sm:flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_os') }}</span>
+                    <span>{{ $orderCreationLog->os }}{{ $orderCreationLog->os_version ? ' ' . $orderCreationLog->os_version : '' }}</span>
+                </div>
+                @endif
+                @if ($orderCreationLog->country || $orderCreationLog->city)
+                <div class="flex justify-between sm:flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_location') }}</span>
+                    <span>{{ implode(', ', array_filter([$orderCreationLog->city, $orderCreationLog->country])) }}</span>
+                </div>
+                @endif
+                @if ($orderCreationLog->user_agent)
+                <div class="col-span-full flex flex-col gap-0.5">
+                    <span class="text-gray-400 font-medium">{{ __('orders.device_user_agent') }}</span>
+                    <span class="font-mono text-gray-500 break-all">{{ $orderCreationLog->user_agent }}</span>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- ── Comments & conversation ────────────────────────────────────────── --}}
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" id="comments">
         <div class="px-4 py-3 border-b border-gray-100">
@@ -1352,23 +1467,25 @@
                     @else
                         <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{{ $comment->body }}</div>
 
-                        {{-- Attached file --}}
-                        @php $commentFile = $order->files->where('comment_id', $comment->id)->first(); @endphp
-                        @if ($commentFile)
-                            <div class="flex items-center gap-2 mt-1">
-                                @if ($commentFile->isImage())
-                                    <button type="button"
-                                        @click="$dispatch('open-lightbox', { src: '{{ $commentFile->url() }}', gallery: window.orderLightboxImages })"
-                                        class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                        <img src="{{ $commentFile->url() }}" alt="" class="h-16 rounded-lg border border-gray-100 object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
-                                    </button>
-                                @else
-                                    <a href="{{ $commentFile->url() }}" target="_blank"
-                                        class="flex items-center gap-1.5 text-xs text-primary-600 hover:underline border border-gray-200 rounded-lg px-2 py-1">
-                                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        {{ $commentFile->original_name }} ({{ $commentFile->humanSize() }})
-                                    </a>
-                                @endif
+                        {{-- Attached files --}}
+                        @php $commentFiles = $order->files->where('comment_id', $comment->id); @endphp
+                        @if ($commentFiles->isNotEmpty())
+                            <div class="flex flex-wrap items-center gap-2 mt-1">
+                                @foreach ($commentFiles as $commentFile)
+                                    @if ($commentFile->isImage())
+                                        <button type="button"
+                                            @click="$dispatch('open-lightbox', { src: '{{ $commentFile->url() }}', gallery: window.orderLightboxImages })"
+                                            class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                            <img src="{{ $commentFile->url() }}" alt="" class="h-16 rounded-lg border border-gray-100 object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
+                                        </button>
+                                    @else
+                                        <a href="{{ $commentFile->url() }}" target="_blank"
+                                            class="flex items-center gap-1.5 text-xs text-primary-600 hover:underline border border-gray-200 rounded-lg px-2 py-1">
+                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            {{ $commentFile->original_name }} ({{ $commentFile->humanSize() }})
+                                        </a>
+                                    @endif
+                                @endforeach
                             </div>
                         @endif
 
@@ -1432,6 +1549,39 @@
                                         </button>
                                     </form>
                                 @endcan
+
+                                {{-- WhatsApp notify (staff, non-internal) --}}
+                                @can('send-comment-notification')
+                                    @php
+                                        $customerPhone = optional($order->user)->phone;
+                                        $waText = __('orders.whatsapp_comment_message', [
+                                            'order' => $order->order_number,
+                                            'body'  => $comment->body,
+                                        ]);
+                                        $waUrl = $customerPhone
+                                            ? 'https://wa.me/' . preg_replace('/\D/', '', $customerPhone) . '?text=' . rawurlencode($waText)
+                                            : null;
+                                    @endphp
+                                    @if ($waUrl)
+                                        <a href="{{ $waUrl }}" target="_blank" rel="noopener"
+                                            class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                                                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.86L.057 23.86a.5.5 0 00.617.61l6.162-1.617A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.503-5.24-1.383l-.376-.214-3.896 1.022 1.01-3.797-.234-.39A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                                            </svg>
+                                            WhatsApp
+                                        </a>
+                                    @else
+                                        <span title="{{ __('orders.whatsapp_no_phone') }}"
+                                            class="inline-flex items-center gap-1 text-xs text-gray-300 cursor-not-allowed">
+                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                                                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.86L.057 23.86a.5.5 0 00.617.61l6.162-1.617A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.503-5.24-1.383l-.376-.214-3.896 1.022 1.01-3.797-.234-.39A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                                            </svg>
+                                            WhatsApp
+                                        </span>
+                                    @endif
+                                @endcan
                             @endif
 
                             {{-- Delete --}}
@@ -1457,10 +1607,37 @@
         </div>
 
         {{-- ── Add comment ──────────────────────────────────────────────── --}}
+        @php $maxCommentFiles = (int) \App\Models\Setting::get('comment_max_files', 5); @endphp
         <div class="border-t border-gray-100 px-4 py-4">
             <form action="{{ route('orders.comments.store', $order->id) }}" method="POST"
                 enctype="multipart/form-data" class="space-y-3"
-                x-data="{ body: '{{ old('body') }}' }">
+                x-data="{
+                    body: '{{ old('body') }}',
+                    pickedFiles: [],
+                    maxFiles: {{ $maxCommentFiles }},
+                    addFiles(e) {
+                        const incoming = Array.from(e.target.files);
+                        const remaining = this.maxFiles - this.pickedFiles.length;
+                        this.pickedFiles = this.pickedFiles.concat(incoming.slice(0, remaining));
+                        e.target.value = '';
+                    },
+                    removeFile(i) {
+                        this.pickedFiles.splice(i, 1);
+                    },
+                    get fileLabel() {
+                        if (this.pickedFiles.length === 0) return '{{ __('orders.attach_files', ['max' => $maxCommentFiles]) }}';
+                        return '{{ __('orders.files_selected', ['count' => '']) }}' + this.pickedFiles.length;
+                    },
+                    submitForm(e) {
+                        if (this.pickedFiles.length > 0) {
+                            const dt = new DataTransfer();
+                            this.pickedFiles.forEach(f => dt.items.add(f));
+                            const realInput = e.target.querySelector('input[data-multi-files]');
+                            if (realInput) realInput.files = dt.files;
+                        }
+                    }
+                }"
+                @submit="submitForm($event)">
                 @csrf
 
                 {{-- Quick-reply templates (staff only) --}}
@@ -1498,17 +1675,27 @@
                     required
                     class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none leading-relaxed"></textarea>
 
-                <div class="flex items-center gap-3 flex-wrap" x-data="{ fileName: '' }">
-                    {{-- File attach --}}
-                    <label class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                        <span x-text="fileName || '{{ __('orders.attach_file') }}'"></span>
-                        <input type="file" name="file" class="sr-only" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
-                            @change="fileName = $event.target.files[0]?.name ?? ''">
+                <div class="flex items-center gap-3 flex-wrap">
+                    {{-- File attach picker (visible trigger) --}}
+                    <label class="flex items-center gap-1.5 text-xs cursor-pointer"
+                        :class="pickedFiles.length >= maxFiles ? 'text-gray-300 pointer-events-none' : 'text-gray-500 hover:text-gray-700'">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                        <span x-text="fileLabel"></span>
+                        <input type="file" class="sr-only" multiple
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                            :disabled="pickedFiles.length >= maxFiles"
+                            @change="addFiles($event)">
                     </label>
-                    <template x-if="fileName">
-                        <button type="button" @click="fileName = ''; $root.querySelector('input[type=file]').value = ''"
-                            class="text-xs text-red-400 hover:text-red-600">✕</button>
+                    {{-- Hidden file input that carries the actual File objects on submit --}}
+                    <input type="file" name="files[]" multiple class="sr-only" data-multi-files
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx">
+                    {{-- Chips for selected files --}}
+                    <template x-for="(f, i) in pickedFiles" :key="i">
+                        <span class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 max-w-[140px]">
+                            <span class="truncate" x-text="f.name"></span>
+                            <button type="button" @click="removeFile(i)"
+                                class="text-gray-400 hover:text-red-500 shrink-0 leading-none">✕</button>
+                        </span>
                     </template>
 
                     {{-- Internal note toggle (staff only) --}}
@@ -1589,7 +1776,7 @@
         src: '',
         gallery: [],
         currentIndex: 0,
-        open(src, gallery) {
+        openLightbox(src, gallery) {
             this.gallery = (gallery && gallery.length) ? gallery : [src];
             this.currentIndex = this.gallery.indexOf(src);
             if (this.currentIndex === -1) this.currentIndex = 0;
@@ -1612,19 +1799,12 @@
                 this.currentIndex = (this.currentIndex + 1) % this.gallery.length;
                 this.src = this.gallery[this.currentIndex];
             }
-        },
-        init() {
-            window.addEventListener('open-lightbox', e => {
-                this.open(e.detail.src, e.detail.gallery || []);
-            });
-            document.addEventListener('keydown', e => {
-                if (!this.show) return;
-                if (e.key === 'Escape') this.close();
-                if (e.key === 'ArrowLeft') this.prev();
-                if (e.key === 'ArrowRight') this.next();
-            });
         }
     }"
+    @open-lightbox.window="openLightbox($event.detail.src, $event.detail.gallery || [])"
+    @keydown.escape.window="if (show) close()"
+    @keydown.arrow-left.window="if (show) prev()"
+    @keydown.arrow-right.window="if (show) next()"
     x-show="show"
     x-cloak
     @click.self="close()"
@@ -1822,7 +2002,7 @@ window.addEventListener('open-address-selector', () => {
                     class="flex-1 border border-gray-200 text-gray-600 text-sm py-2 rounded-xl hover:bg-gray-50 transition-colors">
                     {{ __('orders.cancel') }}
                 </button>
-                <a href="{{ route('new-order') }}?clone={{ $order->id }}"
+                <a href="{{ route('new-order') }}?duplicate_from={{ $order->id }}"
                     class="flex-1 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors text-center">
                     {{ __('orders.open_order_form') }}
                 </a>

@@ -46,6 +46,9 @@ class User extends Authenticatable implements FilamentUser
         'deletion_requested',
         'ad_campaign_id',
         'google_click_id',
+        'email_change_pending',
+        'email_change_code',
+        'email_change_expires_at',
     ];
 
     /**
@@ -76,6 +79,7 @@ class User extends Authenticatable implements FilamentUser
             'notify_whatsapp' => 'boolean',
             'unsubscribed_all' => 'boolean',
             'deletion_requested' => 'boolean',
+            'email_change_expires_at' => 'datetime',
         ];
     }
 

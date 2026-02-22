@@ -52,6 +52,33 @@ isProject: false
 # Laravel Full Rebuild — Wasetzon
 
 ## Current Task
+> **Three backlog features implemented:**
+>
+> - **Admin/staff notes on orders** — New `staff_notes` (text, nullable) column added to `orders` table via migration. `Order` model `$fillable` updated. New `PATCH /orders/{id}/staff-notes` route + `OrderController::updateStaffNotes()`. Staff-only amber-tinted card on order show page (above Order Items) — displays notes or "no notes yet" placeholder, inline edit form with save/cancel, gated to `$isStaff`.
+> - **Per-page "All" on staff orders** — Added `value="0"` option to the per_page select. `OrderController` now accepts `0` as valid per_page and uses `paginate(10000)` to load all records safely.
+> - **Change email with verification code** — Two new columns on `users`: `email_change_pending`, `email_change_code` (6-char), `email_change_expires_at`. Two new routes: `POST /account/email-change/request` (generates 6-digit code, stores pending email, expires in 15 min) and `POST /account/email-change/verify` (validates code, swaps email, clears pending fields, posts internal order comment). Account profile email edit form is now a 2-step UI: step 1 enters new email + sends code, step 2 enters the 6-digit code. Code delivery is stubbed (TODO comment for SMTP) — in local env the code appears in a dev flash banner. Flash messages added for both steps.
+>
+> **Still pending from original backlog:** Admin own/all view toggle on staff orders page, JSON input for app (API endpoint).
+>
+> **Next session should start with:** Blog system — `/blog` index and `/blog/{slug}` show. Audit WordPress reference site first.
+
+> **WhatsApp comment notify + Device/IP panel implemented:**
+>
+> - **WhatsApp notify on comment** — Staff-only, non-internal comments. Each comment's action row now shows a WhatsApp icon link (gated by `send-comment-notification` permission). Clicking opens `wa.me/{customer_phone}?text=...` with the order number and comment body pre-encoded. When customer has no phone on file, the icon renders greyed out with a tooltip. No backend call — pure frontend `<a>` tag.
+> - **Device/IP metadata panel on orders** — `OrderController::show()` queries `user_activity_logs` for `event = 'order_created'` and `subject_id = order_id` (staff only). A collapsible panel above the comments section shows: IP address, device type/model, browser+version, OS+version, geo location (city/country), and raw user agent. Only rendered when `$isStaff` and `$orderCreationLog` is non-null. No DB schema changes.
+>
+> **Next session should start with:** Blog system — `/blog` index (paginated card grid) and `/blog/{slug}` show (full post, SEO meta). Also still pending from backlog: admin customer notes (no DB column yet), per-page "all" on staff orders, admin own/all view toggle on staff orders, change email with verification code.
+
+> **Five backlog features implemented:**
+>
+> - **Duplicate button fix** — `orders/show.blade.php`: changed `?clone=` → `?duplicate_from=` so the "Similar Order" button correctly pre-fills `NewOrder::mount()`.
+> - **Ad campaign order tracking** — Added `order_count` column to `ad_campaigns` table (migration). `NewOrder::submitOrder()` now calls `AdCampaign::increment('order_count')` when the authenticated user has an `ad_campaign_id`. `AdCampaign` model updated with `order_count` in `$fillable`.
+> - **Profile changes → last order comment** — `AccountController::updateProfile()` now posts a system comment (`is_internal = true`) on the user's latest active order whenever profile is saved (same pattern as `updateNotifications()`). Comment body includes what changed (email vs general update). Translation keys added to both lang files.
+> - **Order stats + quick actions on account** — `AccountController::index()` now passes `$orderStats` (total/active/shipped/cancelled counts). `account/index.blade.php` now shows a 4-cell stat grid above the tabs (hidden when no orders) and two quick action buttons: "New Order" (primary) and "My Orders" (secondary).
+> - **Password reset in modal** — `NewOrder` Livewire component: added `sendModalResetLink()` action that calls Laravel's `Password::sendResetLink()`. Modal reset step now renders an email input, submit button (with loading state), success/error feedback, and back link. Uses existing `modalEmail` property pre-filled from previous step.
+>
+> **Next session should start with:** Blog system — `/blog` index (paginated card grid) and `/blog/{slug}` show (full post, SEO meta). Also still pending from backlog: admin customer notes (no DB column yet), WhatsApp notify on comment (UX decision needed), device/IP metadata panel on orders (UX decision needed), per-page "all" on staff orders, admin own/all view toggle on staff orders, change email with verification code.
+
 > **Customer-facing tracking card added to `/orders/{id}`. Carrier tracking URLs now admin-configurable.**
 >
 > **What was built:**

@@ -55,6 +55,16 @@
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ __('account.deletion_cancelled_notice') }}
         </div>
+    @elseif (session('status') === 'email-change-requested')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            {{ __('account.email_change_code_sent') }}
+        </div>
+    @elseif (session('status') === 'email-changed')
+        <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            {{ __('account.email_changed_success') }}
+        </div>
     @elseif (session('status') === 'notifications-updated')
         <div class="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
@@ -66,6 +76,46 @@
             {{ __('account.email_verified') }}
         </div>
     @endif
+
+    {{-- Order stats --}}
+    @if ($orderStats['total'] > 0)
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-gray-800">{{ $orderStats['total'] }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ __('account.orders_total') }}</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-primary-600">{{ $orderStats['active'] }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ __('account.orders_active') }}</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ $orderStats['shipped'] }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ __('account.orders_shipped') }}</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-gray-400">{{ $orderStats['cancelled'] }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ __('account.orders_cancelled') }}</div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Quick actions --}}
+    <div class="flex gap-3 mb-5">
+        <a href="{{ route('new-order') }}"
+           class="flex-1 flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-3 rounded-xl transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            {{ __('account.quick_new_order') }}
+        </a>
+        <a href="{{ route('orders.index') }}"
+           class="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-3 rounded-xl border border-gray-200 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            {{ __('account.quick_my_orders') }}
+        </a>
+    </div>
 
     {{-- Tab navigation --}}
     <div class="flex border-b border-gray-200 -mx-4 px-4 mb-6 overflow-x-auto scrollbar-hide">
@@ -251,27 +301,66 @@
                     </button>
                 </div>
 
-                {{-- Edit --}}
-                <div x-show="editing === 'email'" x-collapse>
-                    <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-3 pt-1">
+                {{-- Edit — 2-step email change flow --}}
+                <div x-show="editing === 'email'" x-collapse
+                     x-data="{ step: '{{ $user->email_change_pending && $user->email_change_expires_at && now()->lt($user->email_change_expires_at) ? 'verify' : 'request' }}' }">
+
+                    {{-- Step 1: enter new email --}}
+                    <form method="POST" action="{{ route('account.email-change.request') }}" class="space-y-3 pt-1"
+                          x-show="step === 'request'">
                         @csrf
-                        @method('PATCH')
-                        <input type="hidden" name="name" value="{{ $user->name }}">
-                        <input type="hidden" name="phone" value="{{ $user->phone }}">
-                        <input type="hidden" name="phone_secondary" value="{{ $user->phone_secondary }}">
                         <div>
-                            <label for="email" class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('Email') }}</label>
-                            <input id="email" name="email" type="email"
-                                value="{{ old('email', $user->email) }}"
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('account.new_email_label') }}</label>
+                            <input name="email" type="email"
+                                value="{{ old('email') }}"
                                 required autocomplete="email"
                                 x-init="$watch('editing', v => { if (v === 'email') $nextTick(() => $el.focus()) })"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('email', 'updateProfile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            @error('email', 'emailChange') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <p class="text-xs text-gray-400">{{ __('account.email_change_code_hint') }}</p>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
+                                {{ __('account.email_change_send_code') }}
+                            </button>
+                            <button type="button" @click="close()"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.cancel') }}
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Step 2: enter verification code --}}
+                    <form method="POST" action="{{ route('account.email-change.verify') }}" class="space-y-3 pt-1"
+                          x-show="step === 'verify'">
+                        @csrf
+                        @if ($user->email_change_pending)
+                            <p class="text-xs text-gray-500">
+                                {{ __('account.email_change_code_sent_to', ['email' => $user->email_change_pending]) }}
+                            </p>
+                            {{-- Debug only (local env): show code in flash --}}
+                            @if (session('email_change_code_debug') && app()->environment('local'))
+                                <p class="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded-lg">
+                                    [dev] Code: {{ session('email_change_code_debug') }}
+                                </p>
+                            @endif
+                        @endif
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ __('account.email_change_code_label') }}</label>
+                            <input name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+                                pattern="[0-9]{6}" required
+                                class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            @error('code', 'emailChange') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div class="flex gap-2">
                             <button type="submit"
                                 class="px-4 py-2 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors">
-                                {{ __('account.save_changes') }}
+                                {{ __('account.email_change_confirm') }}
+                            </button>
+                            <button type="button" @click="step = 'request'"
+                                class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                                {{ __('account.email_change_resend') }}
                             </button>
                             <button type="button" @click="close()"
                                 class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition">

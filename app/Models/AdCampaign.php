@@ -14,6 +14,7 @@ class AdCampaign extends Model
         'platform',
         'notes',
         'is_active',
+        'order_count',
     ];
 
     protected $casts = [

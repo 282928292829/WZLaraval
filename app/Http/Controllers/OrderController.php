@@ -10,6 +10,7 @@ use App\Models\OrderComment;
 use App\Models\OrderCommentRead;
 use App\Models\OrderTimeline;
 use App\Models\Setting;
+use App\Models\UserActivityLog;
 use App\Models\UserAddress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -92,8 +93,17 @@ class OrderController extends Controller
                 ->get(['id', 'order_number', 'status', 'created_at']);
         }
 
+        // Device/IP log from order creation — staff-only panel
+        $orderCreationLog = null;
+        if ($isStaff) {
+            $orderCreationLog = UserActivityLog::where('event', 'order_created')
+                ->where('subject_type', Order::class)
+                ->where('subject_id', $order->id)
+                ->first();
+        }
+
         return view('orders.show', compact(
-            'order', 'isOwner', 'isStaff', 'canEditItems', 'recentOrders', 'customerRecentOrders'
+            'order', 'isOwner', 'isStaff', 'canEditItems', 'recentOrders', 'customerRecentOrders', 'orderCreationLog'
         ));
     }
 
@@ -113,11 +123,16 @@ class OrderController extends Controller
 
         $isInternal = $isStaff && $request->boolean('is_internal');
 
+        $maxFiles = (int) Setting::get('comment_max_files', 5);
+        $maxFileMb = (int) Setting::get('comment_max_file_size_mb', 10);
+        $maxFileKb = $maxFileMb * 1024;
+
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:5000'],
             'is_internal' => ['sometimes', 'boolean'],
             'template_id' => ['sometimes', 'nullable', 'integer', 'exists:comment_templates,id'],
-            'file' => ['sometimes', 'file', 'max:10240',
+            'files' => ['sometimes', 'array', 'max:'.$maxFiles],
+            'files.*' => ['file', 'max:'.$maxFileKb,
                 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
         ]);
 
@@ -132,9 +147,8 @@ class OrderController extends Controller
             'is_internal' => $isInternal,
         ]);
 
-        // Attach file to comment if present
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
+        // Attach files to comment if present
+        foreach ($request->file('files', []) as $file) {
             $path = $file->store('order-files/'.$order->id, 'public');
             $order->files()->create([
                 'user_id' => $user->id,
@@ -461,12 +475,35 @@ class OrderController extends Controller
     {
         $this->authorize('send-comment-notification');
 
-        // Notification sending is disabled by default; logs the intent only.
-        // Will be wired to mail queue when SMTP is configured in Phase 3.
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        $comment = OrderComment::where('order_id', $orderId)->with('order.user')->findOrFail($commentId);
+        $order = $comment->order;
 
-        return redirect()->route('orders.show', $orderId)
-            ->with('success', __('orders.notification_queued'));
+        if (! Setting::get('email_enabled', false)) {
+            return redirect()->route('orders.show', $orderId)
+                ->with('error', __('orders.notification_email_disabled'));
+        }
+
+        if (! $order->user || ! $order->user->email) {
+            return redirect()->route('orders.show', $orderId)
+                ->with('error', __('orders.notification_no_recipient'));
+        }
+
+        try {
+            Mail::to($order->user->email, $order->user->name)
+                ->queue(new \App\Mail\CommentNotification($comment));
+
+            $order->timeline()->create([
+                'user_id' => auth()->id(),
+                'type' => 'note',
+                'body' => __('orders.timeline_notification_sent', ['email' => $order->user->email]),
+            ]);
+
+            return redirect()->route('orders.show', $orderId)
+                ->with('success', __('orders.notification_queued'));
+        } catch (\Throwable $e) {
+            return redirect()->route('orders.show', $orderId)
+                ->with('error', __('orders.notification_failed').': '.$e->getMessage());
+        }
     }
 
     public function index(Request $request)
@@ -535,11 +572,15 @@ class OrderController extends Controller
         }
 
         $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
-        $perPage = in_array((int) $request->get('per_page'), [25, 50, 100]) ? (int) $request->get('per_page') : 25;
+        $requestedPerPage = (int) $request->get('per_page');
+        $perPage = in_array($requestedPerPage, [25, 50, 100, 0]) ? $requestedPerPage : 25;
 
         $query->orderBy('created_at', $sort);
 
-        $orders = $query->paginate($perPage)->withQueryString();
+        // per_page=0 means show all — use a large number to avoid memory issues
+        $orders = $perPage === 0
+            ? $query->paginate(10000)->withQueryString()
+            : $query->paginate($perPage)->withQueryString();
         $statuses = Order::getStatuses();
 
         return view('orders.staff', compact('orders', 'perPage', 'statuses', 'sort'));
@@ -927,5 +968,25 @@ class OrderController extends Controller
 
         return redirect()->route('orders.show', $id)
             ->with('success', __('orders.payment_updated'));
+    }
+
+    /** Staff: update internal notes about this order/customer */
+    public function updateStaffNotes(Request $request, int $id)
+    {
+        $user = auth()->user();
+        $order = Order::findOrFail($id);
+
+        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'staff_notes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $order->update(['staff_notes' => $validated['staff_notes'] ?? null]);
+
+        return redirect()->route('orders.show', $id)
+            ->with('success', __('orders.staff_notes_saved'));
     }
 }
