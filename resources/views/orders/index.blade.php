@@ -194,8 +194,8 @@
                                 </div>
                             </div>
 
-                            {{-- Row 2: Status + Items --}}
-                            <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-50">
+                            {{-- Row 2: Status --}}
+                            <div class="flex items-center pt-2 border-t border-gray-50">
                                 <div>
                                     <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block mb-1">
                                         {{ __('Status') }}
@@ -203,12 +203,6 @@
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
                                         {{ $order->statusLabel() }}
                                     </span>
-                                </div>
-                                <div class="text-end">
-                                    <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide block">
-                                        {{ __('Items') }}
-                                    </span>
-                                    <span class="text-sm font-medium text-gray-600">{{ $order->items_count }}</span>
                                 </div>
                             </div>
 
@@ -234,9 +228,6 @@
                             </th>
                             <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
                                 {{ __('Date') }}
-                            </th>
-                            <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                {{ __('Items') }}
                             </th>
                             <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wide">
                                 {{ __('Status') }}
@@ -278,7 +269,6 @@
                                 style="border-inline-start-width: 3px; border-inline-start-style: solid; border-inline-start-color: {{ $borderColor }};">
                                 <td class="px-4 py-3 font-bold text-primary-600">{{ $order->order_number }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ $order->created_at->format('Y-m-d') }}</td>
-                                <td class="px-4 py-3 text-gray-600">{{ $order->items_count }}</td>
                                 <td class="px-4 py-3">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
                                         {{ $order->statusLabel() }}

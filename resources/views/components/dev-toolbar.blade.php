@@ -1,4 +1,4 @@
-@if (app()->environment('local'))
+@if (app()->environment('local') && config('app.dev_toolbar', true))
 @php
     $roles = [
         'customer'   => ['label' => 'Customer',   'color' => 'bg-sky-500 hover:bg-sky-600'],
@@ -12,7 +12,7 @@
 
 <div x-data="{ open: true }"
      class="z-[9999] flex flex-col items-center gap-1.5"
-     style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%);">
+     style="position:fixed; bottom:16px; right:16px;">
 
     {{-- Toolbar --}}
     <div x-show="open"

@@ -19,25 +19,19 @@
 
         @include('layouts.navigation')
 
-        @if(request()->routeIs('new-order') || request()->routeIs('caldue1'))
-            {{-- Full-width content for order form pages --}}
-            <main class="flex-1">
+        <div class="flex flex-col items-center px-4 pt-8 pb-12 flex-1">
+            <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
                 {{ $slot }}
-            </main>
-        @else
-            {{-- Auth card for other guest pages --}}
-            <div class="flex flex-col items-center px-4 pt-8 pb-12 flex-1">
-                <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
-                    {{ $slot }}
-                </div>
             </div>
-        @endif
+        </div>
 
         <footer class="py-5 text-center text-xs text-gray-400">
             <span>&copy; {{ date('Y') }} {{ __('app.name') }}</span>
         </footer>
 
         @livewireScripts
+
+        @stack('scripts')
 
         <x-dev-toolbar />
     </body>

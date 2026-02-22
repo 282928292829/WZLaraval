@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use App\Models\OrderComment;
-use App\Models\UserAddress;
 use App\Models\UserActivityLog;
+use App\Models\UserAddress;
+use App\Models\UserBalance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +18,7 @@ class AccountController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $tab  = in_array($request->query('tab'), ['profile', 'addresses', 'activity', 'notifications'])
+        $tab = in_array($request->query('tab'), ['profile', 'addresses', 'activity', 'notifications', 'balance'])
             ? $request->query('tab')
             : 'profile';
 
@@ -30,26 +32,46 @@ class AccountController extends Controller
             ->paginate(15)
             ->appends(['tab' => 'activity']);
 
-        return view('account.index', compact('user', 'tab', 'addresses', 'activityLogs'));
+        $balanceTransactions = UserBalance::where('user_id', $user->id)
+            ->with('creator:id,name')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->appends(['tab' => 'balance']);
+
+        $balanceTotals = UserBalance::totalsForUser($user->id);
+
+        return view('account.index', compact('user', 'tab', 'addresses', 'activityLogs', 'balanceTransactions', 'balanceTotals'));
     }
 
     public function updateProfile(Request $request): RedirectResponse
     {
         $user = $request->user();
 
-        $validated = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'email'           => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'phone'           => ['nullable', 'string', 'max:30'],
-            'phone_secondary' => ['nullable', 'string', 'max:30'],
+        $validated = $request->validateWithBag('updateProfile', [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9]+$/'],
+            'phone_secondary' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9]*$/'],
+        ], [
+            'name.required' => __('account.validation_name_required'),
+            'name.max' => __('account.validation_name_max'),
+            'email.required' => __('account.validation_email_required'),
+            'email.email' => __('account.validation_email_invalid'),
+            'email.max' => __('account.validation_email_max'),
+            'email.unique' => __('account.validation_email_taken'),
+            'phone.regex' => __('account.validation_phone_digits'),
+            'phone.max' => __('account.validation_phone_max'),
+            'phone_secondary.regex' => __('account.validation_phone_digits'),
+            'phone_secondary.max' => __('account.validation_phone_max'),
         ]);
 
         // Prepend editable country codes when they were submitted
         if ($request->filled('phone') && $request->filled('phone_code')) {
-            $validated['phone'] = rtrim($request->input('phone_code'), ' ') . $validated['phone'];
+            $validated['phone'] = rtrim($request->input('phone_code'), ' ').$validated['phone'];
         }
         if ($request->filled('phone_secondary') && $request->filled('phone_secondary_code')) {
-            $validated['phone_secondary'] = rtrim($request->input('phone_secondary_code'), ' ') . $validated['phone_secondary'];
+            $validated['phone_secondary'] = rtrim($request->input('phone_secondary_code'), ' ').$validated['phone_secondary'];
         }
 
         $emailChanged = $user->email !== $validated['email'];
@@ -64,7 +86,7 @@ class AccountController extends Controller
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $user->id,
-            'event'   => 'profile_updated',
+            'event' => 'profile_updated',
         ]);
 
         return redirect()->route('account.index')->with('status', 'profile-updated');
@@ -72,9 +94,9 @@ class AccountController extends Controller
 
     public function updatePassword(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
+        $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
-            'password'         => [
+            'password' => [
                 'required',
                 'string',
                 'min:8',
@@ -85,15 +107,15 @@ class AccountController extends Controller
             ],
             'password_confirmation' => ['required'],
         ], [
-            'current_password.required'        => __('account.pw_error_current_required'),
+            'current_password.required' => __('account.pw_error_current_required'),
             'current_password.current_password' => __('account.pw_error_current_wrong'),
-            'password.required'                => __('account.pw_error_new_required'),
-            'password.min'                     => __('account.pw_error_min'),
-            'password.max'                     => __('account.pw_error_max'),
-            'password.confirmed'               => __('account.pw_error_confirmed'),
-            'password.different'               => __('account.pw_error_same_as_current'),
-            'password.password'                => __('account.pw_error_strength'),
-            'password_confirmation.required'   => __('account.pw_error_confirm_required'),
+            'password.required' => __('account.pw_error_new_required'),
+            'password.min' => __('account.pw_error_min'),
+            'password.max' => __('account.pw_error_max'),
+            'password.confirmed' => __('account.pw_error_confirmed'),
+            'password.different' => __('account.pw_error_same_as_current'),
+            'password.password' => __('account.pw_error_strength'),
+            'password_confirmation.required' => __('account.pw_error_confirm_required'),
         ]);
 
         $request->user()->update([
@@ -102,7 +124,7 @@ class AccountController extends Controller
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $request->user()->id,
-            'event'   => 'password_changed',
+            'event' => 'password_changed',
         ]);
 
         return redirect()->route('account.index')->with('status', 'password-updated');
@@ -110,24 +132,35 @@ class AccountController extends Controller
 
     public function storeAddress(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'label'          => ['nullable', 'string', 'max:50'],
+        $validated = $request->validateWithBag('storeAddress', [
+            'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:255'],
-            'phone'          => ['required', 'string', 'max:30'],
-            'country'        => ['nullable', 'string', 'max:100'],
-            'city'           => ['nullable', 'string', 'max:100'],
-            'street'         => ['nullable', 'string', 'max:255'],
-            'district'       => ['nullable', 'string', 'max:255'],
-            'short_address'  => ['nullable', 'string', 'max:20'],
-            'address'        => ['nullable', 'string', 'max:1000'],
-            'is_default'     => ['nullable', 'boolean'],
+            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[0-9]+$/'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'city' => ['required', 'string', 'max:100'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'short_address' => ['nullable', 'string', 'max:20'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'is_default' => ['nullable', 'boolean'],
+        ], [
+            'label.max' => __('account.validation_label_max'),
+            'recipient_name.required' => __('account.validation_recipient_required'),
+            'recipient_name.max' => __('account.validation_recipient_max'),
+            'phone.required' => __('account.validation_address_phone_required'),
+            'phone.regex' => __('account.validation_phone_digits'),
+            'phone.max' => __('account.validation_phone_max'),
+            'city.required' => __('account.validation_city_required'),
+            'city.max' => __('account.validation_city_max'),
+            'street.max' => __('account.validation_street_max'),
+            'district.max' => __('account.validation_district_max'),
+            'short_address.max' => __('account.validation_short_address_max'),
+            'address.max' => __('account.validation_address_max'),
         ]);
-
-        $validated['country'] = $validated['country'] ?: 'المملكة العربية السعودية';
 
         $user = $request->user();
 
-        $isDefault = !empty($validated['is_default']);
+        $isDefault = ! empty($validated['is_default']);
 
         if ($isDefault) {
             $user->addresses()->update(['is_default' => false]);
@@ -140,12 +173,37 @@ class AccountController extends Controller
 
         $validated['is_default'] = $isDefault;
 
-        $user->addresses()->create($validated);
+        $newAddress = $user->addresses()->create($validated);
+
+        // Sync phone to user profile when user has none
+        if (! empty($validated['phone']) && empty($user->phone)) {
+            $user->update(['phone' => $validated['phone']]);
+        }
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $user->id,
-            'event'   => 'address_added',
+            'event' => 'address_added',
         ]);
+
+        // If submitted from an order page, snapshot the new address onto that order
+        $orderId = (int) $request->input('_order_id');
+        if ($orderId) {
+            $order = Order::where('id', $orderId)->where('user_id', $user->id)->first();
+            if ($order && ! $order->shipping_address_snapshot) {
+                $order->update([
+                    'shipping_address_id' => $newAddress->id,
+                    'shipping_address_snapshot' => $newAddress->only([
+                        'label', 'recipient_name', 'phone', 'country',
+                        'city', 'street', 'district', 'short_address', 'address',
+                    ]),
+                ]);
+            }
+        }
+
+        $redirectBack = $request->input('_redirect_back');
+        if ($redirectBack && str_starts_with($redirectBack, url('/'))) {
+            return redirect($redirectBack)->with('success', __('orders.address_saved_order_updated'));
+        }
 
         return redirect()->route('account.index', ['tab' => 'addresses'])->with('status', 'address-saved');
     }
@@ -154,22 +212,33 @@ class AccountController extends Controller
     {
         abort_if($address->user_id !== $request->user()->id, 403);
 
-        $validated = $request->validate([
-            'label'          => ['nullable', 'string', 'max:50'],
+        $validated = $request->validateWithBag('updateAddress', [
+            'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:255'],
-            'phone'          => ['required', 'string', 'max:30'],
-            'country'        => ['nullable', 'string', 'max:100'],
-            'city'           => ['nullable', 'string', 'max:100'],
-            'street'         => ['nullable', 'string', 'max:255'],
-            'district'       => ['nullable', 'string', 'max:255'],
-            'short_address'  => ['nullable', 'string', 'max:20'],
-            'address'        => ['nullable', 'string', 'max:1000'],
-            'is_default'     => ['nullable', 'boolean'],
+            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[0-9]+$/'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'city' => ['required', 'string', 'max:100'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'short_address' => ['nullable', 'string', 'max:20'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'is_default' => ['nullable', 'boolean'],
+        ], [
+            'label.max' => __('account.validation_label_max'),
+            'recipient_name.required' => __('account.validation_recipient_required'),
+            'recipient_name.max' => __('account.validation_recipient_max'),
+            'phone.required' => __('account.validation_address_phone_required'),
+            'phone.regex' => __('account.validation_phone_digits'),
+            'phone.max' => __('account.validation_phone_max'),
+            'city.required' => __('account.validation_city_required'),
+            'city.max' => __('account.validation_city_max'),
+            'street.max' => __('account.validation_street_max'),
+            'district.max' => __('account.validation_district_max'),
+            'short_address.max' => __('account.validation_short_address_max'),
+            'address.max' => __('account.validation_address_max'),
         ]);
 
-        $validated['country'] = $validated['country'] ?: 'المملكة العربية السعودية';
-
-        $isDefault = !empty($validated['is_default']);
+        $isDefault = ! empty($validated['is_default']);
 
         if ($isDefault) {
             $request->user()->addresses()->where('id', '!=', $address->id)->update(['is_default' => false]);
@@ -178,6 +247,12 @@ class AccountController extends Controller
         $validated['is_default'] = $isDefault;
 
         $address->update($validated);
+
+        // Sync phone to user profile when user has none
+        $user = $request->user();
+        if (! empty($validated['phone']) && empty($user->phone)) {
+            $user->update(['phone' => $validated['phone']]);
+        }
 
         return redirect()->route('account.index', ['tab' => 'addresses'])->with('status', 'address-saved');
     }
@@ -195,7 +270,7 @@ class AccountController extends Controller
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $request->user()->id,
-            'event'   => 'address_removed',
+            'event' => 'address_removed',
         ]);
 
         return redirect()->route('account.index', ['tab' => 'addresses'])->with('status', 'address-deleted');
@@ -216,12 +291,12 @@ class AccountController extends Controller
         $user = $request->user();
 
         $prevWhatsapp = (bool) $user->notify_whatsapp;
-        $newWhatsapp  = $request->boolean('notify_whatsapp');
+        $newWhatsapp = $request->boolean('notify_whatsapp');
 
         $user->update([
-            'notify_orders'     => true, // always on — mandatory for order notifications
+            'notify_orders' => true, // always on — mandatory for order notifications
             'notify_promotions' => $request->boolean('notify_promotions'),
-            'notify_whatsapp'   => $newWhatsapp,
+            'notify_whatsapp' => $newWhatsapp,
         ]);
 
         // Post system comment on latest active order when WhatsApp preference changes
@@ -234,9 +309,9 @@ class AccountController extends Controller
             if ($activeOrder) {
                 $status = $newWhatsapp ? 'مفعّل' : 'معطّل';
                 OrderComment::create([
-                    'order_id'    => $activeOrder->id,
-                    'user_id'     => null,
-                    'body'        => "🔔 [نظام] العميل غيّر تفضيل إشعارات واتساب إلى: {$status}",
+                    'order_id' => $activeOrder->id,
+                    'user_id' => null,
+                    'body' => "🔔 [نظام] العميل غيّر تفضيل إشعارات واتساب إلى: {$status}",
                     'is_internal' => true,
                 ]);
             }
@@ -261,22 +336,22 @@ class AccountController extends Controller
             ->latest()
             ->first();
 
-        if (!$activeOrder) {
+        if (! $activeOrder) {
             $activeOrder = $user->orders()->latest()->first();
         }
 
         if ($activeOrder) {
             OrderComment::create([
-                'order_id'    => $activeOrder->id,
-                'user_id'     => null,
-                'body'        => '⚠️ [نظام] طلب العميل حذف حسابه. يرجى مراجعة الطلب والتواصل معه قبل تنفيذ الحذف.',
+                'order_id' => $activeOrder->id,
+                'user_id' => null,
+                'body' => '⚠️ [نظام] طلب العميل حذف حسابه. يرجى مراجعة الطلب والتواصل معه قبل تنفيذ الحذف.',
                 'is_internal' => true,
             ]);
         }
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $user->id,
-            'event'   => 'deletion_requested',
+            'event' => 'deletion_requested',
         ]);
 
         return redirect()->route('account.index')->with('status', 'deletion-requested');
@@ -286,7 +361,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->deletion_requested) {
+        if (! $user->deletion_requested) {
             return redirect()->route('account.index');
         }
 
@@ -294,7 +369,7 @@ class AccountController extends Controller
 
         UserActivityLog::fromRequest($request, [
             'user_id' => $user->id,
-            'event'   => 'deletion_cancelled',
+            'event' => 'deletion_cancelled',
         ]);
 
         return redirect()->route('account.index')->with('status', 'deletion-cancelled');

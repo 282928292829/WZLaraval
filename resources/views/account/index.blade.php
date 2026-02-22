@@ -6,33 +6,14 @@
         default                      => ['label' => __('Customer'),    'class' => 'bg-gray-100 text-gray-600'],
     };
 
-    $hasErrors      = $errors->any();
-    $openAddressAdd = $hasErrors && old('_form') === 'add_address';
-    $openEditId     = $hasErrors && old('_form') === 'edit_address' ? (int) old('_address_id') : null;
-    $validTabs      = ['profile', 'addresses', 'activity', 'notifications'];
+    $hasErrors      = $errors->any() || $errors->updateProfile->any() || $errors->updatePassword->any() || $errors->storeAddress->any() || $errors->updateAddress->any();
+    $openAddressAdd = $errors->storeAddress->any() && old('_form') === 'add_address';
+    $openEditId     = $errors->updateAddress->any() && old('_form') === 'edit_address' ? (int) old('_address_id') : null;
+    $validTabs      = ['profile', 'addresses', 'activity', 'notifications', 'balance'];
 @endphp
 
 <x-app-layout>
 
-{{-- ── User identity header ──────────────────────────────────────────────── --}}
-<div class="bg-white border-b border-gray-100">
-    <div class="max-w-3xl mx-auto px-4 py-5 sm:py-6 flex items-center gap-4">
-        {{-- Avatar (initials) --}}
-        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-100 flex items-center justify-center shrink-0 select-none">
-            <span class="text-xl sm:text-2xl font-bold text-primary-600 leading-none">
-                {{ $user->initials() }}
-            </span>
-        </div>
-
-        <div class="min-w-0 flex-1">
-            <h1 class="text-lg font-bold text-gray-900 truncate">{{ $user->name }}</h1>
-            <p class="text-sm text-gray-500 truncate mt-0.5">{{ $user->email }}</p>
-            <span class="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ $roleLabel['class'] }}">
-                {{ $roleLabel['label'] }}
-            </span>
-        </div>
-    </div>
-</div>
 
 {{-- ── Tabs + content ──────────────────────────────────────────────────────── --}}
 <div class="max-w-3xl mx-auto px-4 py-6 sm:py-8"
@@ -113,6 +94,15 @@
             @endif
         </button>
         <button
+            @click="tab = 'notifications'"
+            :class="tab === 'notifications' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            {{ __('account.notifications_tab') }}
+        </button>
+        <button
             @click="tab = 'activity'"
             :class="tab === 'activity' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
             class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
@@ -122,13 +112,13 @@
             {{ __('account.activity_tab') }}
         </button>
         <button
-            @click="tab = 'notifications'"
-            :class="tab === 'notifications' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            @click="tab = 'balance'"
+            :class="tab === 'balance' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
             class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
             </svg>
-            {{ __('account.notifications_tab') }}
+            {{ __('account.balance_tab') }}
         </button>
     </div>
 
@@ -140,17 +130,20 @@
         {{-- Personal info --}}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
              x-data="{
-                editing: '{{ $errors->hasAny(['current_password','password','password_confirmation']) ? 'password' : ($errors->hasAny(['name','email','phone','phone_secondary']) ? (
-                    $errors->has('name') ? 'name' : (
-                        $errors->has('email') ? 'email' : 'phone'
+                editing: '{{ $errors->updatePassword->hasAny(['current_password','password','password_confirmation']) ? 'password' : ($errors->updateProfile->hasAny(['name','email','phone','phone_secondary']) ? (
+                    $errors->updateProfile->has('name') ? 'name' : (
+                        $errors->updateProfile->has('email') ? 'email' : 'phone'
                     )
                 ) : '') }}',
                 open(field) { this.editing = field; },
                 close()     { this.editing = ''; }
              }">
 
-            <div class="px-5 py-4 border-b border-gray-100">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                 <h2 class="text-sm font-semibold text-gray-900">{{ __('account.personal_info') }}</h2>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $roleLabel['class'] }}">
+                    {{ $roleLabel['label'] }}
+                </span>
             </div>
 
             {{-- ── Name row ─────────────────────────────────────────────── --}}
@@ -183,7 +176,7 @@
                                 required autocomplete="name"
                                 x-init="$watch('editing', v => { if (v === 'name') $nextTick(() => $el.focus()) })"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            @error('name', 'updateProfile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div class="flex gap-2">
                             <button type="submit"
@@ -273,7 +266,7 @@
                                 required autocomplete="email"
                                 x-init="$watch('editing', v => { if (v === 'email') $nextTick(() => $el.focus()) })"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            @error('email', 'updateProfile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div class="flex gap-2">
                             <button type="submit"
@@ -320,7 +313,7 @@
                                 id="current_password" name="current_password" type="password"
                                 autocomplete="current-password"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('current_password')
+                            @error('current_password', 'updatePassword')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -331,7 +324,7 @@
                             </label>
                             <input id="password" name="password" type="password" autocomplete="new-password"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('password')
+                            @error('password', 'updatePassword')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -342,7 +335,7 @@
                             </label>
                             <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password"
                                 class="block w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                            @error('password_confirmation')
+                            @error('password_confirmation', 'updatePassword')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -369,12 +362,16 @@
                     <div class="min-w-0 flex-1 space-y-1">
                         <div>
                             <p class="text-xs text-gray-400">{{ __('account.mobile_primary_label') }}</p>
-                            <p class="text-sm font-medium text-gray-900">{{ $user->phone ?: '—' }}</p>
+                            @if ($user->phone)
+                                <p class="text-sm font-medium text-gray-900"><span dir="ltr" style="unicode-bidi:embed">{{ $user->phone }}</span></p>
+                            @else
+                                <p class="text-sm text-amber-600">{{ __('account.no_phone_notice') }}</p>
+                            @endif
                         </div>
                         @if ($user->phone_secondary)
                         <div>
                             <p class="text-xs text-gray-400">{{ __('account.mobile_secondary_label') }}</p>
-                            <p class="text-sm font-medium text-gray-900">{{ $user->phone_secondary }}</p>
+                            <p class="text-sm font-medium text-gray-900"><span dir="ltr" style="unicode-bidi:embed">{{ $user->phone_secondary }}</span></p>
                         </div>
                         @endif
                     </div>
@@ -385,6 +382,10 @@
                 </div>
 
                 {{-- Edit --}}
+                @php
+                    $phoneStripped          = preg_replace('/^\+?966/', '', $user->phone ?? '');
+                    $phoneSecondaryStripped = preg_replace('/^\+?966/', '', $user->phone_secondary ?? '');
+                @endphp
                 <div x-show="editing === 'phone'" x-collapse>
                     <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-3 pt-1">
                         @csrf
@@ -401,12 +402,12 @@
                                         x-init="$watch('editing', v => { if (v === 'phone') $nextTick(() => $refs.phoneInput.focus()) })"
                                         class="shrink-0 w-16 px-2.5 py-2.5 text-sm text-center bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none focus:bg-white transition">
                                     <input x-ref="phoneInput" id="phone" name="phone" type="tel"
-                                        value="{{ old('phone', $user->phone) }}"
+                                        value="{{ old('phone', $phoneStripped) }}"
                                         placeholder="{{ __('account.mobile_placeholder') }}"
                                         autocomplete="tel" inputmode="numeric"
                                         class="block w-full px-3 py-2.5 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0">
                                 </div>
-                                @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                @error('phone', 'updateProfile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label for="phone_secondary" class="block text-xs font-medium text-gray-600 mb-1.5">
@@ -419,12 +420,12 @@
                                         maxlength="6"
                                         class="shrink-0 w-16 px-2.5 py-2.5 text-sm text-center bg-gray-50 border-r border-gray-200 text-gray-700 focus:outline-none focus:bg-white transition">
                                     <input id="phone_secondary" name="phone_secondary" type="tel"
-                                        value="{{ old('phone_secondary', $user->phone_secondary) }}"
+                                        value="{{ old('phone_secondary', $phoneSecondaryStripped) }}"
                                         placeholder="{{ __('account.mobile_placeholder') }}"
                                         autocomplete="tel" inputmode="numeric"
                                         class="block w-full px-3 py-2.5 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0">
                                 </div>
-                                @error('phone_secondary') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                @error('phone_secondary', 'updateProfile') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
                         <div class="flex gap-2">
@@ -443,24 +444,6 @@
 
         </div>
 
-        {{-- Sign Out --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="text-sm font-semibold text-gray-900">{{ __('account.sign_out') }}</h2>
-            </div>
-            <div class="px-5 py-5">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit"
-                            class="w-full flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                        {{ __('account.sign_out') }}
-                    </button>
-                </form>
-            </div>
-        </div>
 
         {{-- Delete Account --}}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
@@ -652,13 +635,16 @@
                                     value="{{ $openEditId === $address->id ? old('label') : $address->label }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
                                     placeholder="{{ __('account.label_placeholder') }}">
+                                @error('label', 'updateAddress')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
                                 <input type="text" name="recipient_name" required
                                     value="{{ $openEditId === $address->id ? old('recipient_name') : $address->recipient_name }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                @error('recipient_name')
+                                @error('recipient_name', 'updateAddress')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -667,21 +653,22 @@
                         {{-- Country + City --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }}</label>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.country') }}
+                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                </label>
                                 <input type="text" name="country"
-                                    value="{{ $openEditId === $address->id ? old('country', 'المملكة العربية السعودية') : ($address->country ?: 'المملكة العربية السعودية') }}"
-                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-500 cursor-default"
-                                    readonly>
+                                    value="{{ $openEditId === $address->id ? old('country', $address->country) : $address->country }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
-                                    {{ __('account.city') }}
-                                    <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                    {{ __('account.city') }} <span class="text-red-400">*</span>
                                 </label>
-                                <input type="text" name="city"
+                                <input type="text" name="city" required
                                     value="{{ $openEditId === $address->id ? old('city') : $address->city }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                @error('city')
+                                @error('city', 'updateAddress')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -697,6 +684,9 @@
                                 <input type="text" name="street"
                                     value="{{ $openEditId === $address->id ? old('street') : $address->street }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('street', 'updateAddress')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -706,20 +696,47 @@
                                 <input type="text" name="district"
                                     value="{{ $openEditId === $address->id ? old('district') : $address->district }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                @error('district', 'updateAddress')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
                         {{-- Short address + Address details --}}
+                        @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000')); @endphp
                         <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                            <div x-data="{ open: false }">
+                                <label class="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
                                     {{ __('account.short_address') }}
                                     <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                    <button type="button" @click="open = !open" class="text-blue-400 hover:text-blue-600 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </button>
                                 </label>
                                 <input type="text" name="short_address" maxlength="20"
                                     value="{{ $openEditId === $address->id ? old('short_address') : $address->short_address }}"
                                     placeholder="{{ __('account.short_address_placeholder') }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                <div x-show="open" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5">
+                                    <p class="text-xs text-blue-700 leading-relaxed">
+                                        <span class="font-medium">١.</span>
+                                        {{ __('account.national_address_tip_whatsapp') }}
+                                        &nbsp;<a href="https://wa.me/966112898888" target="_blank" rel="noopener"
+                                            class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">0112898888</a>
+                                        ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
+                                    </p>
+                                    <p class="text-xs text-blue-700 leading-relaxed">
+                                        <span class="font-medium">٢.</span>
+                                        {{ __('account.national_address_tip_apps') }}
+                                    </p>
+                                    <p class="text-xs text-blue-700 leading-relaxed">
+                                        <span class="font-medium">٣.</span>
+                                        <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
+                                            class="underline underline-offset-2 font-semibold hover:text-blue-900 transition">{{ __('account.national_address_tip_us') }}</a>
+                                    </p>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -730,7 +747,7 @@
                                     value="{{ $openEditId === $address->id ? old('address') : $address->address }}"
                                     placeholder="{{ __('account.address_placeholder') }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                @error('address')
+                                @error('address', 'updateAddress')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -743,8 +760,9 @@
                                 <input type="tel" name="phone" required
                                     value="{{ $openEditId === $address->id ? old('phone') : $address->phone }}"
                                     placeholder="{{ __('account.mobile_placeholder') }}"
+                                    inputmode="numeric" pattern="[0-9]*"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                @error('phone')
+                                @error('phone', 'updateAddress')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -821,12 +839,15 @@
                         <input type="text" name="label" value="{{ old('label') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
                             placeholder="{{ __('account.label_placeholder') }}">
+                        @error('label', 'storeAddress')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
                         <input type="text" name="recipient_name" required value="{{ old('recipient_name') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                        @error('recipient_name')
+                        @error('recipient_name', 'storeAddress')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -835,20 +856,21 @@
                 {{-- Country + City --}}
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }}</label>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            {{ __('account.country') }}
+                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                        </label>
                         <input type="text" name="country"
-                            value="{{ old('country', 'المملكة العربية السعودية') }}"
-                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-500 cursor-default"
-                            readonly>
+                            value="{{ old('country', 'السعودية') }}"
+                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
-                            {{ __('account.city') }}
-                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                            {{ __('account.city') }} <span class="text-red-400">*</span>
                         </label>
-                        <input type="text" name="city" value="{{ old('city') }}"
+                        <input type="text" name="city" required value="{{ old('city') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                        @error('city')
+                        @error('city', 'storeAddress')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -863,6 +885,9 @@
                         </label>
                         <input type="text" name="street" value="{{ old('street') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('street', 'storeAddress')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -871,20 +896,47 @@
                         </label>
                         <input type="text" name="district" value="{{ old('district') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        @error('district', 'storeAddress')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
                 {{-- Short address (Saudi national address) + Address details --}}
+                @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000')); @endphp
                 <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <div x-data="{ open: false }">
+                        <label class="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
                             {{ __('account.short_address') }}
                             <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                            <button type="button" @click="open = !open" class="text-blue-400 hover:text-blue-600 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
                         </label>
                         <input type="text" name="short_address" value="{{ old('short_address') }}"
                             maxlength="20"
                             placeholder="{{ __('account.short_address_placeholder') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        <div x-show="open" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5">
+                            <p class="text-xs text-blue-700 leading-relaxed">
+                                <span class="font-medium">١.</span>
+                                {{ __('account.national_address_tip_whatsapp') }}
+                                &nbsp;<a href="https://wa.me/966112898888" target="_blank" rel="noopener"
+                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">0112898888</a>
+                                ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
+                            </p>
+                            <p class="text-xs text-blue-700 leading-relaxed">
+                                <span class="font-medium">٢.</span>
+                                {{ __('account.national_address_tip_apps') }}
+                            </p>
+                            <p class="text-xs text-blue-700 leading-relaxed">
+                                <span class="font-medium">٣.</span>
+                                <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
+                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition">{{ __('account.national_address_tip_us') }}</a>
+                            </p>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -894,7 +946,7 @@
                         <input type="text" name="address" value="{{ old('address') }}"
                             placeholder="{{ __('account.address_placeholder') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                        @error('address')
+                        @error('address', 'storeAddress')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -907,18 +959,23 @@
                         <input type="tel" name="phone" required
                             value="{{ old('phone', $user->phone) }}"
                             placeholder="{{ __('account.mobile_placeholder') }}"
+                            inputmode="numeric" pattern="[0-9]*"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                        @error('phone')
+                        @error('phone', 'storeAddress')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="flex items-end pb-1">
-                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
-                            <input type="checkbox" name="is_default" value="1" {{ old('is_default') ? 'checked' : '' }}
-                                class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
-                            {{ __('account.set_default') }}
-                        </label>
-                    </div>
+                    @if ($addresses->count())
+                        <div class="flex items-end pb-1">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                                <input type="checkbox" name="is_default" value="1" {{ old('is_default') ? 'checked' : '' }}
+                                    class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+                                {{ __('account.set_default') }}
+                            </label>
+                        </div>
+                    @else
+                        <div></div>
+                    @endif
                 </div>
 
                 <div class="flex items-center gap-3 pt-1">
@@ -1075,6 +1132,119 @@
                 </div>
             </form>
         </div>
+
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════ --}}
+    {{-- BALANCE TAB                                                            --}}
+    {{-- ══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="tab === 'balance'" x-cloak class="space-y-4">
+
+        {{-- Summary cards --}}
+        @if ($balanceTotals)
+            <div class="grid gap-3 sm:grid-cols-{{ count($balanceTotals) > 1 ? count($balanceTotals) : '1' }}">
+                @foreach ($balanceTotals as $currency => $totals)
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p class="text-xs text-gray-400 mb-1">{{ __('account.balance_net') }} — {{ $currency }}</p>
+                        <p class="text-2xl font-bold {{ $totals['net'] >= 0 ? 'text-green-600' : 'text-red-500' }}">
+                            {{ number_format($totals['net'], 2) }}
+                            <span class="text-base font-medium">{{ $currency }}</span>
+                        </p>
+                        <div class="flex gap-4 mt-2 text-xs text-gray-400">
+                            <span class="text-green-600">↑ {{ number_format($totals['credit'], 2) }}</span>
+                            <span class="text-red-500">↓ {{ number_format($totals['debit'], 2) }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Transaction list --}}
+        @if ($balanceTransactions->isEmpty())
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-12 text-center">
+                <div class="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-medium text-gray-500">{{ __('account.balance_no_transactions') }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ __('account.balance_no_transactions_hint') }}</p>
+            </div>
+        @else
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h2 class="text-sm font-semibold text-gray-900">{{ __('account.balance_current') }}</h2>
+                </div>
+
+                {{-- Mobile: stacked cards --}}
+                <div class="sm:hidden divide-y divide-gray-50">
+                    @foreach ($balanceTransactions as $tx)
+                        <div class="px-5 py-4 flex items-start gap-3">
+                            <div class="shrink-0 mt-0.5">
+                                @if ($tx->type === 'credit')
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50">
+                                        <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50">
+                                        <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/>
+                                        </svg>
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm font-semibold {{ $tx->type === 'credit' ? 'text-green-600' : 'text-red-500' }}">
+                                        {{ $tx->type === 'credit' ? '+' : '-' }}{{ number_format($tx->amount, 2) }} {{ $tx->currency }}
+                                    </span>
+                                    <span class="text-xs text-gray-400 shrink-0">{{ $tx->date->format('d M Y') }}</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1 break-words">{{ $tx->note }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop: table --}}
+                <table class="hidden sm:table w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-400 uppercase tracking-wide">
+                        <tr>
+                            <th class="px-5 py-3 text-start font-medium">{{ __('account.balance_date') }}</th>
+                            <th class="px-5 py-3 text-start font-medium">{{ __('account.balance_type') }}</th>
+                            <th class="px-5 py-3 text-start font-medium">{{ __('account.balance_amount') }}</th>
+                            <th class="px-5 py-3 text-start font-medium">{{ __('account.balance_note') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @foreach ($balanceTransactions as $tx)
+                            <tr class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-5 py-3.5 text-gray-500 whitespace-nowrap">{{ $tx->date->format('d M Y') }}</td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                        {{ $tx->type === 'credit' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500' }}">
+                                        {{ $tx->type === 'credit' ? __('account.balance_credit') : __('account.balance_debit') }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 font-semibold whitespace-nowrap
+                                    {{ $tx->type === 'credit' ? 'text-green-600' : 'text-red-500' }}">
+                                    {{ $tx->type === 'credit' ? '+' : '-' }}{{ number_format($tx->amount, 2) }} {{ $tx->currency }}
+                                </td>
+                                <td class="px-5 py-3.5 text-gray-600 max-w-xs">{{ $tx->note }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+
+                @if ($balanceTransactions->hasPages())
+                    <div class="px-5 py-4 border-t border-gray-100">
+                        {{ $balanceTransactions->links() }}
+                    </div>
+                @endif
+            </div>
+        @endif
 
     </div>
 

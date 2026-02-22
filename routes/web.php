@@ -8,7 +8,6 @@ use App\Http\Controllers\InboxController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
-use App\Livewire\Caldue1;
 use App\Livewire\NewOrder;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +23,7 @@ Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
+
     return view('welcome');
 });
 
@@ -44,9 +44,6 @@ Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show')
 Route::get('/new-order', NewOrder::class)
     ->name('new-order');
 
-Route::get('/caldue1', Caldue1::class)
-    ->name('caldue1');
-
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::post('/orders/bulk', [OrderController::class, 'bulkUpdate'])->name('orders.bulk-update');
@@ -64,6 +61,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderController::class, 'sendNotification'])->name('orders.comments.notify');
     Route::patch('/orders/{id}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
     Route::post('/orders/{id}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
+
+    // Customer quick actions
+    Route::post('/orders/{id}/payment-notify', [OrderController::class, 'paymentNotify'])->name('orders.payment-notify');
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::post('/orders/{id}/customer-merge', [OrderController::class, 'customerMerge'])->name('orders.customer-merge');
+
+    // Staff quick actions
+    Route::post('/orders/{id}/transfer', [OrderController::class, 'transferOrder'])->name('orders.transfer');
+    Route::post('/orders/{id}/shipping-tracking', [OrderController::class, 'updateShippingTracking'])->name('orders.shipping-tracking');
+    Route::post('/orders/{id}/update-payment', [OrderController::class, 'updatePayment'])->name('orders.update-payment');
 });
 
 Route::get('/dashboard', DashboardController::class)

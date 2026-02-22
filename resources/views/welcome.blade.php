@@ -7,7 +7,7 @@
 
         <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28 text-center">
             {{-- Badge --}}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold px-3 py-1 mb-6 tracking-wide uppercase">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-green-700 text-xs font-semibold px-3 py-1 mb-6 tracking-wide uppercase">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                 {{ __('Trusted Service') }}
             </span>
@@ -58,7 +58,7 @@
             <div class="mt-3">
                 <a href="/wasetamazon-to-wasetzon"
                    class="text-xs text-gray-400 hover:text-orange-500 transition-colors duration-150">
-                    وسيط أمازون صار وسيط زون (السبب؟)
+                    {{ __('Waset Amazon is now Waset Zone (why?)') }}
                 </a>
             </div>
         </div>

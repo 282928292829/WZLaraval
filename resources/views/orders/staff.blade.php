@@ -4,7 +4,11 @@
             <div>
                 <h1 class="text-xl font-semibold text-gray-900">{{ __('All Orders') }}</h1>
                 <p class="mt-0.5 text-sm text-gray-500">
-                    {{ $orders->total() }} {{ __('staff.clear_filters') }}
+                    {{ $orders->total() }} {{ __('orders.orders') }}
+                    @if (request()->hasAny(['search','status','from','to']))
+                        — <a href="{{ route('orders.index') }}"
+                             class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
+                            {{ __('staff.clear_filters') }}
                         </a>
                     @endif
                 </p>

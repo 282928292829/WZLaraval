@@ -6,15 +6,15 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -67,14 +67,14 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'is_banned'          => 'boolean',
-            'banned_at'          => 'datetime',
-            'last_login_at'      => 'datetime',
-            'notify_orders'      => 'boolean',
-            'notify_promotions'  => 'boolean',
-            'notify_whatsapp'    => 'boolean',
-            'unsubscribed_all'   => 'boolean',
+            'password' => 'hashed',
+            'is_banned' => 'boolean',
+            'banned_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'notify_orders' => 'boolean',
+            'notify_promotions' => 'boolean',
+            'notify_whatsapp' => 'boolean',
+            'unsubscribed_all' => 'boolean',
             'deletion_requested' => 'boolean',
         ];
     }
@@ -99,12 +99,18 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Order::class);
     }
 
+    public function balances(): HasMany
+    {
+        return $this->hasMany(UserBalance::class);
+    }
+
     public function initials(): string
     {
         $parts = explode(' ', trim($this->name));
         if (count($parts) >= 2) {
-            return mb_strtoupper(mb_substr($parts[0], 0, 1) . mb_substr($parts[1], 0, 1));
+            return mb_strtoupper(mb_substr($parts[0], 0, 1).mb_substr($parts[1], 0, 1));
         }
+
         return mb_strtoupper(mb_substr($this->name, 0, 2));
     }
 }

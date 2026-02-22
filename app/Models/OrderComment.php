@@ -17,6 +17,7 @@ class OrderComment extends Model
         'user_id',
         'body',
         'is_internal',
+        'is_system',
         'is_edited',
         'edited_at',
         'deleted_by',
@@ -24,7 +25,8 @@ class OrderComment extends Model
 
     protected $casts = [
         'is_internal' => 'boolean',
-        'is_edited'   => 'boolean',
+        'is_system' => 'boolean',
+        'is_edited' => 'boolean',
     ];
 
     public function order(): BelongsTo
@@ -58,6 +60,10 @@ class OrderComment extends Model
 
     public function canBeDeletedBy(\App\Models\User $user): bool
     {
+        if ($this->is_system) {
+            return false;
+        }
+
         if ($user->can('delete-any-comment')) {
             return true;
         }
@@ -67,6 +73,10 @@ class OrderComment extends Model
 
     public function canBeEditedBy(\App\Models\User $user): bool
     {
+        if ($this->is_system) {
+            return false;
+        }
+
         if ($user->hasAnyRole(['editor', 'admin', 'superadmin']) && $user->can('reply-to-comments')) {
             return true;
         }

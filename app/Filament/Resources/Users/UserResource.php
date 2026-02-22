@@ -7,19 +7,15 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -58,7 +54,7 @@ class UserResource extends Resource
     public static function form(Schema $schema): Schema
     {
         $allPermissions = Permission::orderBy('name')->pluck('name', 'name')->toArray();
-        $allRoles       = Role::orderBy('name')->pluck('name', 'name')->toArray();
+        $allRoles = Role::orderBy('name')->pluck('name', 'name')->toArray();
 
         return $schema
             ->components([
@@ -216,11 +212,18 @@ class UserResource extends Resource
             ->searchable();
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            \App\Filament\Resources\Users\RelationManagers\BalancesRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListUsers::route('/'),
-            'edit'  => EditUser::route('/{record}/edit'),
+            'edit' => EditUser::route('/{record}/edit'),
         ];
     }
 

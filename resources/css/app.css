@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/forms" {
+    strategy: "class";
+}
 
 @theme {
     --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;

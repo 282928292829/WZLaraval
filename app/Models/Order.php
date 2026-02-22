@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
@@ -30,16 +30,24 @@ class Order extends Model
         'merged_into',
         'merged_at',
         'merged_by',
+        'tracking_number',
+        'tracking_company',
+        'payment_amount',
+        'payment_date',
+        'payment_method',
+        'payment_receipt',
     ];
 
     protected $casts = [
-        'is_paid'                    => 'boolean',
-        'paid_at'                    => 'datetime',
-        'can_edit_until'             => 'datetime',
-        'merged_at'                  => 'datetime',
-        'subtotal'                   => 'decimal:2',
-        'total_amount'               => 'decimal:2',
-        'shipping_address_snapshot'  => 'array',
+        'is_paid' => 'boolean',
+        'paid_at' => 'datetime',
+        'can_edit_until' => 'datetime',
+        'merged_at' => 'datetime',
+        'subtotal' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'payment_amount' => 'decimal:2',
+        'payment_date' => 'date',
+        'shipping_address_snapshot' => 'array',
     ];
 
     public function user(): BelongsTo
@@ -80,32 +88,32 @@ class Order extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'pending'       => __('Pending'),
+            'pending' => __('Pending'),
             'needs_payment' => __('Needs Payment'),
-            'processing'    => __('Processing'),
-            'purchasing'    => __('Purchasing'),
-            'shipped'       => __('Shipped'),
-            'delivered'     => __('Delivered'),
-            'completed'     => __('Completed'),
-            'cancelled'     => __('Cancelled'),
-            'on_hold'       => __('On Hold'),
-            default         => ucfirst($this->status),
+            'processing' => __('Processing'),
+            'purchasing' => __('Purchasing'),
+            'shipped' => __('Shipped'),
+            'delivered' => __('Delivered'),
+            'completed' => __('Completed'),
+            'cancelled' => __('Cancelled'),
+            'on_hold' => __('On Hold'),
+            default => ucfirst($this->status),
         };
     }
 
     public function statusColor(): string
     {
         return match ($this->status) {
-            'pending'       => 'yellow',
+            'pending' => 'yellow',
             'needs_payment' => 'red',
-            'processing'    => 'blue',
-            'purchasing'    => 'indigo',
-            'shipped'       => 'purple',
-            'delivered'     => 'teal',
-            'completed'     => 'green',
-            'cancelled'     => 'gray',
-            'on_hold'       => 'orange',
-            default         => 'gray',
+            'processing' => 'blue',
+            'purchasing' => 'indigo',
+            'shipped' => 'purple',
+            'delivered' => 'teal',
+            'completed' => 'green',
+            'cancelled' => 'gray',
+            'on_hold' => 'orange',
+            default => 'gray',
         };
     }
 
@@ -113,23 +121,29 @@ class Order extends Model
     {
         return match ($this->status) {
             'needs_payment', 'on_hold' => 'needs_action',
-            'completed', 'cancelled'   => 'completed',
-            default                    => 'in_progress',
+            'completed', 'cancelled' => 'completed',
+            default => 'in_progress',
         };
+    }
+
+    /** Customer can cancel when order is pending or needs_payment (matches WP: status 0 or 1) */
+    public function isCancellable(): bool
+    {
+        return in_array($this->status, ['pending', 'needs_payment']);
     }
 
     public static function getStatuses(): array
     {
         return [
-            'pending'       => __('Pending'),
+            'pending' => __('Pending'),
             'needs_payment' => __('Needs Payment'),
-            'processing'    => __('Processing'),
-            'purchasing'    => __('Purchasing'),
-            'shipped'       => __('Shipped'),
-            'delivered'     => __('Delivered'),
-            'completed'     => __('Completed'),
-            'cancelled'     => __('Cancelled'),
-            'on_hold'       => __('On Hold'),
+            'processing' => __('Processing'),
+            'purchasing' => __('Purchasing'),
+            'shipped' => __('Shipped'),
+            'delivered' => __('Delivered'),
+            'completed' => __('Completed'),
+            'cancelled' => __('Cancelled'),
+            'on_hold' => __('On Hold'),
         ];
     }
 }

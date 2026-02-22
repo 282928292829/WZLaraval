@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'dev_toolbar' => env('DEV_TOOLBAR', true),
+
 ];

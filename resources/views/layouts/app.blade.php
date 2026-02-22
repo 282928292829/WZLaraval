@@ -125,19 +125,41 @@
                 <div class="border-t border-gray-100">
                     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-6">
                         <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
-                        <img src="{{ asset('images/Banks.svg') }}"
-                             alt="Banks"
-                             class="w-full max-w-xs object-contain opacity-70"
-                             loading="lazy"
-                             height="18">
-                        <img src="{{ asset('images/Payment.svg') }}"
-                             alt="Payment"
-                             class="w-full max-w-sm object-contain opacity-70"
-                             loading="lazy"
-                             height="18">
-                        <img src="{{ asset('images/Shipping.svg') }}"
+                        {{-- Bank logos ordered right→left: Rajhi, Ahli, Bilad, Alinma, SAB, Riyad, SAIB --}}
+                        <div class="flex flex-wrap items-center justify-center gap-5 opacity-70" dir="ltr">
+                            @foreach([
+                                ['src' => 'images/banks/saib.svg',    'alt' => 'SAIB'],
+                                ['src' => 'images/banks/riyad.svg',   'alt' => 'Riyad Bank'],
+                                ['src' => 'images/banks/sab.svg',     'alt' => 'SAB'],
+                                ['src' => 'images/banks/alinma.svg',  'alt' => 'Alinma Bank'],
+                                ['src' => 'images/banks/albilad.svg', 'alt' => 'Bank Albilad'],
+                                ['src' => 'images/banks/snb.svg',     'alt' => 'NCB / Ahli'],
+                                ['src' => 'images/banks/rajhi.svg',   'alt' => 'Al Rajhi Bank'],
+                            ] as $bank)
+                                <img src="{{ asset($bank['src']) }}"
+                                     alt="{{ $bank['alt'] }}"
+                                     class="h-7 w-auto object-contain"
+                                     loading="lazy">
+                            @endforeach
+                        </div>
+                        {{-- Individual payment logos — flex so RTL ordering works correctly --}}
+                        <div class="flex flex-wrap items-center justify-center gap-5 opacity-70">
+                            @foreach([
+                                ['src' => 'images/payment/visa.svg',          'alt' => 'Visa',          'h' => 'h-6'],
+                                ['src' => 'images/payment/mastercard.svg',     'alt' => 'Mastercard',    'h' => 'h-8'],
+                                ['src' => 'images/payment/paypal.svg',         'alt' => 'PayPal',        'h' => 'h-6'],
+                                ['src' => 'images/payment/western-union.svg',  'alt' => 'Western Union', 'h' => 'h-7'],
+                                ['src' => 'images/payment/moneygram.svg',      'alt' => 'MoneyGram',     'h' => 'h-7'],
+                            ] as $pm)
+                                <img src="{{ asset($pm['src']) }}"
+                                     alt="{{ $pm['alt'] }}"
+                                     class="{{ $pm['h'] }} w-auto object-contain"
+                                     loading="lazy">
+                            @endforeach
+                        </div>
+                        <img src="{{ asset('images/shipping-line.svg') }}"
                              alt="Shipping"
-                             class="w-full max-w-md object-contain opacity-70"
+                             class="w-full max-w-2xl object-contain opacity-70"
                              loading="lazy"
                              height="18">
                     </div>

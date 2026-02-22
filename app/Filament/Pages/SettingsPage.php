@@ -89,37 +89,37 @@ class SettingsPage extends Page
     {
         return [
             // General
-            'site_name'             => 'Wasetzon',
-            'default_language'      => 'ar',
-            'default_currency'      => 'USD',
+            'site_name' => 'Wasetzon',
+            'default_language' => 'ar',
+            'default_currency' => 'USD',
 
             // Appearance
-            'primary_color'         => '#f97316',
-            'font_family'           => 'IBM Plex Sans Arabic',
-            'logo_text'             => 'Wasetzon',
+            'primary_color' => '#f97316',
+            'font_family' => 'IBM Plex Sans Arabic',
+            'logo_text' => 'Wasetzon',
 
             // Order rules
-            'max_products_per_order'     => '30',
-            'order_edit_window_minutes'  => '10',
-            'order_new_layout'           => '1',
-            'orders_per_hour_customer'   => '10',
-            'orders_per_hour_admin'      => '50',
-            'max_file_size_mb'           => '2',
-            'max_orders_per_day'         => '5',
+            'max_products_per_order' => '30',
+            'order_edit_window_minutes' => '10',
+            'order_new_layout' => '1',
+            'orders_per_hour_customer' => '10',
+            'orders_per_hour_admin' => '50',
+            'max_file_size_mb' => '2',
+            'max_orders_per_day' => '5',
 
             // Email (disabled by default, SMTP not configured)
-            'email_enabled'               => '0',
-            'email_from_name'             => 'Wasetzon',
-            'email_from_address'          => '',
-            'smtp_host'                   => '',
-            'smtp_port'                   => '587',
-            'smtp_username'               => '',
-            'smtp_password'               => '',
-            'smtp_encryption'             => 'tls',
-            'email_registration'          => '0',
-            'email_welcome'               => '0',
-            'email_password_reset'        => '1',
-            'email_comment_notification'  => '0',
+            'email_enabled' => '0',
+            'email_from_name' => 'Wasetzon',
+            'email_from_address' => '',
+            'smtp_host' => '',
+            'smtp_port' => '587',
+            'smtp_username' => '',
+            'smtp_password' => '',
+            'smtp_encryption' => 'tls',
+            'email_registration' => '0',
+            'email_welcome' => '0',
+            'email_password_reset' => '1',
+            'email_comment_notification' => '0',
 
             // Social login
             'google_login_enabled' => '0',
@@ -133,7 +133,7 @@ class SettingsPage extends Page
 
             // Exchange rates config (flat keys — synced to/from exchange_rates JSON blob)
             'exchange_rates_markup_percent' => '3',
-            'exchange_rates_auto_fetch'     => true,
+            'exchange_rates_auto_fetch' => true,
             // Per-currency manual overrides (empty string = use auto formula)
             'exrate_override_USD' => '',
             'exrate_override_EUR' => '',
@@ -146,11 +146,26 @@ class SettingsPage extends Page
 
             // Commission rules
             'commission_threshold_sar' => '500',
-            'commission_rate_above'    => '8',
-            'commission_flat_below'    => '50',
+            'commission_rate_above' => '8',
+            'commission_flat_below' => '50',
 
-            // Quick-action button toggles (shown to staff on order detail)
-            'qa_mark_paid'    => true,
+            // Customer quick-action toggles
+            'qa_customer_section' => true,
+            'qa_payment_notify' => true,
+            'qa_shipping_address_btn' => true,
+            'qa_similar_order' => true,
+            'qa_customer_merge' => true,
+            'qa_customer_cancel' => true,
+
+            // Staff quick-action toggles
+            'qa_team_section' => true,
+            'qa_transfer_order' => true,
+            'qa_payment_tracking' => true,
+            'qa_shipping_tracking' => true,
+            'qa_team_merge' => true,
+
+            // Legacy staff quick-action button toggles
+            'qa_mark_paid' => true,
             'qa_mark_shipped' => true,
             'qa_request_info' => true,
             'qa_cancel_order' => true,
@@ -159,17 +174,24 @@ class SettingsPage extends Page
             'url_validation_strict' => true,
 
             // Shipping rates (SAR)
-            'aramex_first_half_kg'   => '119',
-            'aramex_rest_half_kg'    => '39',
-            'aramex_over21_per_kg'   => '59',
-            'aramex_delivery_days'   => '7-10',
-            'dhl_first_half_kg'      => '169',
-            'dhl_rest_half_kg'       => '43',
-            'dhl_over21_per_kg'      => '63',
-            'dhl_delivery_days'      => '7-10',
+            'aramex_first_half_kg' => '119',
+            'aramex_rest_half_kg' => '39',
+            'aramex_over21_per_kg' => '59',
+            'aramex_delivery_days' => '7-10',
+            'dhl_first_half_kg' => '169',
+            'dhl_rest_half_kg' => '43',
+            'dhl_over21_per_kg' => '63',
+            'dhl_delivery_days' => '7-10',
             'domestic_first_half_kg' => '69',
-            'domestic_rest_half_kg'  => '19',
+            'domestic_rest_half_kg' => '19',
             'domestic_delivery_days' => '4-7',
+
+            // Carrier tracking URL templates ({tracking} replaced with the actual number)
+            'carrier_url_aramex' => 'https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}',
+            'carrier_url_smsa'   => 'https://www.smsaexpress.com/track/?tracknumbers={tracking}',
+            'carrier_url_dhl'    => 'https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}',
+            'carrier_url_fedex'  => 'https://www.fedextrack/?trknbr={tracking}',
+            'carrier_url_ups'    => 'https://www.ups.com/track?tracknum={tracking}',
         ];
     }
 
@@ -188,16 +210,16 @@ class SettingsPage extends Page
     /** Build helper text showing current market / final rates for a currency */
     protected function rateInfo(string $currency): string
     {
-        $er    = $this->data['exchange_rates'] ?? null;
+        $er = $this->data['exchange_rates'] ?? null;
         $rates = is_array($er) ? ($er['rates'] ?? []) : [];
-        $rate  = $rates[$currency] ?? null;
+        $rate = $rates[$currency] ?? null;
 
         if (! $rate || empty($rate['market'])) {
             return __('No data yet — run "Fetch Now".');
         }
 
         $market = number_format((float) $rate['market'], 4);
-        $final  = number_format((float) $rate['final'],  4);
+        $final = number_format((float) $rate['final'], 4);
 
         return __('Market: :m SAR | Final: :f SAR', ['m' => $market, 'f' => $final]);
     }
@@ -354,7 +376,7 @@ class SettingsPage extends Page
                     ->description(__('SAR prices used by the public shipping calculator. Changes take effect immediately.'))
                     ->schema([
                         // ── Aramex ──────────────────────────────────────
-                        \Filament\Schemas\Components\Section::make('Aramex — ' . __('Economy Shipping'))
+                        \Filament\Schemas\Components\Section::make('Aramex — '.__('Economy Shipping'))
                             ->schema([
                                 TextInput::make('data.aramex_first_half_kg')
                                     ->label(__('First 0.5 kg (SAR)'))
@@ -376,7 +398,7 @@ class SettingsPage extends Page
                             ->columns(4),
 
                         // ── DHL ──────────────────────────────────────────
-                        \Filament\Schemas\Components\Section::make('DHL — ' . __('Express Shipping'))
+                        \Filament\Schemas\Components\Section::make('DHL — '.__('Express Shipping'))
                             ->schema([
                                 TextInput::make('data.dhl_first_half_kg')
                                     ->label(__('First 0.5 kg (SAR)'))
@@ -412,6 +434,38 @@ class SettingsPage extends Page
                                     ->placeholder('4-7'),
                             ])
                             ->columns(3),
+
+                        // ── Carrier Tracking URLs ─────────────────────────
+                        \Filament\Schemas\Components\Section::make(__('Carrier Tracking URLs'))
+                            ->description(__('Use {tracking} as the placeholder for the tracking number. Shown to customers as a clickable link on the order page.'))
+                            ->schema([
+                                TextInput::make('data.carrier_url_aramex')
+                                    ->label('Aramex')
+                                    ->url()
+                                    ->placeholder('https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}')
+                                    ->helperText(__('Leave blank to show tracking number only (no link).')),
+
+                                TextInput::make('data.carrier_url_smsa')
+                                    ->label('SMSA')
+                                    ->url()
+                                    ->placeholder('https://www.smsaexpress.com/track/?tracknumbers={tracking}'),
+
+                                TextInput::make('data.carrier_url_dhl')
+                                    ->label('DHL')
+                                    ->url()
+                                    ->placeholder('https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}'),
+
+                                TextInput::make('data.carrier_url_fedex')
+                                    ->label('FedEx')
+                                    ->url()
+                                    ->placeholder('https://www.fedextrack/?trknbr={tracking}'),
+
+                                TextInput::make('data.carrier_url_ups')
+                                    ->label('UPS')
+                                    ->url()
+                                    ->placeholder('https://www.ups.com/track?tracknum={tracking}'),
+                            ])
+                            ->columns(1),
                     ])
                     ->collapsible(),
 
@@ -439,49 +493,49 @@ class SettingsPage extends Page
 
                         // Per-currency manual override inputs
                         TextInput::make('data.exrate_override_USD')
-                            ->label('USD — ' . __('Manual Rate (SAR)'))
+                            ->label('USD — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('USD')),
 
                         TextInput::make('data.exrate_override_EUR')
-                            ->label('EUR — ' . __('Manual Rate (SAR)'))
+                            ->label('EUR — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('EUR')),
 
                         TextInput::make('data.exrate_override_GBP')
-                            ->label('GBP — ' . __('Manual Rate (SAR)'))
+                            ->label('GBP — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('GBP')),
 
                         TextInput::make('data.exrate_override_CNY')
-                            ->label('CNY — ' . __('Manual Rate (SAR)'))
+                            ->label('CNY — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('CNY')),
 
                         TextInput::make('data.exrate_override_JPY')
-                            ->label('JPY — ' . __('Manual Rate (SAR)'))
+                            ->label('JPY — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('JPY')),
 
                         TextInput::make('data.exrate_override_KRW')
-                            ->label('KRW — ' . __('Manual Rate (SAR)'))
+                            ->label('KRW — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('KRW')),
 
                         TextInput::make('data.exrate_override_TRY')
-                            ->label('TRY — ' . __('Manual Rate (SAR)'))
+                            ->label('TRY — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('TRY')),
 
                         TextInput::make('data.exrate_override_AED')
-                            ->label('AED — ' . __('Manual Rate (SAR)'))
+                            ->label('AED — '.__('Manual Rate (SAR)'))
                             ->numeric()
                             ->placeholder(__('Auto'))
                             ->helperText(fn () => $this->rateInfo('AED')),
@@ -521,22 +575,71 @@ class SettingsPage extends Page
                 // ── Quick Action Toggles ──────────────────────────────────────
                 Section::make(__('Quick Action Toggles'))
                     ->icon(Heroicon::OutlinedBolt)
-                    ->description(__('Enable or disable each quick-action button shown to staff on the order detail page.'))
+                    ->description(__('Enable or disable each quick-action button shown on the order detail page.'))
                     ->schema([
+                        // Customer section
+                        Toggle::make('data.qa_customer_section')
+                            ->label(__('Show Customer Quick Actions Section'))
+                            ->onColor('success')
+                            ->columnSpanFull(),
+
+                        Toggle::make('data.qa_payment_notify')
+                            ->label('💰 '.__('Customer: Report Payment Transfer'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_shipping_address_btn')
+                            ->label('📍 '.__('Customer: Set Shipping Address Button'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_similar_order')
+                            ->label('📝 '.__('Customer: Similar Order'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_customer_merge')
+                            ->label('🔀 '.__('Customer: Request Order Merge'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_customer_cancel')
+                            ->label('❌ '.__('Customer: Cancel Order'))
+                            ->onColor('danger'),
+
+                        // Staff section
+                        Toggle::make('data.qa_team_section')
+                            ->label(__('Show Staff Quick Actions Section'))
+                            ->onColor('success')
+                            ->columnSpanFull(),
+
+                        Toggle::make('data.qa_transfer_order')
+                            ->label('🔄 '.__('Staff: Transfer Order Ownership'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_payment_tracking')
+                            ->label('💰 '.__('Staff: Payment Tracking'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_shipping_tracking')
+                            ->label('📦 '.__('Staff: Update Shipping Tracking'))
+                            ->onColor('success'),
+
+                        Toggle::make('data.qa_team_merge')
+                            ->label('🔗 '.__('Staff: Merge Orders'))
+                            ->onColor('success'),
+
+                        // Legacy staff quick buttons
                         Toggle::make('data.qa_mark_paid')
-                            ->label(__('Mark as Paid'))
+                            ->label(__('Staff: Mark as Paid'))
                             ->onColor('success'),
 
                         Toggle::make('data.qa_mark_shipped')
-                            ->label(__('Mark as Shipped'))
+                            ->label(__('Staff: Mark as Shipped'))
                             ->onColor('success'),
 
                         Toggle::make('data.qa_request_info')
-                            ->label(__('Request More Info'))
+                            ->label(__('Staff: Request More Info'))
                             ->onColor('success'),
 
                         Toggle::make('data.qa_cancel_order')
-                            ->label(__('Cancel Order'))
+                            ->label(__('Staff: Cancel Order'))
                             ->onColor('danger'),
                     ])
                     ->columns(2)
@@ -677,68 +780,87 @@ class SettingsPage extends Page
         $data = $this->form->getState();
 
         $groupMap = [
-            'site_name'                  => 'general',
-            'default_language'           => 'general',
-            'default_currency'           => 'general',
-            'primary_color'              => 'appearance',
-            'font_family'                => 'appearance',
-            'logo_text'                  => 'appearance',
-            'max_products_per_order'     => 'orders',
-            'order_edit_window_minutes'  => 'orders',
-            'order_new_layout'           => 'orders',
-            'orders_per_hour_customer'   => 'orders',
-            'orders_per_hour_admin'      => 'orders',
-            'max_file_size_mb'           => 'orders',
-            'max_orders_per_day'         => 'orders',
-            'url_validation_strict'      => 'orders',
-            'order_form_fields'          => 'orders',
-            'email_enabled'              => 'email',
-            'email_from_name'            => 'email',
-            'email_from_address'         => 'email',
-            'smtp_host'                  => 'email',
-            'smtp_port'                  => 'email',
-            'smtp_username'              => 'email',
-            'smtp_password'              => 'email',
-            'smtp_encryption'            => 'email',
-            'email_registration'         => 'email',
-            'email_welcome'              => 'email',
-            'email_password_reset'       => 'email',
+            'site_name' => 'general',
+            'default_language' => 'general',
+            'default_currency' => 'general',
+            'primary_color' => 'appearance',
+            'font_family' => 'appearance',
+            'logo_text' => 'appearance',
+            'max_products_per_order' => 'orders',
+            'order_edit_window_minutes' => 'orders',
+            'order_new_layout' => 'orders',
+            'orders_per_hour_customer' => 'orders',
+            'orders_per_hour_admin' => 'orders',
+            'max_file_size_mb' => 'orders',
+            'max_orders_per_day' => 'orders',
+            'url_validation_strict' => 'orders',
+            'order_form_fields' => 'orders',
+            'email_enabled' => 'email',
+            'email_from_name' => 'email',
+            'email_from_address' => 'email',
+            'smtp_host' => 'email',
+            'smtp_port' => 'email',
+            'smtp_username' => 'email',
+            'smtp_password' => 'email',
+            'smtp_encryption' => 'email',
+            'email_registration' => 'email',
+            'email_welcome' => 'email',
+            'email_password_reset' => 'email',
             'email_comment_notification' => 'email',
-            'google_login_enabled'       => 'social',
-            'header_scripts'             => 'scripts',
-            'footer_scripts'             => 'scripts',
+            'google_login_enabled' => 'social',
+            'header_scripts' => 'scripts',
+            'footer_scripts' => 'scripts',
             // Exchange rates flat keys
             'exchange_rates_markup_percent' => 'exchange_rates',
-            'exchange_rates_auto_fetch'     => 'exchange_rates',
-            'exrate_override_USD'           => 'exchange_rates',
-            'exrate_override_EUR'           => 'exchange_rates',
-            'exrate_override_GBP'           => 'exchange_rates',
-            'exrate_override_CNY'           => 'exchange_rates',
-            'exrate_override_JPY'           => 'exchange_rates',
-            'exrate_override_KRW'           => 'exchange_rates',
-            'exrate_override_TRY'           => 'exchange_rates',
-            'exrate_override_AED'           => 'exchange_rates',
+            'exchange_rates_auto_fetch' => 'exchange_rates',
+            'exrate_override_USD' => 'exchange_rates',
+            'exrate_override_EUR' => 'exchange_rates',
+            'exrate_override_GBP' => 'exchange_rates',
+            'exrate_override_CNY' => 'exchange_rates',
+            'exrate_override_JPY' => 'exchange_rates',
+            'exrate_override_KRW' => 'exchange_rates',
+            'exrate_override_TRY' => 'exchange_rates',
+            'exrate_override_AED' => 'exchange_rates',
             // Commission
             'commission_threshold_sar' => 'commission',
-            'commission_rate_above'    => 'commission',
-            'commission_flat_below'    => 'commission',
-            // Quick actions
-            'qa_mark_paid'    => 'quick_actions',
+            'commission_rate_above' => 'commission',
+            'commission_flat_below' => 'commission',
+            // Quick actions — customer section
+            'qa_customer_section' => 'quick_actions',
+            'qa_payment_notify' => 'quick_actions',
+            'qa_shipping_address_btn' => 'quick_actions',
+            'qa_similar_order' => 'quick_actions',
+            'qa_customer_merge' => 'quick_actions',
+            'qa_customer_cancel' => 'quick_actions',
+            // Quick actions — staff/team section
+            'qa_team_section' => 'quick_actions',
+            'qa_transfer_order' => 'quick_actions',
+            'qa_payment_tracking' => 'quick_actions',
+            'qa_shipping_tracking' => 'quick_actions',
+            'qa_team_merge' => 'quick_actions',
+            // Quick actions — legacy
+            'qa_mark_paid' => 'quick_actions',
             'qa_mark_shipped' => 'quick_actions',
             'qa_request_info' => 'quick_actions',
             'qa_cancel_order' => 'quick_actions',
             // Shipping rates
-            'aramex_first_half_kg'   => 'shipping',
-            'aramex_rest_half_kg'    => 'shipping',
-            'aramex_over21_per_kg'   => 'shipping',
-            'aramex_delivery_days'   => 'shipping',
-            'dhl_first_half_kg'      => 'shipping',
-            'dhl_rest_half_kg'       => 'shipping',
-            'dhl_over21_per_kg'      => 'shipping',
-            'dhl_delivery_days'      => 'shipping',
+            'aramex_first_half_kg' => 'shipping',
+            'aramex_rest_half_kg' => 'shipping',
+            'aramex_over21_per_kg' => 'shipping',
+            'aramex_delivery_days' => 'shipping',
+            'dhl_first_half_kg' => 'shipping',
+            'dhl_rest_half_kg' => 'shipping',
+            'dhl_over21_per_kg' => 'shipping',
+            'dhl_delivery_days' => 'shipping',
             'domestic_first_half_kg' => 'shipping',
-            'domestic_rest_half_kg'  => 'shipping',
+            'domestic_rest_half_kg' => 'shipping',
             'domestic_delivery_days' => 'shipping',
+            // Carrier tracking URLs
+            'carrier_url_aramex' => 'shipping',
+            'carrier_url_smsa'   => 'shipping',
+            'carrier_url_dhl'    => 'shipping',
+            'carrier_url_fedex'  => 'shipping',
+            'carrier_url_ups'    => 'shipping',
         ];
 
         $booleanKeys = [
@@ -746,6 +868,10 @@ class SettingsPage extends Page
             'email_password_reset', 'email_comment_notification',
             'google_login_enabled',
             'exchange_rates_auto_fetch',
+            'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
+            'qa_similar_order', 'qa_customer_merge', 'qa_customer_cancel',
+            'qa_team_section', 'qa_transfer_order', 'qa_payment_tracking',
+            'qa_shipping_tracking', 'qa_team_merge',
             'qa_mark_paid', 'qa_mark_shipped', 'qa_request_info', 'qa_cancel_order',
             'url_validation_strict',
         ];
@@ -820,12 +946,12 @@ class SettingsPage extends Page
         }
 
         $markup = (float) ($data['exchange_rates_markup_percent'] ?? 3);
-        $er['markup_percent']    = $markup;
+        $er['markup_percent'] = $markup;
         $er['auto_fetch_enabled'] = (bool) ($data['exchange_rates_auto_fetch'] ?? true);
 
         foreach (FetchExchangeRates::CURRENCIES as $cur) {
             $override = $data["exrate_override_{$cur}"] ?? '';
-            $manual   = ($override !== '' && $override !== null && is_numeric($override))
+            $manual = ($override !== '' && $override !== null && is_numeric($override))
                 ? (float) $override
                 : null;
 

@@ -35,39 +35,46 @@
         @php
         $banks = [
             [
-                'name'    => '{{ __('payment.alrajhi') }}',
+                'name'    => __('payment.alrajhi'),
+                'logo'    => '/images/banks/rajhi.svg',
                 'account' => '624608010055610',
                 'iban'    => 'SA4180000624608010055610',
             ],
             [
-                'name'    => '{{ __('payment.alahli') }}',
+                'name'    => __('payment.alahli'),
+                'logo'    => '/images/banks/snb.svg',
                 'account' => '26561106000110',
                 'iban'    => 'SA9710000026561106000110',
             ],
             [
-                'name'    => '{{ __('payment.albilad') }}',
+                'name'    => __('payment.albilad'),
+                'logo'    => '/images/banks/albilad.svg',
                 'account' => '436117332070002',
                 'iban'    => 'SA9315000436117332070002',
             ],
             [
-                'name'    => '{{ __('payment.alinma') }}',
+                'name'    => __('payment.alinma'),
+                'logo'    => '/images/banks/alinma.svg',
                 'account' => '68222222010000',
                 'iban'    => 'SA8905000068222222010000',
             ],
             [
-                'name'    => '{{ __('payment.sab') }}',
+                'name'    => __('payment.sab'),
+                'logo'    => '/images/banks/sab.svg',
                 'account' => '611065905001',
                 'iban'    => 'SA8345000000611065905001',
             ],
             [
-                'name'    => '{{ __('payment.saib') }}',
-                'account' => '0128605051001',
-                'iban'    => 'SA4465000000128605051001',
-            ],
-            [
-                'name'    => '{{ __('payment.riyad') }}',
+                'name'    => __('payment.riyad'),
+                'logo'    => '/images/banks/riyad.svg',
                 'account' => '00000000000000',
                 'iban'    => 'SA0000000000000000000000',
+            ],
+            [
+                'name'    => __('payment.saib'),
+                'logo'    => '/images/banks/saib.svg',
+                'account' => '0128605051001',
+                'iban'    => 'SA4465000000128605051001',
             ],
         ];
         @endphp
@@ -75,7 +82,12 @@
         <div class="space-y-4 mb-6" x-data="copyHelper()">
             @foreach($banks as $bank)
                 <div class="bg-white border border-gray-200 border-r-4 border-r-primary-500 rounded-xl p-5 shadow-sm">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">{{ $bank['name'] }}</h2>
+                    <div class="flex items-center gap-3 mb-4">
+                        @if(!empty($bank['logo']))
+                            <img src="{{ $bank['logo'] }}" alt="{{ $bank['name'] }}" class="h-8 w-auto object-contain flex-shrink-0">
+                        @endif
+                        <h2 class="text-lg font-bold text-gray-900">{{ $bank['name'] }}</h2>
+                    </div>
 
                     @if(empty($bank['account']) || empty($bank['iban']))
                         {{-- Placeholder: account details not yet configured --}}
@@ -177,7 +189,7 @@
             copy(text, btn) {
                 const showCopied = () => {
                     const orig = btn.textContent;
-                    btn.textContent = '✓ ' . __('payment.copied');
+                    btn.textContent = '✓ {{ __("payment.copied") }}';
                     btn.classList.add('bg-green-600');
                     btn.classList.remove('bg-primary-600');
                     setTimeout(() => {
@@ -201,7 +213,7 @@
                         document.body.removeChild(el);
                         showCopied();
                     } catch (e) {
-                        prompt(__('payment.copy_text'), text);
+                        prompt('{{ __("payment.copy_text") }}', text);
                     }
                 };
 
