@@ -6,11 +6,14 @@
     "Access Denied": "Access Denied",
     "Account Created Successfully!": "تم إنشاء حسابك بنجاح!",
     "Account Details": "Account Details",
+    "Account created submitting": "تم إنشاء الحساب بنجاح! جاري تقديم الطلب...",
     "Actions": "الإجراءات",
     "Active": "مفعّل",
     "Active only": "Active only",
     "Ad Campaigns": "الحملات الإعلانية",
     "Add Translation Key": "Add Translation Key",
+    "Add another product": "إضافة منتج آخر",
+    "Add product": "إضافة منتج",
     "Added on top of the market rate. Default: 3%": "تُضاف على سعر السوق. الافتراضي: 3%",
     "Adds a link to the footer navigation.": "Adds a link to the footer navigation.",
     "Adds a link to the top navigation.": "Adds a link to the top navigation.",
@@ -29,6 +32,7 @@
     "Arabic": "عربي",
     "Are you sure you want to delete your account?": "هل أنت متأكد أنك تريد حذف حسابك؟",
     "Assign one or more roles. Roles carry bundled permissions.": "Assign one or more roles. Roles carry bundled permissions.",
+    "Attach file": "إرفاق ملف",
     "Author": "Author",
     "Auto": "تلقائي",
     "Auto-Fetch Daily": "جلب تلقائي يومي",
@@ -53,33 +57,46 @@
     "Categories": "Categories",
     "Category": "Category",
     "Category Details": "Category Details",
+    "Change": "تغيير",
     "Check your email": "تحقق من بريدك الإلكتروني",
     "Check your internet connection and try again.": "تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
+    "Checking...": "جاري التحقق...",
     "Choose a new password for your account": "أدخل كلمة مرور جديدة لحسابك",
+    "Clear all data": "مسح جميع المنتجات المدخلة",
     "Clear filters": "Clear filters",
     "Click here to re-send the verification email.": "اضغط هنا لإعادة إرسال بريد التحقق.",
     "Close": "إغلاق",
+    "Collapse": "تصغير",
     "Collapsed on mobile by default": "مطوي على الجوال افتراضياً",
+    "Collected data": "البيانات المجمعة (وضع الاختبار)",
+    "Color": "اللون",
     "Comment": "Comment",
     "Comment Notifications (opt-in)": "إشعارات التعليقات (اختياري)",
     "Comment Templates": "قوالب التعليقات",
     "Comment approved": "Comment approved",
     "Comments": "Comments",
+    "Commission": "عمولة وسيط زون",
     "Commission Rules": "قواعد العمولة",
     "Commission percentage when order ≥ threshold. Default: 8%": "نسبة العمولة عندما يكون الطلب ≥ الحد. الافتراضي: 8%",
     "Completed": "مكتمل",
     "Confirm": "تأكيد",
+    "Confirm Order": "تأكيد الطلب",
     "Confirm Password": "تأكيد كلمة المرور",
     "Confirm new password": "تأكيد كلمة المرور الجديدة",
+    "Connection error": "حدث خطأ في الاتصال",
     "Contact Form": "نموذج التواصل",
     "Content": "المحتوى",
+    "Continue": "متابعة",
     "Control which fields appear in the new-order form, their order, and which are collapsed under \"show more\" on mobile.": "التحكم في الحقول التي تظهر في نموذج الطلب الجديد وترتيبها وأيها مطوي تحت \"عرض المزيد\" على الجوال.",
     "Controls how service commission is calculated on orders. Used by the order form and the public calculator.": "يتحكم في كيفية حساب عمولة الخدمة على الطلبات. يُستخدم في نموذج الطلب والحاسبة العامة.",
     "Copy the product URL from any store and paste it into the order form.": "انسخ رابط المنتج من أي متجر وأضفه إلى نموذج الطلب.",
     "Create a free account and place your first order in minutes.": "سجّل حساباً مجانياً وقدّم طلبك الأول في دقائق.",
+    "Create account and continue": "إنشاء حساب والمتابعة",
     "Create your account": "إنشاء حسابك",
     "Create your new account": "أنشئ حسابك الجديد",
     "Created": "تاريخ الإنشاء",
+    "Creating account...": "جاري إنشاء الحساب...",
+    "Currency": "العملة",
     "Current Password": "كلمة المرور الحالية",
     "Custom Scripts": "سكريبتات مخصصة",
     "Customer": "عميل",
@@ -95,7 +112,10 @@
     "Description (English)": "Description (English)",
     "Direct Permissions": "Direct Permissions",
     "Don't have an account?": "ليس لديك حساب؟",
+    "Don't show tips again": "عدم إظهار هذه النصائح مرة أخرى",
     "Draft": "Draft",
+    "Draft saved": "تم حفظ المسودة",
+    "Edit": "تعديل",
     "Edit Window (minutes)": "نافذة التعديل (بالدقائق)",
     "Editor": "محرر",
     "Email": "البريد الإلكتروني",
@@ -114,9 +134,11 @@
     "English text": "English text",
     "Ensure your account is using a long, random password to stay secure.": "تأكد من أن حسابك يستخدم كلمة مرور طويلة وعشوائية للحفاظ على أمانه.",
     "Enter your credentials to access your account": "أدخل بياناتك للدخول إلى حسابك",
+    "Enter your email": "أدخل بريدك الإلكتروني",
     "Excerpt (Arabic)": "Excerpt (Arabic)",
     "Excerpt (English)": "Excerpt (English)",
     "Exchange Rates": "أسعار الصرف",
+    "Expand": "توسيع",
     "Export CSV": "تصدير CSV",
     "Failed to queue email: ": "فشل في وضع البريد في قائمة الإرسال: ",
     "Featured Image": "Featured Image",
@@ -125,21 +147,27 @@
     "Fetch Rates Now": "جلب الأسعار الآن",
     "Fetch failed — check API connection or logs": "فشل الجلب — تحقق من الاتصال بالـ API أو السجلات",
     "Field": "الحقل",
+    "File attached": "تم إرفاق ملف. بعد الإرسال يمكنك إضافة المزيد من صفحة الطلب.",
+    "File too large": "حجم الملف كبير جداً. الحد الأقصى ٢ ميغابايت لكل ملف",
     "Filters": "الفلاتر",
     "Fixed commission when order < threshold. Default: 50 SAR": "عمولة ثابتة عندما يكون الطلب < الحد. الافتراضي: 50 ريال",
     "Flat Fee Below Threshold (SAR)": "رسوم ثابتة أقل من الحد (ريال)",
     "Font Family": "عائلة الخط",
     "Footer": "Footer",
     "Footer Scripts (before </body>)": "سكريبتات التذييل (قبل </body>)",
+    "Forgot password?": "نسيت كلمة المرور؟",
     "Forgot your password?": "نسيت كلمة المرور؟",
     "Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.": "نسيت كلمة مرورك؟ لا مشكلة. أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة التعيين.",
     "From Address": "عنوان المرسل",
     "From Name": "اسم المرسل",
     "General": "عام",
+    "General Notes": "ملاحظات عامة",
+    "General notes placeholder": "يمكنك إضافة ملاحظات عامة للطلب، مثل طلب خدمة تصوير المنتجات، تغليف إضافي، أو دمجه مع طلب آخر الخ.",
     "Go Home": "Go Home",
     "Grant or revoke individual permissions on top of this user's role(s).": "Grant or revoke individual permissions on top of this user's role(s).",
     "Header": "Header",
     "Header Scripts (before </head>)": "سكريبتات الرأس (قبل </head>)",
+    "Hide optional fields": "− إخفاء الملاحظات والصور",
     "Hide toolbar": "Hide toolbar",
     "Home": "الرئيسية",
     "How it works": "كيف نعمل؟",
@@ -151,6 +179,7 @@
     "In Header": "In Header",
     "In Progress": "قيد التنفيذ",
     "Injected into every page. Use for analytics, chat widgets, etc.": "يتم حقنها في كل صفحة. استخدمها للتحليلات ووحدات الدردشة وغيرها.",
+    "Invalid file type": "يرجى اختيار ملف مدعوم (صور، PDF، Excel)",
     "Items": "المنتجات",
     "Joined": "Joined",
     "Key already exists": "Key already exists",
@@ -160,8 +189,13 @@
     "Leave blank to publish immediately when status is set to Published.": "Leave blank to publish immediately when status is set to Published.",
     "Leave disabled until SMTP is configured. Use the Test button to verify.": "اتركه معطلاً حتى يتم تكوين SMTP. استخدم زر الاختبار للتحقق.",
     "Limit how many orders one user can place per day.": "تحديد عدد الطلبات التي يمكن للمستخدم تقديمها في اليوم.",
+    "Loaded draft": "تم تحميل المسودة المحفوظة",
     "Log Out": "تسجيل الخروج",
     "Log in": "تسجيل الدخول",
+    "Logging in...": "جاري تسجيل الدخول...",
+    "Login required for uploads": "لإرفاق الصور، يرجى تسجيل الدخول أو إنشاء حساب جديد",
+    "Login success submitting": "تم تسجيل الدخول بنجاح! جاري تقديم الطلب...",
+    "Login to submit": "سجّل الدخول لإرسال الطلب",
     "Logo Text": "نص الشعار",
     "Lower = appears first": "الأقل = يظهر أولاً",
     "Lower number = appears first in navigation.": "Lower number = appears first in navigation.",
@@ -174,8 +208,11 @@
     "Max File Size (MB)": "الحد الأقصى لحجم الملف (ميغابايت)",
     "Max Orders per Day (per user)": "الحد الأقصى للطلبات يوميًا (لكل مستخدم)",
     "Max Products per Order": "الحد الأقصى للمنتجات في الطلب",
+    "Max files reached": "وصلت للحد الأقصى (١٠ ملفات). أرسل طلبك الآن لتتمكن من إضافة ملفات إضافية.",
+    "Max products reached": "الحد الأقصى :max منتج في الطلب الواحد",
     "Maximum size per uploaded file. Default: 2 MB.": "الحجم الأقصى لكل ملف مرفوع. الافتراضي: 2 ميغابايت.",
     "Menu Order": "Menu Order",
+    "Min 6 chars": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
     "My Orders": "طلباتي",
     "Name": "الاسم",
     "Name (AR)": "Name (AR)",
@@ -193,6 +230,7 @@
     "New-Order Form Layout": "تخطيط نموذج الطلب الجديد",
     "Newest first": "الأحدث أولاً",
     "Next": "التالي",
+    "No account found": "لا يوجد حساب بهذا الايميل",
     "No activity yet": "لا توجد نشاطات بعد",
     "No completed orders yet.": "لا توجد طلبات مكتملة بعد.",
     "No data yet — run \"Fetch Now\".": "لا توجد بيانات بعد — قم بتشغيل \"جلب الآن\".",
@@ -208,6 +246,7 @@
     "On Hold": "معلّق",
     "Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.": "بعد حذف حسابك، ستُحذف جميع بياناتك وملفاتك نهائياً. يرجى تحميل أي بيانات تريد الاحتفاظ بها قبل الحذف.",
     "Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.": "سيتم حذف حسابك وجميع بياناتك بشكل نهائي. أدخل كلمة مرورك للتأكيد.",
+    "One file per product": "يمكنك إرفاق ملف واحد فقط لكل منتج حالياً.",
     "Open": "فتح",
     "Open Orders": "الطلبات المفتوحة",
     "Option 1 — Responsive (default)": "الخيار 1 — متجاوب (افتراضي)",
@@ -221,6 +260,7 @@
     "Order #": "رقم الطلب",
     "Order Confirmation": "تأكيد الطلب",
     "Order Form Fields": "حقول نموذج الطلب",
+    "Order Number": "رقم الطلب",
     "Order Rules": "قواعد الطلبات",
     "Order confirmation email queued successfully.": "تم وضع بريد تأكيد الطلب في قائمة الإرسال.",
     "Order number...": "رقم الطلب...",
@@ -230,6 +270,7 @@
     "Orders/hour — Admin": "الطلبات/الساعة — المدير",
     "Orders/hour — Customer": "الطلبات/الساعة — العميل",
     "Other": "أخرى",
+    "Other currency notice": "بما أن هذه العملة غير متاحة في القائمة حاليًا، يمكنك إضافة المنتج وسنتولى حساب التكلفة يدويًا.",
     "Our team reviews your order and purchases the items on your behalf.": "فريقنا يراجع طلبك ويشتري المنتجات نيابةً عنك.",
     "Our warehouse in Delaware is fully exempt from US sales tax.": "مستودعنا في ولاية ديلاوير معفى تماماً من ضرائب المبيعات الأمريكية.",
     "Page Not Found": "Page Not Found",
@@ -237,6 +278,9 @@
     "Parent Category": "Parent Category",
     "Password": "كلمة المرور",
     "Password Reset": "إعادة تعيين كلمة المرور",
+    "Password min 6": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    "Password recovery": "استعادة كلمة المرور",
+    "Password reset sent": "تم إرسال كلمة المرور الجديدة إلى بريدك الإلكتروني",
     "Paste a product link, or describe it if you don't have one": "الصق رابط المنتج، أو وصفه إذا لم يكن لديك رابط",
     "Payment Received": "تم استلام الدفع",
     "Pending": "قيد الانتظار",
@@ -249,8 +293,14 @@
     "Post": "Post",
     "Posts": "Posts",
     "Previous": "السابق",
+    "Price": "السعر",
     "Primary Color (hex)": "اللون الأساسي (hex)",
     "Processing": "قيد المعالجة",
+    "Product :num": "المنتج رقم :num",
+    "Product count": "عدد المنتجات",
+    "Product link": "رابط المنتج",
+    "Product link or description": "الصق رابط المنتج أو وصفه إن لم يتوفر رابط",
+    "Products value": "قيمة المنتجات",
     "Profile": "الملف الشخصي",
     "Profile Information": "معلومات الملف الشخصي",
     "Publish": "Publish",
@@ -259,7 +309,9 @@
     "Published": "Published",
     "Published only": "Published only",
     "Purchasing": "جاري الشراء",
+    "Quantity": "العدد",
     "Quick Action Toggles": "تبديل الإجراءات السريعة",
+    "Quick tips": "نصائح سريعة قبل الطلب",
     "Rates are fetched from open.er-api.com (free, no key needed). Manual override per currency takes priority over the auto-calculated rate.": "تُجلب الأسعار من open.er-api.com (مجاني، لا يحتاج مفتاح). التجاوز اليدوي لكل عملة يأخذ الأولوية.",
     "Rates updated successfully": "تم تحديث الأسعار بنجاح",
     "Ready to start? Place your order now": "جاهز للبدء؟ قدّم طلبك الآن",
@@ -270,12 +322,17 @@
     "Registration Welcome": "بريد الترحيب بالتسجيل",
     "Remember me": "تذكرني",
     "Remove excess packaging": "إزالة التغليف الزائد",
+    "Remove product": "حذف",
     "Reply": "Reply",
     "Request More Info": "طلب مزيد من المعلومات",
     "Resend Verification Email": "إعادة إرسال بريد التحقق",
     "Reset": "مسح",
     "Reset Password": "إعادة تعيين كلمة المرور",
+    "Reset all": "مسح جميع المنتجات المدخلة",
+    "Reset confirm": "سيتم مسح كامل البيانات التي أدخلتها. هل ترغب بالاستمرار بالمسح؟",
+    "Return": "العودة",
     "Role": "Role",
+    "SAR": "ر.س",
     "SEO": "SEO",
     "SEO Description (Arabic)": "SEO Description (Arabic)",
     "SEO Description (English)": "SEO Description (English)",
@@ -288,19 +345,25 @@
     "Save": "حفظ",
     "Save Settings": "حفظ الإعدادات",
     "Save up to 70%": "وفّر حتى 70%",
+    "Saved :n products": "تم حفظ :n منتج",
     "Saved.": "تم الحفظ.",
     "Schedule daily rate fetch via Laravel scheduler (php artisan schedule:run).": "جلب أسعار الصرف تلقائيًا كل يوم عبر مجدول Laravel.",
     "Search": "البحث",
     "Search keys or values…": "Search keys or values…",
+    "Send new password": "إرسال كلمة المرور الجديدة",
     "Send the product link": "أرسل رابط المنتج",
     "Send us the product links you want to buy. We handle the purchase, packaging, and shipping straight to your door — from Amazon and all global stores.": "أرسل لنا روابط المنتجات التي ترغب بشرائها، واترك الشراء والتغليف والشحن لباب بيتك علينا. نشتري من أمازون وجميع المواقع العالمية.",
+    "Sending...": "جاري الإرسال...",
     "Sending…": "جارٍ الإرسال…",
     "Settings": "الإعدادات",
     "Settings saved": "تم حفظ الإعدادات",
     "Shipped": "تم الشحن",
     "Shop from :store worldwide": "اشترِ من :store حول العالم",
+    "Show": "إظهار",
     "Show in Footer Menu": "Show in Footer Menu",
     "Show in Header Menu": "Show in Header Menu",
+    "Show optional fields": "+ إضافة ملاحظات أو صورة للمنتج",
+    "Show or edit": "إظهار أو تعديل",
     "Showing": "عرض",
     "Shown when no logo image is uploaded.": "يظهر عند عدم رفع صورة للشعار.",
     "Shows a \"Sign in with Google\" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.": "Shows a \"Sign in with Google\" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.",
@@ -314,6 +377,7 @@
     "Sign up with X": "التسجيل بـ X",
     "Site Name": "اسم الموقع",
     "Site Settings": "إعدادات الموقع",
+    "Size": "المقاس",
     "Slug": "المعرّف",
     "Social Login": "Social Login",
     "Sort": "الترتيب",
@@ -325,17 +389,28 @@
     "Status Changed": "تم تغيير الحالة",
     "Status Update": "تحديث حالة الطلب",
     "Strict URL Validation": "التحقق الصارم من الروابط",
+    "Submit Order": "إرسال الطلب",
+    "Subtotal": "قيمة المنتجات",
     "Super Admin": "مدير عام",
     "Switch language text": "🌐 English",
     "Switch to Arabic": "العربية",
     "Switch to English": "English",
     "System": "النظام",
     "Template Details": "تفاصيل القالب",
+    "Test mode notice": "هذه صفحة اختبار UI/UX — لن يتم حفظ أي بيانات في قاعدة البيانات.",
     "Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn't receive the email, we will gladly send you another.": "شكراً للتسجيل! قبل البدء، يرجى التحقق من بريدك الإلكتروني بالنقر على الرابط الذي أرسلناه إليك. إذا لم تستلم البريد، يمكننا إرسال رابط جديد.",
     "This is a secure area of the application. Please confirm your password before continuing.": "هذا قسم آمن من التطبيق. يرجى تأكيد كلمة مرورك للمتابعة.",
     "This will call open.er-api.com and update the stored rates. Manual overrides will be preserved.": "سيتم استدعاء open.er-api.com وتحديث الأسعار المخزنة. سيتم الاحتفاظ بالأسعار اليدوية.",
     "Three simple steps and your order is on its way": "ثلاث خطوات بسيطة وطلبك في طريقه إليك",
     "Threshold (SAR)": "الحد الأدنى (ريال)",
+    "Tip 1": "١) جميع الحقول اختيارية، لكن إدخال بيانات كاملة يسرّع معالجة طلبك.",
+    "Tip 2": "٢) كلما كانت المواصفات أوضح، تم شراء المنتجات بدقة وشحن طلبك أسرع.",
+    "Tip 3": "٣) عند إدخال السعر بأي عملة، يحسب النظام قيمة المنتجات بالريال تلقائيًا.",
+    "Tip 4": "٤) بعد الضغط على إرسال الطلب ستنتقل إلى صفحة الطلب لمتابعة طلبك.",
+    "Tip 5": "٥) إرفاق صور اختياري. ملف واحد فقط لكل منتج وبحد أقصى ١٠ ملفات للطلب. بعد الإرسال يمكنك إضافة عدد غير محدود.",
+    "Tip 6": "٦) لا تنسَ الضغط على زر إرسال أسفل الصفحة ليتم حفظ الطلب.",
+    "Tip 7": "٧) لمسح جميع البيانات والبدء من جديد، اضغط على رابط مسح أسفل الصفحة.",
+    "Tips hidden for 30 days": "لن يتم إظهار النصائح لمدة 30 يوم",
     "Title": "العنوان",
     "Title (AR)": "Title (AR)",
     "Title (Arabic)": "Title (Arabic)",
@@ -343,6 +418,7 @@
     "Title (English)": "Title (English)",
     "Too many requests. Please try again later.": "طلبات كثيرة جداً، يرجى المحاولة لاحقاً.",
     "Top-level": "Top-level",
+    "Total": "الإجمالي",
     "Total Orders": "إجمالي الطلبات",
     "Tracking Code": "كود التتبع",
     "Translation added": "Translation added",
@@ -350,7 +426,7 @@
     "Translations": "Translations",
     "Translations Editor": "Translations Editor",
     "Translations saved": "Translations saved",
-    "Trusted Service": "خدمة موثوقة",
+    "Trusted Service": "نتسوق لكم منذ عام 2015",
     "URL path: /faq, /about, /calculator, etc.": "URL path: /faq, /about, /calculator, etc.",
     "URL-friendly identifier.": "URL-friendly identifier.",
     "URL-friendly identifier. Leave blank to auto-generate.": "URL-friendly identifier. Leave blank to auto-generate.",
@@ -367,6 +443,7 @@
     "Uses": "الاستخدامات",
     "View all": "عرض الكل",
     "View inbox": "عرض البريد الوارد",
+    "Waset Amazon is now Waset Zone (why?)": "وسيط أمازون صار وسيط زون (السبب؟)",
     "We consolidate your orders from different stores into one package and save you a fortune.": "نجمع طلباتك من متاجر مختلفة في طرد واحد ونوفر عليك مبالغ طائلة.",
     "We give you the freedom to shop for 3 months with free and secure storage for your products.": "نمنحك حرية التسوق على مدار 3 أشهر مع تخزين مجاني وآمن لمنتجاتك.",
     "We handle the purchase": "نتولى الشراء",
@@ -379,17 +456,33 @@
     "When ON, only exact Amazon/product URLs are accepted. When OFF, any URL is allowed.": "عند التفعيل، تُقبل روابط أمازون/المنتجات الصحيحة فقط. عند التعطيل، يُقبل أي رابط.",
     "Why Wasetzon?": "لماذا وسيط زون؟",
     "You're Offline": "لا يوجد اتصال بالإنترنت",
+    "Your data is saved": "لا تقلق، جميع بيانات المنتجات التي أدخلتها محفوظة",
     "Your email address is unverified.": "بريدك الإلكتروني غير مُتحقق منه.",
     "Your orders will appear here once you place one.": "ستظهر طلباتك هنا بمجرد تقديم طلب.",
     "account.activity_log": "سجل النشاط",
     "account.activity_tab": "سجل النشاط",
-    "account.add_address": "إضافة عنوان جديد بالعربي أو الإنجليزي",
+    "account.add_address": "إضافة عنوان جديد (اكتب البيانات بالعربي أو الإنجليزي)",
     "account.address": "تفاصيل العنوان",
-    "account.address_deleted": "تم حذف العنوان",
+    "account.address_deleted": "تم حذف العنوان بنجاح.",
     "account.address_label": "تسمية العنوان (اختياري)",
     "account.address_placeholder": "رقم المبنى، الطابق، تفاصيل إضافية...",
-    "account.address_saved": "تم حفظ العنوان بنجاح",
+    "account.address_saved": "تم حفظ العنوان بنجاح. يمكنك الآن استخدامه عند إتمام الطلبات.",
     "account.addresses_tab": "العناوين المحفوظة",
+    "account.balance_added_by": "أضافه",
+    "account.balance_amount": "المبلغ",
+    "account.balance_credit": "إيداع",
+    "account.balance_currency": "العملة",
+    "account.balance_current": "الرصيد الحالي",
+    "account.balance_date": "التاريخ",
+    "account.balance_debit": "خصم",
+    "account.balance_net": "الرصيد الصافي",
+    "account.balance_no_transactions": "لا توجد معاملات بعد",
+    "account.balance_no_transactions_hint": "سيظهر هنا سجل المعاملات عند إضافة أي رصيد أو خصم.",
+    "account.balance_note": "البيان",
+    "account.balance_tab": "الرصيد",
+    "account.balance_total_credit": "إجمالي الإيداعات",
+    "account.balance_total_debit": "إجمالي الخصومات",
+    "account.balance_type": "النوع",
     "account.cancel": "إلغاء",
     "account.cancel_deletion": "إلغاء طلب الحذف",
     "account.change": "تغيير",
@@ -430,15 +523,20 @@
     "account.event_profile_updated": "تعديل الملف الشخصي",
     "account.label_placeholder": "مثلاً: المنزل، العمل",
     "account.mobile": "رقم الجوال",
-    "account.mobile_placeholder": "556063500",
+    "account.mobile_placeholder": "مثلا 556062500",
     "account.mobile_primary_label": "رقم الجوال الأساسي",
     "account.mobile_secondary": "رقم الجوال الإضافي",
     "account.mobile_secondary_label": "رقم الجوال الإضافي",
     "account.my_account": "حسابي",
+    "account.national_address_tip_apps": "يمكنك أيضاً معرفة عنوانك من خلال تطبيق أبشر أو توكلنا أو موقع سبل.",
+    "account.national_address_tip_title": "كيف أعرف العنوان المختصر؟",
+    "account.national_address_tip_us": "أرسل لنا مشاركة موقعك على واتساب وسنقوم باستخراج الرمز المختصر للعنوان الوطني لك",
+    "account.national_address_tip_whatsapp": "أرسل كلمة \"العنوان الوطني\" عبر واتساب على الرقم",
     "account.new_password": "كلمة المرور الجديدة",
     "account.no_activity": "لا توجد نشاطات مسجّلة",
     "account.no_addresses": "لا توجد عناوين محفوظة",
     "account.no_addresses_hint": "أضف عنواناً لتسريع عملية الطلب",
+    "account.no_phone_notice": "لايوجد لديك رقم جوال مسجل، يرجى إضافة رقم الجوال",
     "account.notifications_heading": "تفضيلات الإشعارات",
     "account.notifications_hint": "تحكم في الإشعارات التي تتلقاها من واسطزون.",
     "account.notifications_tab": "الإشعارات",
@@ -451,11 +549,11 @@
     "account.notify_whatsapp": "إشعارات واتساب",
     "account.notify_whatsapp_hint": "استقبال تحديثات وتنبيهات تخص طلباتك وحسابك الشخصي فقط عبر واتساب.",
     "account.password_label": "كلمة المرور",
-    "account.password_updated": "تم تحديث كلمة المرور بنجاح",
+    "account.password_updated": "تم تغيير كلمة المرور بنجاح. استخدم كلمة المرور الجديدة في تسجيل دخولك القادم.",
     "account.personal_info": "المعلومات الشخصية",
     "account.phone_secondary": "رقم الجوال الثاني",
     "account.profile_tab": "الملف الشخصي",
-    "account.profile_updated": "تم تحديث الملف الشخصي بنجاح",
+    "account.profile_updated": "تم حفظ بياناتك الشخصية بنجاح.",
     "account.pw_error_confirm_required": "يرجى تأكيد كلمة المرور الجديدة.",
     "account.pw_error_confirmed": "كلمة المرور الجديدة وتأكيدها غير متطابقين.",
     "account.pw_error_current_required": "يرجى إدخال كلمة المرور الحالية.",
@@ -465,6 +563,24 @@
     "account.pw_error_new_required": "يرجى إدخال كلمة المرور الجديدة.",
     "account.pw_error_same_as_current": "يجب أن تكون كلمة المرور الجديدة مختلفة عن كلمة المرور الحالية.",
     "account.pw_error_strength": "يجب أن تحتوي كلمة المرور على حرف كبير وحرف صغير ورقم على الأقل.",
+    "account.validation_name_required": "يرجى إدخال اسمك الكامل.",
+    "account.validation_name_max": "الاسم طويل جداً — يجب ألا يتجاوز 255 حرفاً.",
+    "account.validation_email_required": "يرجى إدخال عنوان البريد الإلكتروني.",
+    "account.validation_email_invalid": "صيغة البريد الإلكتروني غير صحيحة — تأكد أنها على شكل example@email.com.",
+    "account.validation_email_max": "البريد الإلكتروني طويل جداً — يجب ألا يتجاوز 255 حرفاً.",
+    "account.validation_email_taken": "هذا البريد الإلكتروني مسجّل لدى حساب آخر. إذا كنت تملكه، يرجى تسجيل الدخول بهذا الحساب أو التواصل مع الدعم.",
+    "account.validation_phone_digits": "رقم الجوال يجب أن يحتوي على أرقام فقط (يمكن أن يبدأ بعلامة +).",
+    "account.validation_phone_max": "رقم الجوال طويل جداً — يجب ألا يتجاوز 30 رقماً.",
+    "account.validation_label_max": "تسمية العنوان طويلة جداً — يجب ألا تتجاوز 50 حرفاً.",
+    "account.validation_recipient_required": "يرجى إدخال اسم الشخص الذي سيستلم الطلب في هذا العنوان.",
+    "account.validation_recipient_max": "اسم المستلم طويل جداً — يجب ألا يتجاوز 255 حرفاً.",
+    "account.validation_address_phone_required": "يرجى إدخال رقم الجوال الخاص بالمستلم حتى نتمكن من التواصل معه عند التوصيل.",
+    "account.validation_city_required": "يرجى إدخال اسم المدينة — هذا الحقل إلزامي.",
+    "account.validation_city_max": "اسم المدينة طويل جداً — يجب ألا يتجاوز 100 حرف.",
+    "account.validation_street_max": "اسم الشارع طويل جداً — يجب ألا يتجاوز 255 حرفاً.",
+    "account.validation_district_max": "اسم الحي طويل جداً — يجب ألا يتجاوز 255 حرفاً.",
+    "account.validation_short_address_max": "الرمز الوطني المختصر يجب ألا يتجاوز 20 حرفاً.",
+    "account.validation_address_max": "التفاصيل الإضافية طويلة جداً — يجب ألا تتجاوز 1000 حرف.",
     "account.recipient_name": "اسم المستلم",
     "account.save_address": "حفظ العنوان",
     "account.save_changes": "حفظ التغييرات",
@@ -568,8 +684,139 @@
     "calc.usd": "دولار أمريكي - USD",
     "calc.usd_to_sar": "١ دولار أمريكي = :rate ريال سعودي",
     "calc.wasetzon_commission": "عمولة وسيط زون",
+    "caldue1.add_at_least_one_product": "يرجى إضافة منتج واحد على الأقل",
+    "caldue1.add_optional_fields": "إضافة ملاحظات أو صورة للمنتج",
+    "caldue1.add_product": "إضافة منتج آخر",
+    "caldue1.attach_file": "إرفاق ملف",
+    "caldue1.back": "العودة",
+    "caldue1.change": "تغيير",
+    "caldue1.clear_all": "مسح جميع المنتجات المدخلة",
+    "caldue1.confirm_clear_all": "سيتم مسح كامل البيانات التي أدخلتها. هل ترغب بالاستمرار بالمسح؟",
+    "caldue1.continue": "متابعة",
+    "caldue1.create_account_continue": "إنشاء حساب والمتابعة",
+    "caldue1.estimated_total": "القيمة التقريبية",
+    "caldue1.field_color": "اللون",
+    "caldue1.field_currency": "العملة",
+    "caldue1.field_file": "ملف",
+    "caldue1.field_notes": "ملاحظات",
+    "caldue1.field_price": "السعر",
+    "caldue1.field_qty": "العدد",
+    "caldue1.field_size": "المقاس",
+    "caldue1.field_url": "رابط المنتج",
+    "caldue1.file_info": "ملف واحد كحد أقصى لكل منتج (صورة، PDF، Excel) - 2 ميجابايت للملف",
+    "caldue1.forgot_password": "نسيت كلمة المرور؟",
+    "caldue1.form_data_saved": "لا تقلق، جميع بيانات المنتجات التي أدخلتها محفوظة",
+    "caldue1.general_notes": "ملاحظات عامة",
+    "caldue1.hide_optional_fields": "إخفاء الملاحظات والصور",
+    "caldue1.login": "تسجيل الدخول",
+    "caldue1.login_modal_title": "تسجيل الدخول لإرسال الطلب",
+    "caldue1.login_to_upload": "لإرفاق الملفات يرجى تسجيل الدخول",
+    "caldue1.max_files_exceeded": "وصلت للحد الأقصى (١٠ ملفات) قبل الإرسال",
+    "caldue1.max_products_reached": "الحد الأقصى :max منتج في الطلب الواحد",
+    "caldue1.new_order_title": "طلب جديد",
+    "caldue1.new_product": "منتج جديد",
+    "caldue1.no_account": "لا يوجد حساب بهذا الايميل",
+    "caldue1.optional": "اختياري",
+    "caldue1.password_min_length": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    "caldue1.placeholder_general_notes": "يمكنك إضافة ملاحظات عامة للطلب، مثل طلب خدمة تصوير المنتجات، تغليف إضافي، أو دمجه مع طلب آخر الخ.",
+    "caldue1.placeholder_notes": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
+    "caldue1.placeholder_url": "الصق رابط المنتج (أو وصفه إن لم يوجد رابط)",
+    "caldue1.products_added": "منتج",
+    "caldue1.rate_limit_exceeded": "لقد تجاوزت الحد المسموح من الطلبات (:limit طلب/ساعة)",
+    "caldue1.remove_item": "حذف",
+    "caldue1.reset_password": "استعادة كلمة المرور",
+    "caldue1.send_reset_link": "إرسال كلمة المرور الجديدة",
+    "caldue1.submit_order": "تأكيد الطلب",
+    "caldue1.submitting": "جارٍ الإرسال",
+    "caldue1.tips_dont_show": "عدم إظهار هذه النصائح مرة أخرى",
+    "caldue1.tips_hidden_30_days": "لن يتم إظهار النصائح لمدة 30 يوم",
+    "caldue1.tips_tip1": "جميع الحقول اختيارية، لكن إدخال بيانات كاملة مثل اللون والمقاس، أو شرح توضيحي للمنتجات المعقّدة، يسرّع معالجة طلبك.",
+    "caldue1.tips_tip2": "كلما كانت المواصفات أوضح، تم شراء المنتجات بدقة وشحن طلبك بشكل أسرع، وتجنّبنا التأخير بسبب نقص المعلومات.",
+    "caldue1.tips_tip3": "عند إدخال السعر بأي عملة، يحسب النظام قيمة المنتجات بالريال تلقائيًا. وإن تركته فارغًا، نحسبه يدويًا ونرد لاحقًا في صفحة الطلب.",
+    "caldue1.tips_tip4": "بعد الضغط على «إرسال الطلب» ستنتقل إلى صفحة الطلب، وهي أهم صفحة لمتابعة حالة طلبك.",
+    "caldue1.tips_tip5": "إرفاق صور أو ملفات توضيحية اختياري، ويُفضَّل للمنتجات المعقّدة. يُسمح بإرفاق ملف واحد فقط لكل منتج، وبحد أقصى ١٠ ملفات للطلب الواحد قبل الإرسال.",
+    "caldue1.tips_tip6": "لا تنسَ الضغط على زر «إرسال» أسفل الصفحة ليتم حفظ الطلب وإضافته إلى حسابك.",
+    "caldue1.tips_tip7": "لمسح جميع البيانات المدخلة والبدء من جديد، اضغط على رابط «مسح جميع المنتجات المدخلة» أسفل الصفحة.",
+    "caldue1.tips_title": "نصائح سريعة قبل الطلب",
+    "caldue1.welcome_back": "أهلاً بعودتك! أدخل كلمة المرور",
     "common.dismiss": "إغلاق",
+    "composer15.page_title": "طلب جديد",
+    "composer15.success_message": "تم استلام الطلب بنجاح! (هذه صفحة اختبار — لا يتم حفظ البيانات)",
+    "composer1zzz.add_notes": "إضافة ملاحظات",
+    "composer1zzz.add_notes_file": "إضافة ملاحظات أو صورة للمنتج",
+    "composer1zzz.add_product": "إضافة منتج آخر",
+    "composer1zzz.attach_file": "إرفاق ملف",
+    "composer1zzz.change": "تغيير",
+    "composer1zzz.clear_all": "مسح جميع المنتجات المدخلة",
+    "composer1zzz.cleared": "تم مسح جميع الحقول بنجاح",
+    "composer1zzz.color": "اللون",
+    "composer1zzz.color_placeholder": "مثلاً: أحمر",
+    "composer1zzz.continue": "متابعة",
+    "composer1zzz.create_account": "إنشاء حساب والمتابعة",
+    "composer1zzz.currency": "العملة",
+    "composer1zzz.currency_cny": "يوان صيني",
+    "composer1zzz.currency_eur": "يورو",
+    "composer1zzz.currency_gbp": "جنيه إسترليني",
+    "composer1zzz.currency_jpy": "ين ياباني",
+    "composer1zzz.currency_krw": "وون كوري",
+    "composer1zzz.currency_other": "أخرى",
+    "composer1zzz.currency_sar": "ريال سعودي",
+    "composer1zzz.currency_try": "ليرة تركية",
+    "composer1zzz.currency_usd": "دولار أمريكي",
+    "composer1zzz.enter_password_create": "أدخل كلمة المرور لإنشاء حساب جديد",
+    "composer1zzz.file": "ملف/صورة",
+    "composer1zzz.form_data_saved": "لا تقلق، جميع بيانات المنتجات التي أدخلتها محفوظة",
+    "composer1zzz.general_notes": "ملاحظات عامة",
+    "composer1zzz.general_notes_placeholder": "يمكنك إضافة ملاحظات عامة للطلب، مثل طلب خدمة تصوير المنتجات، تغليف إضافي، أو دمجه مع طلب آخر الخ.",
+    "composer1zzz.hide_optional": "إخفاء الملاحظات والصور",
+    "composer1zzz.login_success": "تم تسجيل الدخول بنجاح",
+    "composer1zzz.login_to_submit": "تسجيل الدخول لإرسال الطلب",
+    "composer1zzz.max_products_reached": "الحد الأقصى :max منتج في الطلب الواحد",
+    "composer1zzz.new_order": "طلب جديد",
+    "composer1zzz.no_account": "لا يوجد حساب بهذا الايميل",
+    "composer1zzz.notes": "ملاحظات",
+    "composer1zzz.notes_placeholder": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
+    "composer1zzz.order_submitted_successfully": "تم إرسال الطلب بنجاح",
+    "composer1zzz.other_currency_selected": "بما أن هذه العملة غير متاحة في القائمة حاليًا، يمكنك إضافة المنتج وسنتولى حساب التكلفة يدويًا والرد عليك قريبًا.",
+    "composer1zzz.password_min_length": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    "composer1zzz.price": "السعر",
+    "composer1zzz.product": "المنتج",
+    "composer1zzz.product_url": "رابط المنتج",
+    "composer1zzz.product_url_placeholder": "الصق رابط المنتج (أو وصفه إن لم يوجد رابط)",
+    "composer1zzz.products": "منتج",
+    "composer1zzz.products_added": "منتج مضاف",
+    "composer1zzz.products_count": "عدد المنتجات",
+    "composer1zzz.quantity": "العدد",
+    "composer1zzz.register_success": "تم إنشاء الحساب بنجاح",
+    "composer1zzz.remove": "حذف",
+    "composer1zzz.sar": "ر.س",
+    "composer1zzz.show_edit": "إظهار أو تعديل",
+    "composer1zzz.size": "المقاس",
+    "composer1zzz.size_placeholder": "مثلاً: كبير",
+    "composer1zzz.submit_order": "تأكيد الطلب",
+    "composer1zzz.submitting": "جاري الإرسال",
+    "composer1zzz.table_color": "اللون",
+    "composer1zzz.table_currency": "العملة",
+    "composer1zzz.table_file": "المرفقات",
+    "composer1zzz.table_notes": "ملاحظات",
+    "composer1zzz.table_num": "الرقم",
+    "composer1zzz.table_price": "السعر",
+    "composer1zzz.table_qty": "العدد",
+    "composer1zzz.table_size": "المقاس",
+    "composer1zzz.table_url": "رابط المنتج",
+    "composer1zzz.tip_1": "جميع الحقول اختيارية، لكن إدخال بيانات كاملة مثل اللون والمقاس، أو شرح توضيحي للمنتجات المعقّدة، يسرّع معالجة طلبك.",
+    "composer1zzz.tip_2": "كلما كانت المواصفات أوضح، تم شراء المنتجات بدقة وشحن طلبك بشكل أسرع، وتجنّبنا التأخير بسبب نقص المعلومات.",
+    "composer1zzz.tip_3": "عند إدخال السعر بأي عملة، يحسب النظام قيمة المنتجات بالريال تلقائيًا. وإن تركته فارغًا، نحسبه يدويًا ونرد لاحقًا في صفحة الطلب.",
+    "composer1zzz.tip_4": "بعد الضغط على «إرسال الطلب» ستنتقل إلى صفحة الطلب، وهي أهم صفحة لمتابعة حالة طلبك.",
+    "composer1zzz.tip_5": "إرفاق صور أو ملفات توضيحية اختياري، ويُفضَّل للمنتجات المعقّدة. يُسمح بإرفاق ملف واحد فقط لكل منتج، وبحد أقصى ١٠ ملفات للطلب الواحد قبل الإرسال.",
+    "composer1zzz.tip_6": "لا تنسَ الضغط على زر «إرسال» أسفل الصفحة ليتم حفظ الطلب وإضافته إلى حسابك.",
+    "composer1zzz.tip_7": "لمسح جميع البيانات المدخلة والبدء من جديد، اضغط على رابط «مسح جميع المنتجات المدخلة» أسفل الصفحة.",
+    "composer1zzz.tips_title": "نصائح سريعة قبل الطلب",
+    "composer1zzz.total_value": "قيمة المنتجات",
+    "composer1zzz.upload_info": "المرفقات اختيارية: ملف واحد كحد أقصى لكل منتج (صورة، PDF، Excel) - 2 ميجابايت للملف",
+    "composer1zzz.welcome_back": "أهلاً بعودتك! أدخل كلمة المرور",
     "e.g. Order Submitted": "e.g. Order Submitted",
+    "e.g. if blue not available, choose green": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
     "faq.a1": "<p>اذا كانت قيمة المنتجات أكثر من 500 ريال، العمولة 8% من قيمة المنتجات فقط. إذا كانت قيمة المنتجات أقل من 500 ريال، العمولة 50 ريال فقط.</p>\n                           <p class=\"mt-3\">عمولة الوسيط (رسوم الخدمة) تشمل تكاليف متابعة عمليات الشراء والتواصل مع البائعين والعملاء وتجميع المنتجات في طرد واحد لتخفيف الوزن للشحنة والتغليف في طرد واحد وتسليم الشحنة لشركة الشحن في الدولة المراد الشراء منها سواء أمريكا أو غيرها من الدول.</p>",
     "faq.a10": "<p>نعم، يمكن الشحن لكافة أنحاء العالم.</p>",
     "faq.a11": "<p>إذا لم يتم طلب المنتجات بعد، بالإمكان الغاء الطلب وإعادة المبلغ بعد خصم أي رسوم محتسب للعمولة أو للارجاع أو للتواصل مع المتجر وخلافه. إذا تم طلب المنتجات، لايمكن الغاء الطلب أو ارجاعه. شاكرين تفهمكم.</p>",
@@ -676,11 +923,86 @@
     "nav.how_to_order": "طريقة الطلب",
     "nav.membership": "عضوية شهرية وسنوية",
     "nav.menu": "القائمة",
+    "nav.my_account": "حسابي",
     "nav.open_menu": "فتح القائمة",
     "nav.payment_methods": "خيارات الدفع",
     "nav.shipping_calculator": "أسعار الشحن من أمريكا",
     "nav.testimonials": "آراء العملاء",
     "of": "من",
+    "opus46.add_product": "إضافة منتج آخر",
+    "opus46.attach": "إرفاق ملف",
+    "opus46.cleared": "تم مسح جميع الحقول بنجاح",
+    "opus46.confirm_order": "تأكيد الطلب",
+    "opus46.cur_cny": "يوان صيني",
+    "opus46.cur_eur": "يورو",
+    "opus46.cur_gbp": "جنيه إسترليني",
+    "opus46.cur_jpy": "ين ياباني",
+    "opus46.cur_krw": "وون كوري",
+    "opus46.cur_other": "أخرى",
+    "opus46.cur_sar": "ريال سعودي",
+    "opus46.cur_try": "ليرة تركية",
+    "opus46.cur_usd": "دولار أمريكي",
+    "opus46.data_saved": "لا تقلق، جميع بيانات المنتجات التي أدخلتها محفوظة",
+    "opus46.file_attached": "تم إرفاق ملف. بعد الإرسال يمكنك إضافة المزيد من صفحة الطلب.",
+    "opus46.file_info": "ملف واحد كحد أقصى لكل منتج (صورة، PDF، Excel) - 2 ميجابايت",
+    "opus46.upload_failed": "فشل رفع الملف. يرجى المحاولة مرة أخرى.",
+    "opus46.file_too_large": "حجم الملف كبير جداً. الحد الأقصى ٢ ميجابايت لكل ملف",
+    "opus46.general_notes": "ملاحظات عامة",
+    "opus46.general_notes_ph": "يمكنك إضافة ملاحظات عامة للطلب، مثل طلب خدمة تصوير المنتجات، تغليف إضافي، أو دمجه مع طلب آخر الخ.",
+    "opus46.hide_optional": "− إخفاء الملاحظات والصور",
+    "opus46.invalid_type": "يرجى اختيار ملف مدعوم (صور، PDF، Excel)",
+    "opus46.item_minimized_prefix": "تم حفظ وتصغير المنتج رقم",
+    "opus46.item_minimized_suffix": "للأعلى",
+    "opus46.lbl_color": "اللون",
+    "opus46.lbl_currency": "العملة",
+    "opus46.lbl_notes": "ملاحظات",
+    "opus46.lbl_price": "السعر",
+    "opus46.lbl_qty": "العدد",
+    "opus46.lbl_size": "المقاس",
+    "opus46.lbl_url": "رابط المنتج",
+    "opus46.login_to_upload": "لإرفاق الملفات يرجى تسجيل الدخول",
+    "opus46.max_files": "وصلت للحد الأقصى (١٠ ملفات). أرسل طلبك لتتمكن من إضافة المزيد.",
+    "opus46.max_limit_suffix": "منتج كحد أقصى في الطلب الواحد",
+    "opus46.max_products": "الحد الأقصى :max منتج في الطلب الواحد",
+    "opus46.modal_title": "تسجيل الدخول لإرسال الطلب",
+    "opus46.no_account": "لا يوجد حساب بهذا الايميل",
+    "opus46.notes_placeholder": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
+    "opus46.one_file": "يمكنك إرفاق ملف واحد فقط لكل منتج حالياً.",
+    "opus46.other_currency_note": "بما أن هذه العملة غير متاحة، يمكنك إضافة المنتج وسنتولى حساب التكلفة يدويًا.",
+    "opus46.product": "المنتج",
+    "opus46.product_num": "رقم المنتج",
+    "opus46.products_count": "عدد المنتجات",
+    "opus46.products_value": "قيمة المنتجات",
+    "opus46.remove": "حذف",
+    "opus46.reset_all": "مسح جميع المنتجات المدخلة",
+    "opus46.reset_confirm": "سيتم مسح كامل البيانات التي أدخلتها. هل ترغب بالاستمرار بالمسح؟",
+    "opus46.reset_desc": "لاستعادة كلمة المرور، يرجى زيارة صفحة تسجيل الدخول الرئيسية.",
+    "opus46.show_edit": "إظهار أو تعديل",
+    "opus46.show_optional": "+ إضافة ملاحظات أو صورة للمنتج",
+    "opus46.submit_success": "تم استلام الطلب بنجاح! (هذه صفحة اختبار — لا يتم حفظ البيانات)",
+    "opus46.submitting": "جارٍ الإرسال",
+    "opus46.test_banner": "هذه صفحة اختبار UI/UX — لن يتم حفظ أي بيانات في قاعدة البيانات.",
+    "opus46.th_color": "اللون",
+    "opus46.th_currency": "العملة",
+    "opus46.th_files": "المرفقات",
+    "opus46.th_notes": "ملاحظات",
+    "opus46.th_num": "الرقم",
+    "opus46.th_price": "السعر",
+    "opus46.th_qty": "العدد",
+    "opus46.th_size": "المقاس",
+    "opus46.th_url": "رابط المنتج",
+    "opus46.tip_1": "١) جميع الحقول اختيارية، لكن إدخال بيانات كاملة مثل اللون والمقاس يسرّع معالجة طلبك.",
+    "opus46.tip_2": "٢) كلما كانت المواصفات أوضح، تم شراء المنتجات بدقة وشحن طلبك أسرع.",
+    "opus46.tip_3": "٣) عند إدخال السعر بأي عملة، يحسب النظام قيمة المنتجات بالريال تلقائيًا.",
+    "opus46.tip_4": "٤) بعد الضغط على «إرسال الطلب» ستنتقل إلى صفحة الطلب لمتابعة حالة طلبك.",
+    "opus46.tip_5": "٥) إرفاق صور اختياري. ملف واحد فقط لكل منتج وبحد أقصى ١٠ ملفات للطلب.",
+    "opus46.tip_6": "٦) لا تنسَ الضغط على زر إرسال أسفل الصفحة ليتم حفظ الطلب.",
+    "opus46.tip_7": "٧) لمسح جميع البيانات والبدء من جديد، اضغط على رابط مسح أسفل الصفحة.",
+    "opus46.tips_dont_show": "عدم إظهار هذه النصائح مرة أخرى",
+    "opus46.tips_hidden": "لن يتم إظهار النصائح لمدة 30 يوم",
+    "opus46.tips_title": "نصائح سريعة قبل الطلب",
+    "opus46.url_placeholder": "الصق رابط المنتج (أو وصفه إن لم يوجد رابط)",
+    "opus46.welcome_back": "أهلاً بعودتك! أدخل كلمة المرور",
     "or": "أو",
     "order(s)": "طلب",
     "order.add_at_least_one_product": "يجب إضافة منتج واحد على الأقل.",
@@ -688,9 +1010,18 @@
     "order.approximate": "تقريبي",
     "order.back_to_login": "العودة لتسجيل الدخول",
     "order.change_email": "تغيير البريد",
-    "order.creating_account": "جاري إنشاء الحساب",
     "order.clear_all": "مسح جميع المنتجات المدخلة",
+    "order.creating_account": "جاري إنشاء الحساب",
+    "order.currency_aed": "درهم إماراتي",
+    "order.currency_cny": "يوان صيني",
+    "order.currency_eur": "يورو",
+    "order.currency_gbp": "جنيه إسترليني",
+    "order.currency_jpy": "ين ياباني",
+    "order.currency_krw": "وون كوري",
     "order.currency_other": "أخرى",
+    "order.currency_sar": "ريال سعودي",
+    "order.currency_try": "ليرة تركية",
+    "order.currency_usd": "دولار أمريكي",
     "order.daily_limit_reached": "لقد تجاوزت الحد الأقصى من الطلبات اليومية (:max طلبات). يُرجى المحاولة غداً.",
     "order.enter_prices_for_estimate": "أدخل الأسعار لحساب التكلفة التقريبية",
     "order.estimated_total": "التكلفة التقريبية",
@@ -703,11 +1034,20 @@
     "order.field_size": "المقاس",
     "order.field_url": "رابط المنتج أو وصفه",
     "order.file_limit": "ملف واحد لكل منتج، بحد أقصى 10 ملفات",
+    "order.form_data_saved": "تم حفظ بيانات النموذج",
     "order.general_notes": "ملاحظات عامة",
     "order.general_notes_placeholder": "يمكنك إضافة ملاحظات عامة للطلب هنا...",
     "order.hide_optional": "إخفاء الخيارات الإضافية",
     "order.hide_tips": "إخفاء النصائح",
     "order.logging_in": "جاري تسجيل الدخول",
+    "order.login_required_file": "لإرفاق الملفات يرجى تسجيل الدخول",
+    "order.created_successfully": "تم إرسال الطلب رقم #:number بنجاح.",
+    "order.success_title": "تم استلام طلبك!",
+    "order.success_subtitle": "رقم الطلب: #:number",
+    "order.success_message": "سيتم تحويلك إلى صفحة الطلب المخصصة لمتابعة طلبك والتواصل مع الفريق عبر التعليقات.\n\nسنراجع الطلب يدويًا ونوافيك خلال ساعات بقيمة المنتجات ورسوم الخدمة.",
+    "order.success_go_to_order": "انتقل لمتابعة طلبك",
+    "order.success_redirect_countdown": "سيتم التحويل خلال :seconds ثانية…",
+    "order.duplicate_prefilled": "تم تعبئة البيانات من طلبك السابق.",
     "order.max_files_exceeded": "يمكنك إرفاق ١٠ ملفات كحد أقصى.",
     "order.max_products_label": "الحد الأقصى :max منتج",
     "order.max_products_reached": "وصلت للحد الأقصى (:max منتج) في الطلب الواحد.",
@@ -720,6 +1060,7 @@
     "order.optional": "اختياري",
     "order.products_added": "منتج مُضاف",
     "order.products_unit": "منتج",
+    "order.rate_limit_exceeded": "لقد تجاوزت الحد المسموح من الطلبات (:max طلب/ساعة). للحصول على حد أعلى، تواصل معنا.",
     "order.remove_item": "حذف المنتج",
     "order.submit_order": "إرسال الطلب",
     "order.submitting": "جاري الإرسال",
@@ -734,22 +1075,12 @@
     "order.tips_tip7": "٧) لمسح جميع البيانات المدخلة والبدء من جديد، اضغط على رابط «مسح جميع المنتجات المدخلة» أسفل الصفحة.",
     "order.tips_title": "كيف يعمل الطلب؟",
     "order.upload_file": "ارفع ملفاً أو صورة",
-    "order.rate_limit_exceeded": "لقد تجاوزت الحد المسموح من الطلبات (:max طلب/ساعة). للحصول على حد أعلى، تواصل معنا.",
-    "order.form_data_saved": "تم حفظ بيانات النموذج",
-    "order.currency_usd": "دولار أمريكي",
-    "order.currency_eur": "يورو",
-    "order.currency_gbp": "جنيه إسترليني",
-    "order.currency_cny": "يوان صيني",
-    "order.currency_jpy": "ين ياباني",
-    "order.currency_krw": "وون كوري",
-    "order.currency_try": "ليرة تركية",
-    "order.currency_sar": "ريال سعودي",
-    "order.currency_aed": "درهم إماراتي",
-    "order.login_required_file": "لإرفاق الملفات يرجى تسجيل الدخول",
     "order.url_placeholder": "الصق رابط المنتج هنا، أو اكتب وصفه إن لم يوجد رابط",
     "order.url_placeholder_short": "رابط أو وصف المنتج",
     "orders.action_needed": "مطلوب منك إجراء",
+    "orders.add_address_modal_title": "إضافة عنوان الشحن",
     "orders.address_change_not_allowed": "لا يمكن تغيير عنوان الشحن بعد معالجة الطلب",
+    "orders.address_saved_order_updated": "تم حفظ العنوان وتحديث الطلب",
     "orders.address_updated": "تم تحديث عنوان الشحن بنجاح",
     "orders.all_statuses": "جميع الحالات",
     "orders.already_paid": "الطلب مدفوع بالفعل",
@@ -817,19 +1148,27 @@
     "orders.merged_into": "تم دمج هذا الطلب في",
     "orders.needs_payment_note": "بانتظار تحويل الدفعة",
     "orders.newest_first": "الأحدث أولاً",
+    "orders.no_address_hint": "نحتاج عنوانك لإتمام شحن طلبك",
+    "orders.no_address_prompt": "لا يوجد عنوان شحن — أضف عنوانك الآن",
     "orders.no_comments": "لا توجد تعليقات بعد",
     "orders.no_files": "لا توجد ملفات مرفقة",
     "orders.no_items": "لا توجد منتجات في هذا الطلب",
     "orders.no_orders_in_group": "لا توجد طلبات في هذا القسم",
     "orders.no_shipping_address": "لم يتم تحديد عنوان شحن",
     "orders.notification_queued": "تم تسجيل الإشعار (سيُرسَل عند تفعيل البريد)",
+    "orders.number_copied": "تم النسخ ✓",
     "orders.oldest_first": "الأقدم أولاً",
     "orders.on_hold_note": "الطلب معلّق — انتظر رد الفريق",
-    "orders.order_number": "الطلب رقم #:number",
+    "orders.order_date": "تاريخ الطلب:",
+    "orders.order_number": "رقم الطلب: :number",
+    "orders.order_time": "وقت الطلب:",
+    "orders.orders": "طلب",
     "orders.paid": "مدفوع",
     "orders.pay_now": "ادفع الآن",
     "orders.per_page": "عدد النتائج",
+    "orders.notes": "ملاحظات",
     "orders.price": "السعر",
+    "orders.product": "المنتج",
     "orders.prices_updated": "تم تحديث الأسعار",
     "orders.qty": "الكمية",
     "orders.quick_actions": "إجراءات سريعة",
@@ -849,6 +1188,9 @@
     "orders.size": "المقاس",
     "orders.status_changed_from": "تم تغيير الحالة من",
     "orders.status_updated": "تم تحديث حالة الطلب",
+    "orders.auto_comment_no_price": "شكراً لطلبك معنا!\n\nلم يتم إدخال أسعار المنتجات، سيتم حساب قيمة طلبك وإبلاغك بها في أقرب وقت عبر صفحة الطلب هذه.\n\nللاستفسار يرجى الرد في التعليقات أو التواصل عبر واتساب: 00966556063500",
+    "orders.auto_comment_with_price": "عزيزي العميل، شكراً لطلبك معنا!\n\nالقيمة التقريبية لطلبك (الفاتورة الأولية — لا تشمل سعر الشحن):\n\nقيمة المنتج/ات: :subtotal ريال سعودي\nعمولة وسيط زون: :commission ريال سعودي\nإجمالي سعر الشراء والعمولة: :total ريال سعودي\n\nسيتم البدء بالشراء فعلياً عند استلام التكلفة المذكورة.\n\nللتنويه: القيمة أعلاه محسوبة تلقائياً من النظام، سيتم إبلاغك في حال وجود أي اختلاف.\n\nللاستفسار يرجى الرد في التعليقات أو التواصل عبر واتساب: 00966556063500",
+    "orders.system_comment_label": "رسالة تلقائية",
     "orders.subtotal": "المجموع الفرعي",
     "orders.team_members": "من الفريق",
     "orders.timeline": "سجل الطلب",
@@ -905,6 +1247,8 @@
     "payment.team_ready": "فريقنا جاهز لمساعدتك في أي استفسار",
     "payment.title": "طرق الدفع المتاحة",
     "payment.whatsapp": "واتساب",
+    "product": "منتج",
+    "products": "منتجات",
     "results": "نتيجة",
     "seconds.": "ثوان.",
     "shipping.10_–_18_days": "10 – 18 يوم",
@@ -979,60 +1323,121 @@
     "—": "—",
     "▲ Hide": "▲ إخفاء",
     "▼ Filter": "▼ فلتر",
-    "nav.my_account": "حسابي",
-    "caldue1.new_order_title": "طلب جديد",
-    "caldue1.products_added": "منتج",
-    "caldue1.submit_order": "تأكيد الطلب",
-    "caldue1.submitting": "جارٍ الإرسال",
-    "caldue1.tips_title": "نصائح سريعة قبل الطلب",
-    "caldue1.tips_tip1": "جميع الحقول اختيارية، لكن إدخال بيانات كاملة مثل اللون والمقاس، أو شرح توضيحي للمنتجات المعقّدة، يسرّع معالجة طلبك.",
-    "caldue1.tips_tip2": "كلما كانت المواصفات أوضح، تم شراء المنتجات بدقة وشحن طلبك بشكل أسرع، وتجنّبنا التأخير بسبب نقص المعلومات.",
-    "caldue1.tips_tip3": "عند إدخال السعر بأي عملة، يحسب النظام قيمة المنتجات بالريال تلقائيًا. وإن تركته فارغًا، نحسبه يدويًا ونرد لاحقًا في صفحة الطلب.",
-    "caldue1.tips_tip4": "بعد الضغط على «إرسال الطلب» ستنتقل إلى صفحة الطلب، وهي أهم صفحة لمتابعة حالة طلبك.",
-    "caldue1.tips_tip5": "إرفاق صور أو ملفات توضيحية اختياري، ويُفضَّل للمنتجات المعقّدة. يُسمح بإرفاق ملف واحد فقط لكل منتج، وبحد أقصى ١٠ ملفات للطلب الواحد قبل الإرسال.",
-    "caldue1.tips_tip6": "لا تنسَ الضغط على زر «إرسال» أسفل الصفحة ليتم حفظ الطلب وإضافته إلى حسابك.",
-    "caldue1.tips_tip7": "لمسح جميع البيانات المدخلة والبدء من جديد، اضغط على رابط «مسح جميع المنتجات المدخلة» أسفل الصفحة.",
-    "caldue1.tips_dont_show": "عدم إظهار هذه النصائح مرة أخرى",
-    "caldue1.tips_hidden_30_days": "لن يتم إظهار النصائح لمدة 30 يوم",
-    "caldue1.field_url": "رابط المنتج",
-    "caldue1.field_qty": "العدد",
-    "caldue1.field_color": "اللون",
-    "caldue1.field_size": "المقاس",
-    "caldue1.field_price": "السعر",
-    "caldue1.field_currency": "العملة",
-    "caldue1.field_notes": "ملاحظات",
-    "caldue1.field_file": "ملف",
-    "caldue1.placeholder_url": "الصق رابط المنتج (أو وصفه إن لم يوجد رابط)",
-    "caldue1.placeholder_notes": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
-    "caldue1.placeholder_general_notes": "يمكنك إضافة ملاحظات عامة للطلب، مثل طلب خدمة تصوير المنتجات، تغليف إضافي، أو دمجه مع طلب آخر الخ.",
-    "caldue1.new_product": "منتج جديد",
-    "caldue1.remove_item": "حذف",
-    "caldue1.add_optional_fields": "إضافة ملاحظات أو صورة للمنتج",
-    "caldue1.hide_optional_fields": "إخفاء الملاحظات والصور",
-    "caldue1.attach_file": "إرفاق ملف",
-    "caldue1.file_info": "ملف واحد كحد أقصى لكل منتج (صورة، PDF، Excel) - 2 ميجابايت للملف",
-    "caldue1.login_to_upload": "لإرفاق الملفات يرجى تسجيل الدخول",
-    "caldue1.add_product": "إضافة منتج آخر",
-    "caldue1.clear_all": "مسح جميع المنتجات المدخلة",
-    "caldue1.confirm_clear_all": "سيتم مسح كامل البيانات التي أدخلتها. هل ترغب بالاستمرار بالمسح؟",
-    "caldue1.general_notes": "ملاحظات عامة",
-    "caldue1.estimated_total": "القيمة التقريبية",
-    "caldue1.login_modal_title": "تسجيل الدخول لإرسال الطلب",
-    "caldue1.form_data_saved": "لا تقلق، جميع بيانات المنتجات التي أدخلتها محفوظة",
-    "caldue1.continue": "متابعة",
-    "caldue1.welcome_back": "أهلاً بعودتك! أدخل كلمة المرور",
-    "caldue1.change": "تغيير",
-    "caldue1.login": "تسجيل الدخول",
-    "caldue1.forgot_password": "نسيت كلمة المرور؟",
-    "caldue1.no_account": "لا يوجد حساب بهذا الايميل",
-    "caldue1.optional": "اختياري",
-    "caldue1.password_min_length": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
-    "caldue1.create_account_continue": "إنشاء حساب والمتابعة",
-    "caldue1.reset_password": "استعادة كلمة المرور",
-    "caldue1.send_reset_link": "إرسال كلمة المرور الجديدة",
-    "caldue1.back": "العودة",
-    "caldue1.max_products_reached": "الحد الأقصى :max منتج في الطلب الواحد",
-    "caldue1.rate_limit_exceeded": "لقد تجاوزت الحد المسموح من الطلبات (:limit طلب/ساعة)",
-    "caldue1.add_at_least_one_product": "يرجى إضافة منتج واحد على الأقل",
-    "caldue1.max_files_exceeded": "وصلت للحد الأقصى (١٠ ملفات) قبل الإرسال"
+
+    "orders.customer_quick_actions": "إجراءات سريعة للعميل",
+    "orders.team_quick_actions": "إجراءات سريعة للفريق",
+
+    "orders.btn_payment_notify": "إبلاغ عن تحويل مبلغ",
+    "orders.btn_shipping_address": "تحديد عنوان الشحن",
+    "orders.btn_address_set": "تم تحديد عنوان الشحن",
+    "orders.btn_similar_order": "طلب مشابه",
+    "orders.btn_customer_merge": "طلب دمج الطلبات",
+    "orders.btn_customer_cancel": "إلغاء الطلب",
+    "orders.btn_transfer_order": "تحويل ملكية الطلب",
+    "orders.btn_payment_tracking": "تتبع الدفع",
+    "orders.btn_create_invoice": "إنشاء فاتورة",
+    "orders.btn_shipping_tracking": "تحديث معلومات الشحن",
+    "orders.btn_update_status": "تحديث حالة الطلب",
+    "orders.btn_team_merge": "دمج الطلبات",
+
+    "orders.modal_payment_notify_title": "إبلاغ عن تحويل مبلغ",
+    "orders.transfer_amount": "المبلغ المحول",
+    "orders.transfer_amount_placeholder": "أدخل المبلغ",
+    "orders.transfer_bank": "البنك المحول إليه",
+    "orders.select_bank": "اختر البنك...",
+    "orders.bank_other": "آخر",
+    "orders.transfer_notes": "ملاحظات إضافية (اختياري)",
+    "orders.transfer_notes_placeholder": "أي معلومات إضافية عن التحويل",
+    "orders.payment_notify_sent": "تم إرسال إبلاغ التحويل بنجاح",
+    "orders.payment_notify_comment": "💰 إبلاغ عن تحويل مبلغ\n\nالمبلغ: :amount ريال\nالبنك: :bank",
+    "orders.payment_notify_notes": "ملاحظات",
+    "orders.timeline_payment_notify": "العميل أبلغ عن تحويل مبلغ :amount ريال",
+
+    "orders.cancel_not_allowed": "لا يمكن إلغاء الطلب في حالته الحالية",
+    "orders.cancelled_by_customer": "تم إلغاء الطلب بنجاح",
+    "orders.confirm_cancel_title": "تأكيد إلغاء الطلب",
+    "orders.confirm_cancel_desc": "هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.",
+    "orders.confirm_cancel_btn": "نعم، إلغاء الطلب",
+    "orders.keep_order": "إبقاء الطلب",
+
+    "orders.customer_merge_request_comment": "🔀 طلب دمج مع الطلب رقم #:number",
+    "orders.timeline_customer_merge_request": "العميل طلب دمج الطلب مع #:number",
+    "orders.customer_merge_sent": "تم إرسال طلب الدمج بنجاح",
+    "orders.modal_customer_merge_title": "طلب دمج الطلبات",
+    "orders.customer_merge_desc": "اختر الطلب الذي تريد دمجه مع هذا الطلب:",
+    "orders.send_merge_request": "إرسال طلب الدمج",
+
+    "orders.modal_similar_order_title": "طلب مشابه",
+    "orders.similar_order_how": "كيف يعمل «طلب مشابه»؟",
+    "orders.similar_order_desc": "سيقوم النظام بفتح صفحة الطلب الجديد وتعبئة جميع البيانات من طلبك الحالي تلقائياً:",
+    "orders.similar_order_item1": "جميع روابط المنتجات",
+    "orders.similar_order_item2": "الكميات والألوان والمقاسات",
+    "orders.similar_order_item3": "الأسعار والعملات",
+    "orders.similar_order_item4": "الملاحظات الخاصة والعامة",
+    "orders.similar_order_edit_note": "يمكنك التعديل بحرية كاملة — لن يتم إنشاء الطلب حتى تضغط «تأكيد الطلب»",
+    "orders.open_order_form": "فتح نموذج الطلب",
+
+    "orders.modal_transfer_title": "تحويل ملكية الطلب",
+    "orders.transfer_what_happens": "ماذا سيحدث عند التحويل؟",
+    "orders.transfer_note1": "رقم الطلب والملاحظات والتعليقات تبقى كما هي",
+    "orders.transfer_note2": "الطلب سيظهر في لوحة تحكم العميل الجديد",
+    "orders.transfer_note3": "إذا كان للعميل حساب سابق: يتم التحويل مباشرة",
+    "orders.transfer_note4": "إذا لم يكن له حساب: سيتم إنشاء حساب جديد وستظهر لك بيانات الدخول",
+    "orders.transfer_email_label": "البريد الإلكتروني للعميل",
+    "orders.transfer_btn": "تحويل الطلب",
+    "orders.order_transferred": "تم تحويل الطلب بنجاح",
+    "orders.timeline_order_transferred": "تم تحويل الطلب من :from إلى :to",
+    "orders.transfer_new_account_created": "تم إنشاء حساب للعميل",
+    "orders.transfer_send_creds_hint": "أرسل هذه البيانات للعميل لتسجيل الدخول:",
+    "orders.transfer_creds_email": "البريد الإلكتروني",
+    "orders.transfer_creds_password": "كلمة المرور المؤقتة (5 أحرف)",
+
+    "orders.panel_payment_tracking": "تتبع الدفع",
+    "orders.payment_amount": "المبلغ المدفوع",
+    "orders.sar": "ر.س",
+    "orders.payment_date": "تاريخ الدفع",
+    "orders.payment_method": "طريقة الدفع",
+    "orders.select_method": "اختر...",
+    "orders.payment_method_bank_transfer": "تحويل بنكي",
+    "orders.payment_method_credit_card": "بطاقة ائتمان",
+    "orders.payment_method_cash": "نقداً",
+    "orders.payment_method_other": "أخرى",
+    "orders.payment_receipt_file": "إيصال الدفع",
+    "orders.view_receipt": "عرض الإيصال",
+    "orders.save_payment": "حفظ معلومات الدفع",
+    "orders.payment_updated": "تم حفظ معلومات الدفع",
+    "orders.timeline_payment_updated": "تم تحديث معلومات الدفع — المبلغ: :amount",
+
+    "orders.panel_shipping_tracking": "معلومات الشحن",
+    "orders.current_tracking": "رقم التتبع الحالي",
+    "orders.tracking_number": "رقم التتبع",
+    "orders.tracking_number_placeholder": "مثال: 1234567890",
+    "orders.tracking_company": "شركة الشحن",
+    "orders.select_carrier": "اختر...",
+    "orders.carrier_other": "أخرى",
+    "orders.tracking_updated": "تم حفظ معلومات الشحن",
+    "orders.tracking_card_title": "معلومات الشحن",
+    "orders.track_shipment": "تتبع الشحنة",
+    "orders.copy": "نسخ",
+    "orders.copied": "تم النسخ ✓",
+    "orders.timeline_tracking_updated": "تم تحديث رقم التتبع: :number",
+
+    "orders.invoice_posted_as_comment": "سيتم إضافة الفاتورة كتعليق جديد في قسم التعليقات",
+    "orders.close": "إغلاق",
+
+    "Customer: Report Payment Transfer": "إبلاغ عن تحويل مبلغ (عميل)",
+    "Customer: Set Shipping Address Button": "زر تحديد عنوان الشحن (عميل)",
+    "Customer: Similar Order": "طلب مشابه (عميل)",
+    "Customer: Request Order Merge": "طلب دمج الطلبات (عميل)",
+    "Customer: Cancel Order": "إلغاء الطلب (عميل)",
+    "Staff: Transfer Order Ownership": "تحويل ملكية الطلب (فريق)",
+    "Staff: Payment Tracking": "تتبع الدفع (فريق)",
+    "Staff: Update Shipping Tracking": "تحديث معلومات الشحن (فريق)",
+    "Staff: Merge Orders": "دمج الطلبات (فريق)",
+    "Staff: Mark as Paid": "تحديد كمدفوع (فريق)",
+    "Staff: Mark as Shipped": "تحديد كمشحون (فريق)",
+    "Staff: Request More Info": "طلب معلومات إضافية (فريق)",
+    "Staff: Cancel Order": "إلغاء الطلب (فريق)",
+    "Show Customer Quick Actions Section": "إظهار قسم الإجراءات السريعة للعميل",
+    "Show Staff Quick Actions Section": "إظهار قسم الإجراءات السريعة للفريق"
 }

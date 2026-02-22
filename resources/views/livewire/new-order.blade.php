@@ -1,674 +1,1366 @@
-{{--
-    /new-order — Option 1: Responsive
-    Mobile  → stacked cards (expand/collapse). Fields driven by $fieldConfig from settings.
-    Desktop → flex row (all fields in one line).
---}}
+{{-- /new-order — Production order form --}}
 
 @php
-    $urlField      = collect($fieldConfig)->firstWhere('key', 'url');
-    $locale        = app()->getLocale();
+    $isLoggedIn = auth()->check();
+    $locale = app()->getLocale();
+    $isRtl = $locale === 'ar';
 @endphp
 
+{{-- ============================================================ --}}
+{{-- SUCCESS SCREEN — shown for the first 3 orders               --}}
+{{-- ============================================================ --}}
+@if ($showSuccessScreen)
+<div
+    class="wz-order-page"
+    x-data="{
+        seconds: 45,
+        orderUrl: '{{ route('orders.show', $createdOrderId) }}',
+        init() {
+            const timer = setInterval(() => {
+                this.seconds--;
+                if (this.seconds <= 0) { clearInterval(timer); window.location.href = this.orderUrl; }
+            }, 1000);
+        }
+    }"
+    x-init="init()"
+    style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:20px;"
+>
+    <div style="text-align:center;max-width:520px;width:100%;">
+        {{-- Animated checkmark --}}
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:successScale 0.5s ease-out;">
+            <svg style="width:32px;height:32px;color:#fff;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+        <h1 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin-bottom:8px;">
+            {{ __('order.success_title') }}
+        </h1>
+        <div style="font-size:1rem;font-weight:600;color:#f97316;margin-bottom:16px;">
+            {{ __('order.success_subtitle', ['number' => $createdOrderNumber]) }}
+        </div>
+        <p style="color:#475569;line-height:1.7;font-size:0.93rem;margin-bottom:24px;white-space:pre-line;">
+            {{ __('order.success_message') }}
+        </p>
+        <a
+            href="{{ route('orders.show', $createdOrderId) }}"
+            style="display:inline-block;background:#f97316;color:#fff;font-weight:600;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:0.95rem;margin-bottom:16px;"
+        >
+            {{ __('order.success_go_to_order') }}
+        </a>
+        <div style="color:#94a3b8;font-size:0.82rem;">
+            {{ __('order.success_redirect_countdown', ['seconds' => '']) }}<span x-text="seconds"></span>{{ app()->getLocale() === 'ar' ? ' ثانية…' : ' seconds…' }}
+        </div>
+    </div>
+    <style>
+        @keyframes successScale {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</div>
+@else
+{{-- ============================================================ --}}
+{{-- ORDER FORM                                                   --}}
+{{-- ============================================================ --}}
 <div
     x-data="newOrderForm(
         @js($exchangeRates),
-        {{ $commissionThreshold }},
-        {{ $commissionPct }},
-        {{ $commissionFlat }},
+        0.03,
         @js($currencies),
         {{ $maxProducts }},
-        @js($defaultCurrency)
+        @js($defaultCurrency),
+        {{ $isLoggedIn ? 'true' : 'false' }},
+        {{ $commissionThreshold }},
+        {{ $commissionPct }},
+        {{ $commissionFlat }}
     )"
-    x-init="init()"
+    x-init="
+        init();
+        @if ($duplicateFrom)
+        $nextTick(() => showNotify('success', @js(__('order.duplicate_prefilled'))));
+        @endif
+    "
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
-    class="min-h-screen bg-gray-50"
+    class="wz-order-page"
 >
 
-    {{-- ================================================================
-         Toast notification
-    ================================================================ --}}
-    <div
-        x-show="notification.visible"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 translate-y-2"
-        x-transition:enter-end="opacity-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 translate-y-0"
-        x-transition:leave-end="opacity-0 translate-y-2"
-        class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl
-               shadow-lg text-sm font-medium max-w-sm w-full"
-        :class="notification.type === 'error'
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-green-50 text-green-700 border border-green-200'"
-        style="display:none"
-    >
-        <span x-show="notification.type === 'error'">⚠️</span>
-        <span x-show="notification.type !== 'error'">✓</span>
-        <span x-text="notification.message"></span>
-    </div>
+{{-- Toast Container --}}
+<div x-ref="toasts" id="toast-container"></div>
 
-    {{-- ================================================================
-         Sticky page header
-    ================================================================ --}}
-    <div class="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div>
-                <h1 class="text-lg font-bold text-gray-900">{{ __('New Order') }}</h1>
-                <p class="text-xs text-gray-500 mt-0.5">
-                    <span x-text="filledCount"></span>
-                    {{ __('order.products_added') }}
-                    <span class="mx-1">·</span>
-                    {{ __('order.max_products_label', ['max' => $maxProducts]) }}
-                </p>
-            </div>
-            <button
-                wire:click="submitOrder"
-                wire:loading.attr="disabled"
-                wire:target="submitOrder"
-                class="inline-flex items-center gap-2 bg-primary-600 text-white text-sm font-semibold
-                       px-4 py-2 rounded-lg hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-60"
-            >
-                <span wire:loading.remove wire:target="submitOrder">{{ __('order.submit_order') }}</span>
-                <span wire:loading wire:target="submitOrder">{{ __('order.submitting') }}…</span>
-            </button>
+<div class="order-page-container">
+<main id="main-content">
+
+    {{-- Tips Box --}}
+    <section class="tips-box" x-show="!tipsHidden" x-cloak>
+        <div class="tips-header" @click="tipsOpen = !tipsOpen">
+            <h2>{{ __('opus46.tips_title') }}</h2>
+            <span x-text="tipsOpen ? '▲' : '▼'" style="color:#c2a08a;font-size:0.8rem;"></span>
         </div>
-    </div>
-
-    {{-- ================================================================
-         Tips box — collapsible, 30-day "don't show" localStorage
-    ================================================================ --}}
-    <div x-show="showTips" class="max-w-5xl mx-auto px-4 pt-4">
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-             style="border-inline-start: 4px solid #f97316;">
-            {{-- Header (always visible, click to expand/collapse) --}}
-            <button
-                type="button"
-                @click="tipsExpanded = !tipsExpanded"
-                class="w-full flex items-center justify-between px-4 py-3 text-start hover:bg-gray-50 transition-colors"
-            >
-                <h2 class="text-sm font-semibold text-gray-900">{{ __('order.tips_title') }}</h2>
-                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
-                     :class="tipsExpanded ? 'rotate-180' : ''"
-                     fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-
-            {{-- Expandable body (collapsed by default) --}}
-            <div x-show="tipsExpanded" x-collapse class="border-t border-gray-100">
-                <div class="px-4 py-4">
-                    <ul class="space-y-2.5 text-sm text-gray-600 leading-relaxed">
-                        <li>{{ __('order.tips_tip1') }}</li>
-                        <li>{{ __('order.tips_tip2') }}</li>
-                        <li>{{ __('order.tips_tip3') }}</li>
-                        <li>{{ __('order.tips_tip4') }}</li>
-                        <li>{{ __('order.tips_tip5') }}</li>
-                        <li>{{ __('order.tips_tip6') }}</li>
-                        <li>{{ __('order.tips_tip7') }}</li>
-                    </ul>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-                            <input type="checkbox" @change="dismissTips()" class="rounded border-gray-300 text-primary-600 cursor-pointer">
-                            <span>{{ __('order.tips_dont_show') }}</span>
-                        </label>
-                    </div>
-                </div>
+        <div x-show="tipsOpen" x-collapse class="tips-content">
+            <ul class="tips-list">
+                @for ($i = 1; $i <= 7; $i++)
+                    <li>{{ __("opus46.tip_{$i}") }}</li>
+                @endfor
+            </ul>
+            <div style="margin-top:15px;padding-top:15px;border-top:1px solid #fef0e8;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#64748b;cursor:pointer;">
+                    <input type="checkbox" @change="hideTips30Days()" style="cursor:pointer;">
+                    <span>{{ __('opus46.tips_dont_show') }}</span>
+                </label>
             </div>
         </div>
-    </div>
+    </section>
 
-    {{-- ================================================================
-         DESKTOP TABLE HEADER (lg+)
-         Uses the same flex classes as item rows so columns align perfectly.
-    ================================================================ --}}
-    <div class="max-w-5xl mx-auto px-4 pt-4">
-        <div class="hidden lg:flex items-center gap-2 px-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            @foreach ($fieldConfig as $field)
-                <div class="{{ $desktopWidths[$field['key']] ?? 'flex-1' }}">
-                    {{ $field['label_' . $locale] ?? $field['label_en'] }}
-                </div>
-            @endforeach
-            {{-- delete button column placeholder --}}
-            <div class="w-6 shrink-0"></div>
-        </div>
-    </div>
+    {{-- Order Form --}}
+    <div id="order-form">
 
-    {{-- ================================================================
-         ITEMS LIST
-    ================================================================ --}}
-    <div class="max-w-5xl mx-auto px-4 pb-36 space-y-2" id="items-container">
+        {{-- Products Section --}}
+        <section class="order-card" style="padding:10px;">
 
-        @foreach ($items as $index => $item)
-            <div
-                wire:key="item-{{ $index }}"
-                x-data="{ expanded: {{ $index === 0 ? 'true' : 'false' }}, showOptional: false }"
-                class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
-                :class="expanded ? 'ring-1 ring-primary-200' : ''"
-            >
-
-                {{-- =====================================================
-                     MOBILE CARD (hidden on lg+)
-                ===================================================== --}}
-                <div class="lg:hidden">
-
-                    {{-- Summary bar --}}
-                    <button
-                        type="button"
-                        @click="expanded = !expanded"
-                        class="w-full flex items-center justify-between px-4 py-3 text-start"
-                    >
-                        <div class="flex items-center gap-3 min-w-0">
-                            <span class="shrink-0 flex items-center justify-center w-6 h-6 rounded-full
-                                         bg-gray-100 text-xs font-bold text-gray-500">
-                                {{ $index + 1 }}
-                            </span>
-                            <span class="text-sm text-gray-700 min-w-0 flex-1 break-words line-clamp-2">
-                                @if ($item['url'])
-                                    {{ Str::limit($item['url'], 38) }}
-                                @else
-                                    <span class="text-gray-400">{{ __('order.new_product') }}</span>
-                                @endif
-                            </span>
-                            @if ($item['price'] && $item['qty'])
-                                <span class="text-xs text-gray-500 shrink-0">
-                                    {{ $item['qty'] }}×{{ $item['price'] }} {{ $item['currency'] }}
-                                </span>
-                            @endif
-                        </div>
-                        <div class="flex items-center gap-2">
-                            @if (count($items) > 1)
-                                <button
-                                    type="button"
-                                    @click.stop="$wire.removeItem({{ $index }})"
-                                    class="p-1 text-gray-300 hover:text-red-400 transition-colors rounded"
-                                    wire:loading.attr="disabled"
-                                    aria-label="{{ __('order.remove_item') }}"
-                                >
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            @endif
-                            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                                 :class="expanded ? 'rotate-180' : ''"
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                    </button>
-
-                    {{-- Expanded body --}}
-                    <div x-show="expanded" x-collapse class="border-t border-gray-100">
-                        <div class="px-4 pt-3 pb-4 space-y-3">
-
-                            {{-- URL — always full width and first --}}
-                            @if ($urlField)
-                                @include('livewire.partials.order-field', [
-                                    'field'  => $urlField,
-                                    'index'  => $index,
-                                    'mobile' => true,
-                                ])
-                            @endif
-
-                            {{-- Required non-URL fields in 2-col grid --}}
-                            @if (count($requiredFields) > 0)
-                                <div class="grid grid-cols-2 gap-2">
-                                    @foreach ($requiredFields as $field)
-                                        <div class="{{ in_array($field['key'], ['notes']) ? 'col-span-2' : 'col-span-1' }}">
-                                            @include('livewire.partials.order-field', [
-                                                'field'  => $field,
-                                                'index'  => $index,
-                                                'mobile' => true,
-                                            ])
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-
-                            {{-- Optional toggle (only if there are optional fields) --}}
-                            @if (count($optionalFields) > 0)
-                                @php
-                                    $locale = app()->getLocale();
-                                    $optionalLabels = collect($optionalFields)
-                                        ->pluck('label_' . $locale)
-                                        ->filter()
-                                        ->implode('، ');
-                                @endphp
-                                <button
-                                    type="button"
-                                    @click="showOptional = !showOptional"
-                                    class="flex items-center gap-1.5 text-xs text-primary-700 font-medium hover:text-primary-800"
-                                >
-                                    <svg class="w-3.5 h-3.5 transition-transform"
-                                         :class="showOptional ? 'rotate-90' : ''"
-                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                    <span x-show="!showOptional">+ {{ $optionalLabels }}</span>
-                                    <span x-show="showOptional">{{ __('order.hide_optional') }}</span>
-                                </button>
-
-                                <div x-show="showOptional" x-collapse class="space-y-3">
-                                    @foreach ($optionalFields as $field)
-                                        @include('livewire.partials.order-field', [
-                                            'field'  => $field,
-                                            'index'  => $index,
-                                            'mobile' => true,
-                                        ])
-                                    @endforeach
-                                </div>
-                            @endif
-
-                        </div>
-                    </div>
-                </div>
-
-                {{-- =====================================================
-                     DESKTOP ROW (hidden on mobile, shown on lg+)
-                     All fields in one flex row, no labels (header row above handles that).
-                ===================================================== --}}
-                <div class="hidden lg:flex items-center gap-2 px-3 py-2.5">
-
-                    @foreach ($fieldConfig as $field)
-                        <div class="{{ $desktopWidths[$field['key']] ?? 'flex-1' }}">
-                            @include('livewire.partials.order-field', [
-                                'field'  => $field,
-                                'index'  => $index,
-                                'mobile' => false,
-                            ])
-                        </div>
-                    @endforeach
-
-                    {{-- Remove button --}}
-                    @if (count($items) > 1)
-                        <button
-                            type="button"
-                            wire:click="removeItem({{ $index }})"
-                            wire:loading.attr="disabled"
-                            class="w-6 h-6 shrink-0 flex items-center justify-center rounded
-                                   text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                        >
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    @else
-                        <div class="w-6 shrink-0"></div>
-                    @endif
-
-                </div>
-
+            {{-- Desktop Table Header --}}
+            <div class="table-header">
+                <div>{{ __('opus46.th_num') }}</div>
+                <div>{{ __('opus46.th_url') }}</div>
+                <div>{{ __('opus46.th_qty') }}</div>
+                <div>{{ __('opus46.th_color') }}</div>
+                <div>{{ __('opus46.th_size') }}</div>
+                <div>{{ __('opus46.th_price') }}</div>
+                <div>{{ __('opus46.th_currency') }}</div>
+                <div>{{ __('opus46.th_notes') }}</div>
+                <div>{{ __('opus46.th_files') }}</div>
             </div>
-        @endforeach
 
-        {{-- Add product button --}}
-        <button
-            type="button"
-            @click="addItemWithCurrency()"
-            wire:loading.attr="disabled"
-            wire:target="addItem"
-            :disabled="{{ $maxProducts }} <= filledCount"
-            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl
-                   border-2 border-dashed border-gray-200 text-sm font-medium text-gray-500
-                   hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50/50
-                   transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            {{ __('order.add_product') }}
-        </button>
+            {{-- Items --}}
+            <div id="items-container-wrapper">
+                <div id="items-container">
+                    <template x-for="(item, idx) in items" :key="idx">
+                        <div class="item-card"
+                             :class="{
+                                 'expanded': item._expanded,
+                                 'is-valid': item.url.trim().length > 0,
+                                 'is-minimized': !item._expanded
+                             }">
 
-        <div class="flex justify-end mt-1 px-1">
-            <button
-                type="button"
-                @click="clearDraft(); $wire.set('items', [@js($this->emptyItem($defaultCurrency))]); $wire.set('orderNotes', ''); recalculate()"
-                x-show="filledCount > 0"
-                class="text-xs text-gray-300 hover:text-gray-400 transition-colors"
-            >
-                {{ __('order.clear_all') }}
-            </button>
-        </div>
-    </div>
-
-    {{-- ================================================================
-         General notes
-    ================================================================ --}}
-    <div class="max-w-5xl mx-auto px-4 pb-4">
-        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                {{ __('order.general_notes') }}
-            </label>
-            <textarea
-                wire:model.blur="orderNotes"
-                rows="3"
-                placeholder="{{ __('order.general_notes_placeholder') }}"
-                class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm resize-none
-                       focus:outline-none focus:ring-2 focus:ring-primary-300 bg-gray-50"
-                @input="saveNotesDraft()"
-            ></textarea>
-        </div>
-    </div>
-
-    {{-- ================================================================
-         FIXED FOOTER — product count + estimated total + submit
-    ================================================================ --}}
-    <div class="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200
-                shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <div class="flex-1 min-w-0">
-                <div class="text-sm font-semibold text-gray-900">
-                    <span x-text="filledCount"></span>
-                    <span>{{ __('order.products_unit') }}</span>
-                </div>
-                <div class="text-xs text-gray-500 mt-0.5" x-show="estimatedTotal > 0">
-                    {{ __('order.estimated_total') }}:
-                    <span class="font-semibold text-gray-700" x-text="formatSAR(estimatedTotal)"></span>
-                    <span class="text-gray-400">({{ __('order.approximate') }})</span>
-                </div>
-                <div class="text-xs text-gray-400 mt-0.5" x-show="estimatedTotal <= 0">
-                    {{ __('order.enter_prices_for_estimate') }}
-                </div>
-            </div>
-            <button
-                wire:click="submitOrder"
-                wire:loading.attr="disabled"
-                wire:target="submitOrder"
-                class="shrink-0 inline-flex items-center gap-2 bg-primary-600 text-white font-semibold
-                       px-6 py-2.5 rounded-xl hover:bg-primary-700 active:scale-95 transition-all
-                       disabled:opacity-60 text-sm shadow-sm"
-            >
-                <span wire:loading.remove wire:target="submitOrder">{{ __('order.submit_order') }}</span>
-                <span wire:loading wire:target="submitOrder">{{ __('order.submitting') }}…</span>
-            </button>
-        </div>
-    </div>
-
-    {{-- ================================================================
-         GUEST LOGIN MODAL
-    ================================================================ --}}
-    @if ($showLoginModal)
-        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closeModal"></div>
-            <div
-                class="relative bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-4"
-                x-transition:enter-end="opacity-100 translate-y-0"
-            >
-                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h2 class="text-base font-bold text-gray-900">
-                        @if ($modalStep === 'email')   {{ __('order.modal_signin_title') }}
-                        @elseif ($modalStep === 'login') {{ __('auth.welcome_back') }}
-                        @elseif ($modalStep === 'register') {{ __('auth.create_your_account') }}
-                        @else {{ __('Reset Password') }}
-                        @endif
-                    </h2>
-                    <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600 rounded-lg p-1">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="bg-primary-50 px-5 py-2.5 text-xs text-primary-700 border-b border-primary-100">
-                    {{ __('order.modal_info') }}
-                </div>
-                @if ($modalError)
-                    <div class="mx-5 mt-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                        {{ $modalError }}
-                    </div>
-                @endif
-                @if ($modalSuccess)
-                    <div class="mx-5 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                        {{ $modalSuccess }}
-                    </div>
-                @endif
-                <div class="px-5 py-4 space-y-3">
-                    @if ($modalStep === 'email')
-                        <p class="text-sm text-gray-600">{{ __('order.modal_email_prompt') }}</p>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Email') }}</label>
-                            <input type="email" wire:model="modalEmail" wire:keydown.enter="checkModalEmail"
-                                   class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                   autofocus>
-                            @error('modalEmail') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                        </div>
-                        <button wire:click="checkModalEmail" wire:loading.attr="disabled" wire:target="checkModalEmail"
-                                class="w-full bg-primary-600 text-white font-semibold py-2.5 rounded-xl hover:bg-primary-700 transition-colors text-sm">
-                            {{ __('order.modal_continue') }}
-                        </button>
-                    @endif
-                    @if ($modalStep === 'login')
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Password') }}</label>
-                            <div class="relative" x-data="{ show: false }">
-                                <input :type="show ? 'text' : 'password'" wire:model="modalPassword"
-                                       wire:keydown.enter="loginFromModal"
-                                       class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm pe-10 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                       autofocus>
-                                <button type="button" @click="show = !show"
-                                        class="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600">
-                                    <svg x-show="!show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                    </svg>
-                                    <svg x-show="show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            @error('modalPassword') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                        </div>
-                        <button wire:click="loginFromModal" wire:loading.attr="disabled" wire:target="loginFromModal"
-                                class="w-full bg-primary-600 text-white font-semibold py-2.5 rounded-xl hover:bg-primary-700 transition-colors text-sm">
-                            <span wire:loading.remove wire:target="loginFromModal">{{ __('Log in') }}</span>
-                            <span wire:loading wire:target="loginFromModal">{{ __('order.logging_in') }}…</span>
-                        </button>
-                        <div class="flex items-center justify-between text-xs text-gray-500">
-                            <button wire:click="setModalStep('email')" class="hover:text-primary-600 underline">{{ __('order.change_email') }}</button>
-                            <button wire:click="setModalStep('reset')" class="hover:text-primary-600 underline">{{ __('Forgot your password?') }}</button>
-                        </div>
-                    @endif
-                    @if ($modalStep === 'register')
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Name') }}</label>
-                                <input type="text" wire:model="modalName"
-                                       class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                       autofocus>
-                                @error('modalName') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">
-                                    {{ __('Phone') }} <span class="text-gray-400">({{ __('order.optional') }})</span>
-                                </label>
-                                <input type="tel" wire:model="modalPhone"
-                                       class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Password') }}</label>
-                                <div class="relative" x-data="{ show: false }">
-                                    <input :type="show ? 'text' : 'password'" wire:model="modalPassword"
-                                           wire:keydown.enter="registerFromModal"
-                                           class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm pe-10 focus:outline-none focus:ring-2 focus:ring-primary-300">
-                                    <button type="button" @click="show = !show"
-                                            class="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600">
-                                        <svg x-show="!show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                        <svg x-show="show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                        </svg>
+                            {{-- Mobile Summary Bar --}}
+                            <div class="item-summary" @click="toggleItem(idx)">
+                                <div class="item-summary-text" x-text="itemSummary(idx)"></div>
+                                <div class="item-summary-actions" @click.stop>
+                                    <button type="button" class="btn btn-sm btn-primary toggle-details-btn"
+                                            @click="item._expanded = !item._expanded">
+                                        {{ __('opus46.show_edit') }}
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger"
+                                            @click="removeItem(idx)">
+                                        {{ __('opus46.remove') }}
                                     </button>
                                 </div>
-                                @error('modalPassword') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Item Fields Grid --}}
+                            <div class="item-details">
+                                {{-- Row number (desktop only) --}}
+                                <div class="cell-num">
+                                    <span x-text="idx + 1"></span>
+                                </div>
+
+                                {{-- URL --}}
+                                <div class="cell-url">
+                                    <span class="label-mobile">{{ __('opus46.lbl_url') }}</span>
+                                    <input type="text"
+                                           x-model="item.url"
+                                           @blur="calcTotals(); saveDraft()"
+                                           :placeholder="idx === 0 ? '{{ __('opus46.url_placeholder') }}' : ''"
+                                           class="form-control item-url">
+                                </div>
+
+                                {{-- Qty --}}
+                                <div class="cell-qty">
+                                    <span class="label-mobile">{{ __('opus46.lbl_qty') }}</span>
+                                    <input type="tel"
+                                           x-model="item.qty"
+                                           @input="convertArabicNums($event)"
+                                           @blur="calcTotals(); saveDraft()"
+                                           value="1" placeholder="1"
+                                           class="form-control item-qty" style="direction:rtl;">
+                                </div>
+
+                                {{-- Color --}}
+                                <div class="cell-col">
+                                    <span class="label-mobile">{{ __('opus46.lbl_color') }}</span>
+                                    <input type="text"
+                                           x-model="item.color"
+                                           @blur="saveDraft()"
+                                           class="form-control item-color">
+                                </div>
+
+                                {{-- Size --}}
+                                <div class="cell-siz">
+                                    <span class="label-mobile">{{ __('opus46.lbl_size') }}</span>
+                                    <input type="text"
+                                           x-model="item.size"
+                                           @blur="saveDraft()"
+                                           class="form-control item-size">
+                                </div>
+
+                                {{-- Price --}}
+                                <div class="cell-prc">
+                                    <span class="label-mobile">{{ __('opus46.lbl_price') }}</span>
+                                    <input type="text"
+                                           x-model="item.price"
+                                           @input="convertArabicNums($event)"
+                                           @blur="calcTotals(); saveDraft()"
+                                           inputmode="decimal" placeholder="0.00"
+                                           class="form-control item-price">
+                                </div>
+
+                                {{-- Currency --}}
+                                <div class="cell-cur">
+                                    <span class="label-mobile">{{ __('opus46.lbl_currency') }}</span>
+                                    <select x-model="item.currency"
+                                            @change="onCurrencyChange(idx)"
+                                            @blur="calcTotals(); saveDraft()"
+                                            class="form-control item-currency"
+                                            style="padding:0 4px;font-size:0.8rem;">
+                                        <template x-for="(cur, code) in currencyList" :key="code">
+                                            <option :value="code" x-text="cur.label" :selected="code === item.currency"></option>
+                                        </template>
+                                    </select>
+                                </div>
+
+                                {{-- Optional Toggle (mobile only) --}}
+                                <button type="button" class="btn-toggle-optional"
+                                        @click.stop="item._showOptional = !item._showOptional">
+                                    <span x-text="item._showOptional ? '{{ __('opus46.hide_optional') }}' : '{{ __('opus46.show_optional') }}'"></span>
+                                </button>
+
+                                {{-- Optional Section (notes + file) --}}
+                                <div class="optional-section"
+                                     :class="{ 'active': item._showOptional }">
+
+                                    <div class="cell-not">
+                                        <span class="label-mobile">{{ __('opus46.lbl_notes') }}</span>
+                                        <input type="text"
+                                               x-model="item.notes"
+                                               @blur="saveDraft()"
+                                               :placeholder="idx === 0 ? '{{ __('opus46.notes_placeholder') }}' : ''"
+                                               class="form-control item-notes">
+                                    </div>
+
+                                    <div class="upload-container-new">
+                                        <div style="display:flex;align-items:center;gap:10px;">
+                                            <template x-if="!item._file">
+                                                <button type="button" class="upload-btn upload-trigger"
+                                                        @click.stop="triggerUpload(idx)"
+                                                        title="{{ __('opus46.attach') }}">
+                                                    <span>📎 {{ __('opus46.attach') }}</span>
+                                                </button>
+                                            </template>
+                                            <template x-if="item._file">
+                                                <div class="preview-container">
+                                                    <div class="preview-item">
+                                                        <template x-if="item._preview">
+                                                            <img :src="item._preview">
+                                                        </template>
+                                                        <template x-if="!item._preview && item._fileType === 'pdf'">
+                                                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fee2e2;color:#ef4444;font-size:10px;font-weight:bold;">PDF</div>
+                                                        </template>
+                                                        <template x-if="!item._preview && item._fileType === 'xls'">
+                                                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#dcfce7;color:#16a34a;font-size:10px;font-weight:bold;">XLS</div>
+                                                        </template>
+                                                        <button type="button" class="remove-img" @click="removeFile(idx)">×</button>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <template x-if="item._uploadProgress !== null">
+                                            <div class="upload-progress">
+                                                <div class="upload-progress-bar" :style="'width:' + item._uploadProgress + '%'"></div>
+                                            </div>
+                                        </template>
+                                        <div class="upload-info">{{ __('opus46.file_info') }}</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button wire:click="registerFromModal" wire:loading.attr="disabled" wire:target="registerFromModal"
-                                class="w-full bg-primary-600 text-white font-semibold py-2.5 rounded-xl hover:bg-primary-700 transition-colors text-sm">
-                            <span wire:loading.remove wire:target="registerFromModal">{{ __('Register') }}</span>
-                            <span wire:loading wire:target="registerFromModal">{{ __('order.creating_account') }}…</span>
-                        </button>
-                        <button wire:click="setModalStep('email')" class="block text-center text-xs text-gray-500 hover:text-primary-600 underline w-full">
-                            {{ __('order.change_email') }}
-                        </button>
-                    @endif
-                    @if ($modalStep === 'reset')
-                        <p class="text-sm text-gray-600">{{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}</p>
-                        <a href="{{ route('password.request') }}"
-                           class="block text-center w-full bg-gray-100 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-200 transition-colors text-sm">
-                            {{ __('Email Password Reset Link') }}
-                        </a>
-                        <button wire:click="setModalStep('login')" class="block text-center text-xs text-gray-500 hover:text-primary-600 underline w-full">
-                            {{ __('order.back_to_login') }}
-                        </button>
-                    @endif
+                    </template>
                 </div>
-                @if ($modalStep === 'email')
-                    <div class="px-5 pb-4 text-center text-xs text-gray-500">
-                        {{ __('Already registered?') }}
-                        <button wire:click="setModalStep('login')" class="text-primary-600 hover:underline font-medium">
-                            {{ __('Log in') }}
-                        </button>
+            </div>
+
+            {{-- Add Product Button --}}
+            <button type="button" @click="addProduct()" class="btn btn-secondary"
+                    style="width:100%;margin-top:15px;padding:12px;">
+                + {{ __('opus46.add_product') }}
+            </button>
+        </section>
+
+        {{-- General Notes --}}
+        <section class="order-card">
+            <h3 style="font-size:1rem;margin-bottom:10px;">{{ __('opus46.general_notes') }}</h3>
+            <textarea x-model="orderNotes"
+                      @input.debounce.500ms="saveDraft()"
+                      wire:model.blur="orderNotes"
+                      placeholder="{{ __('opus46.general_notes_ph') }}"
+                      class="form-control" style="min-height:80px;resize:vertical;"></textarea>
+        </section>
+
+        {{-- Fixed Footer --}}
+        <div class="summary-card">
+            <div class="summary-info">
+                <span id="items-count" x-text="productCountText()"></span>
+                <span class="summary-total" x-text="totalText()"></span>
+            </div>
+            <button type="button" @click="submitOrder()" :disabled="submitting"
+                    id="submit-order" class="btn btn-success">
+                <span x-show="!submitting">{{ __('opus46.confirm_order') }}</span>
+                <span x-show="submitting" x-cloak>{{ __('opus46.submitting') }}...</span>
+            </button>
+        </div>
+
+        {{-- Reset Link --}}
+        <div style="text-align:start;margin-top:10px;padding-inline-start:20px;">
+            <button type="button" @click="resetAll()" class="reset-link">
+                {{ __('opus46.reset_all') }}
+            </button>
+        </div>
+    </div>
+</main>
+</div>
+
+{{-- Hidden File Input --}}
+<input type="file" x-ref="fileInput" class="hidden-file-input"
+       accept="image/*,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+       @change="handleFileSelect($event)">
+
+{{-- Login Modal --}}
+<div class="login-modal-overlay"
+     :class="{ 'show': $wire.showLoginModal }"
+     @click.self="$wire.closeModal()">
+    <div class="login-modal">
+        <div class="login-modal-header">
+            <button type="button" class="login-modal-close" @click="$wire.closeModal()">&times;</button>
+            <h2 class="login-modal-title">{{ __('opus46.modal_title') }}</h2>
+            <p class="login-modal-subtitle">✅ {{ __('opus46.data_saved') }}</p>
+        </div>
+        <div class="login-modal-body">
+            {{-- Error --}}
+            <div class="modal-alert error"
+                 :class="{ 'show': $wire.modalError }"
+                 x-show="$wire.modalError">
+                ❌ <span x-text="$wire.modalError"></span>
+            </div>
+
+            {{-- Step: Email --}}
+            <form class="modal-form" :class="{ 'active': $wire.modalStep === 'email' }"
+                  x-show="$wire.modalStep === 'email'"
+                  @submit.prevent="$wire.checkModalEmail()">
+                <div class="form-group">
+                    <label class="form-label">{{ __('Email') }}</label>
+                    <input type="email" wire:model="modalEmail" required autocomplete="email" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-success">{{ __('Continue') }}</button>
+            </form>
+
+            {{-- Step: Login --}}
+            <form class="modal-form" :class="{ 'active': $wire.modalStep === 'login' }"
+                  x-show="$wire.modalStep === 'login'" x-cloak
+                  @submit.prevent="$wire.loginFromModal()">
+                <div class="form-group">
+                    <label class="form-label">{{ __('opus46.welcome_back') }}</label>
+                    <div style="font-size:0.85rem;color:#64748b;margin-bottom:10px;">
+                        <strong x-text="$wire.modalEmail"></strong>
+                        <a href="#" @click.prevent="$wire.set('modalStep', 'email'); $wire.set('modalError', '')"
+                           style="margin-inline-start:10px;color:var(--primary);">{{ __('Change') }}</a>
                     </div>
-                @endif
+                    <div class="password-toggle">
+                        <input type="password" wire:model="modalPassword" required autocomplete="current-password"
+                               class="form-control password-input">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">{{ __('Log in') }}</button>
+                <div style="text-align:center;margin-top:15px;">
+                    <a href="#" class="form-link" @click.prevent="$wire.set('modalStep', 'reset')">{{ __('Forgot password?') }}</a>
+                </div>
+            </form>
+
+            {{-- Step: Register --}}
+            <form class="modal-form" :class="{ 'active': $wire.modalStep === 'register' }"
+                  x-show="$wire.modalStep === 'register'" x-cloak
+                  @submit.prevent="$wire.registerFromModal()">
+                <div class="form-group">
+                    <label class="form-label">{{ __('opus46.no_account') }}</label>
+                    <div style="font-size:0.85rem;color:#64748b;margin-bottom:10px;">
+                        <strong x-text="$wire.modalEmail"></strong>
+                        <a href="#" @click.prevent="$wire.set('modalStep', 'email'); $wire.set('modalError', '')"
+                           style="margin-inline-start:10px;color:var(--primary);">{{ __('Change') }}</a>
+                    </div>
+                    <label class="form-label" style="margin-top:15px;">{{ __('Name') }}</label>
+                    <input type="text" wire:model="modalName" required autocomplete="name"
+                           class="form-control">
+                    <label class="form-label" style="margin-top:10px;">{{ __('Phone') }} <span style="color:#94a3b8;font-weight:400;">({{ __('order.optional') }})</span></label>
+                    <input type="tel" wire:model="modalPhone" autocomplete="tel"
+                           class="form-control">
+                    <label class="form-label" style="margin-top:10px;">{{ __('Password') }}</label>
+                    <div class="password-toggle">
+                        <input type="password" wire:model="modalPassword" required autocomplete="new-password" minlength="4"
+                               class="form-control password-input">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">{{ __('Create account and continue') }}</button>
+            </form>
+
+            {{-- Step: Reset --}}
+            <div class="modal-form" :class="{ 'active': $wire.modalStep === 'reset' }"
+                 x-show="$wire.modalStep === 'reset'" x-cloak>
+                <div class="form-group">
+                    <p style="font-size:0.9rem;color:#475569;">{{ __('opus46.reset_desc') }}</p>
+                </div>
+                <div style="text-align:center;margin-top:15px;">
+                    <a href="#" class="form-link" @click.prevent="$wire.set('modalStep', 'email')">{{ __('Return') }}</a>
+                </div>
             </div>
         </div>
-    @endif
-
-    {{-- ================================================================
-         Alpine.js component logic
-    ================================================================ --}}
-    <script>
-    function newOrderForm(rates, commissionThreshold, commissionPct, commissionFlat, currencies, maxProducts, defaultCurrency) {
-        return {
-            rates, currencies, maxProducts, commissionThreshold, commissionPct, commissionFlat,
-            preferredCurrency: localStorage.getItem('wz_preferred_currency') || defaultCurrency,
-            estimatedTotal: 0,
-            notification: { visible: false, type: 'success', message: '' },
-            showTips: true,
-            tipsExpanded: false,
-            notifyTimer: null,
-
-            init() {
-                this.checkTipsVisibility();
-                this.loadDraft();
-
-                if (window.innerWidth >= 1024 && this.$wire.items.length < 5) {
-                    const filled  = (this.$wire.items || []).filter(i => (i.url || '').trim() !== '').length;
-                    const canAdd  = Math.max(0, maxProducts - filled);
-                    const toAdd   = Math.min(5 - this.$wire.items.length, canAdd);
-                    for (let i = 0; i < toAdd; i++) {
-                        this.$wire.addItem(this.preferredCurrency);
-                    }
-                    if (filled >= maxProducts) {
-                        this.showNotify('error', {{ Js::from(__('order.max_products_reached', ['max' => $maxProducts])) }});
-                    }
-                }
-
-                this.recalculate();
-
-                this.$wire.$on('order-created', () => this.clearDraft());
-            },
-
-            addItemWithCurrency() {
-                this.$wire.addItem(this.preferredCurrency);
-            },
-
-            recalculate() {
-                this.$nextTick(() => {
-                    const items = this.$wire.items || [];
-                    let rawTotal = 0;
-                    items.forEach(item => {
-                        if (!item.price || !item.qty) return;
-                        // Use global toEnglishDigits() for consistency (handles both Arabic-Indic and Persian digits)
-                        const price = parseFloat(window.toEnglishDigits(String(item.price))) || 0;
-                        const qty   = parseInt(window.toEnglishDigits(String(item.qty))) || 1;
-                        const rate  = rates[item.currency || 'USD'] || 0;
-                        if (price > 0 && rate > 0) rawTotal += price * qty * rate;
-                    });
-                    // Tiered commission: % if rawTotal >= threshold, else flat fee
-                    const commission = rawTotal <= 0 ? 0
-                        : (rawTotal >= commissionThreshold
-                            ? rawTotal * commissionPct
-                            : commissionFlat);
-                    this.estimatedTotal = Math.round((rawTotal + commission) * 100) / 100;
-                });
-            },
-
-            get filledCount() {
-                return (this.$wire.items || []).filter(i => (i.url || '').trim() !== '').length;
-            },
-
-            formatSAR(amount) {
-                return amount.toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ر.س';
-            },
-
-            convertArabicNumerals(event) {
-                // Use global toEnglishDigits() for consistency (handles both Arabic-Indic and Persian digits)
-                // Note: This is redundant since global handler converts automatically, but kept as safety net
-                const el = event.target;
-                const val = window.toEnglishDigits(el.value);
-                if (el.value !== val) el.value = val;
-            },
-
-            saveDraft() {
-                try {
-                    localStorage.setItem('wz_order_draft', JSON.stringify(this.$wire.items || []));
-                    localStorage.setItem('wz_preferred_currency', this.preferredCurrency);
-                } catch (e) {}
-            },
-
-            saveNotesDraft() {
-                try { localStorage.setItem('wz_order_notes', this.$wire.orderNotes || ''); } catch (e) {}
-            },
-
-            loadDraft() {
-                try {
-                    const raw = localStorage.getItem('wz_order_draft');
-                    if (!raw) return;
-                    const draft = JSON.parse(raw);
-                    if (!Array.isArray(draft) || !draft.length) return;
-                    const hasContent = (this.$wire.items || []).some(i => (i.url || '').trim() !== '');
-                    if (hasContent) return;
-                    const setAll = draft.map((item, i) => {
-                        if (i === 0) {
-                            return this.$wire.set('items.0', item);
-                        } else {
-                            return this.$wire.addItem(item.currency || this.preferredCurrency)
-                                .then(() => this.$wire.set(`items.${i}`, item));
-                        }
-                    });
-                    Promise.all(setAll).then(() => this.recalculate());
-                    const notes = localStorage.getItem('wz_order_notes');
-                    if (notes) this.$wire.set('orderNotes', notes);
-                } catch (e) {}
-            },
-
-            clearDraft() {
-                localStorage.removeItem('wz_order_draft');
-                localStorage.removeItem('wz_order_notes');
-            },
-
-            checkTipsVisibility() {
-                try {
-                    const hideUntil = localStorage.getItem('wz_hide_tips_until');
-                    if (hideUntil && Date.now() < parseInt(hideUntil)) this.showTips = false;
-                } catch (e) {}
-            },
-
-            dismissTips() {
-                this.showTips = false;
-                try {
-                    localStorage.setItem('wz_hide_tips_until', (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
-                } catch (e) {}
-            },
-
-            showNotify(type, message) {
-                clearTimeout(this.notifyTimer);
-                this.notification = { visible: true, type, message };
-                this.notifyTimer = setTimeout(() => { this.notification.visible = false; }, 4000);
-            },
-        };
-    }
-    </script>
+    </div>
 </div>
+
+</div>
+@endif
+
+@push('scripts')
+<style>
+:root {
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --accent-amber: #b45309;
+  --accent-amber-light: #d97706;
+  --secondary: #1e293b;
+  --success: #10b981;
+  --danger: #ef4444;
+  --light: #fef7f5;
+  --border: #f5e6e0;
+}
+
+.wz-order-page {
+  font-family: "IBM Plex Sans Arabic", "Inter", sans-serif;
+  background: #fff;
+  color: var(--secondary);
+}
+
+.order-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 15px;
+}
+
+/* Toast */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 90%;
+  max-width: 500px;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  padding: 12px 15px;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  border-right: 5px solid var(--primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastIn 0.5s cubic-bezier(0.18,0.89,0.32,1.28) forwards;
+  opacity: 0;
+  cursor: pointer;
+}
+.toast.success { border-color: var(--success); }
+.toast.error { border-color: var(--danger); }
+
+@keyframes toastIn {
+  from { opacity:0; transform:translateY(-20px) scale(0.9); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity:1; transform:translateY(0) scale(1); }
+  to { opacity:0; transform:translateY(-20px) scale(0.8); }
+}
+
+/* Cards */
+.order-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 1px solid rgba(245,210,195,0.5);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.btn-sm { padding:5px 10px; font-size:0.8rem; }
+
+.btn-primary {
+  background: rgba(180,83,9,0.08);
+  color: var(--accent-amber);
+  border: 1px solid rgba(180,83,9,0.2);
+}
+.btn-primary:hover {
+  background: rgba(180,83,9,0.15);
+  border-color: var(--accent-amber-light);
+  color: var(--accent-amber-light);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, rgba(146,64,14,0.08), rgba(194,65,12,0.05));
+  color: var(--accent-amber);
+  border: 1.5px solid rgba(146,64,14,0.25);
+  font-weight: 600;
+  transition: all 0.3s;
+}
+.btn-secondary:hover {
+  background: linear-gradient(135deg, rgba(146,64,14,0.15), rgba(194,65,12,0.12));
+  border-color: var(--accent-amber-light);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: rgba(254,226,226,0.3);
+  color: #dc2626;
+  border: 1px solid rgba(254,226,226,0.8);
+}
+.btn-danger:hover { background:#fee2e2; color:#b91c1c; }
+
+.btn-success {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  color: #fff;
+  width: 100%;
+  font-size: 1rem;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(249,115,22,0.25);
+  transition: all 0.3s;
+}
+.btn-success:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  box-shadow: 0 6px 20px rgba(249,115,22,0.35);
+  transform: translateY(-2px);
+}
+.btn-success:disabled { opacity: 0.6; pointer-events: none; }
+
+.reset-link {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.reset-link:hover { color: #dc2626; }
+
+/* Form Elements */
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #f5e6e0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  height: 40px;
+  transition: border-color 0.1s ease;
+}
+textarea.form-control { height:auto; min-height:80px; resize:vertical; }
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.1);
+}
+
+.label-mobile {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+/* Items Container */
+#items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item-card {
+  background: #fff;
+  border: 1px solid rgba(245,210,195,0.8);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  position: relative;
+  scroll-margin-bottom: 150px;
+}
+.item-card:focus-within {
+  box-shadow: 0 4px 20px rgba(249,115,22,0.15);
+  border-color: rgba(249,115,22,0.4);
+  transform: translateY(-2px);
+  z-index: 10;
+}
+.item-card.is-valid { border-color: rgba(16,185,129,0.3); }
+.item-card.is-minimized { background:#f5e6e0 !important; opacity:0.9; }
+
+/* Mobile Summary Bar */
+.item-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  background: #fef7f5;
+  cursor: pointer;
+  user-select: none;
+}
+.item-card.expanded .item-summary {
+  border-bottom: 1px solid #f5e6e0;
+  background: #fff;
+}
+.item-summary-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.item-summary-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Item Details Grid */
+.item-details {
+  padding: 12px;
+  display: none;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+.item-card.expanded .item-details { display: grid; }
+
+/* Grid Cell Positioning (Mobile) */
+.cell-num { display: none; }
+.cell-url { grid-column: span 6; }
+.cell-qty { grid-column: span 2; }
+.cell-col { grid-column: span 2; }
+.cell-siz { grid-column: span 2; }
+.cell-prc { grid-column: span 3; }
+.cell-cur { grid-column: span 3; }
+.cell-not { grid-column: span 6; }
+
+/* Optional Toggle (mobile only) */
+.btn-toggle-optional {
+  grid-column: span 6;
+  background: none;
+  border: none;
+  color: var(--accent-amber);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.optional-section {
+  grid-column: span 6;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  margin-top: 5px;
+  border-top: 1px dashed #f5e6e0;
+}
+.optional-section.active { display: flex; }
+
+/* File Upload */
+.upload-container-new { display:flex; flex-direction:column; gap:5px; }
+.upload-btn {
+  border: 1px dashed var(--border);
+  color: #64748b;
+  background-color: #fef7f5;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.upload-btn:hover { border-color:var(--primary); background-color:#fffaf5; color:var(--primary); }
+.hidden-file-input { display:none; }
+.preview-container { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; }
+.preview-item {
+  position:relative;
+  width:44px; height:44px;
+  flex-shrink:0;
+  border-radius:6px;
+  overflow:hidden;
+  border:1px solid #f5e6e0;
+}
+.preview-item img { width:100%; height:100%; object-fit:cover; }
+.preview-item .remove-img {
+  position:absolute; top:0; left:0;
+  background:rgba(239,68,68,0.9);
+  color:white; border:none; border-radius:50%;
+  width:16px; height:16px; font-size:10px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.upload-info { text-align:start; font-size:0.7rem; color:#a8a29e; }
+
+.upload-progress {
+  width:100%; height:4px; background:#fef0e8; border-radius:2px; overflow:hidden; margin-top:4px;
+}
+.upload-progress-bar {
+  height:100%; background:var(--primary); border-radius:2px;
+  transition:width 0.2s ease;
+}
+
+/* Footer Summary (Fixed) */
+.summary-card {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,247,237,0.95));
+  backdrop-filter: blur(20px);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.06), 0 -1px 4px rgba(0,0,0,0.03);
+  border-top: 1px solid rgba(245,210,195,0.6);
+  z-index: 100;
+}
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .summary-card { padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+}
+
+#order-form { padding-bottom: 140px; }
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  #order-form { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+}
+
+.summary-info { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+#items-count {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #a8a29e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-total {
+  color: #a8a29e;
+  font-weight: 400;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+#submit-order {
+  flex-shrink: 0;
+  min-width: 120px;
+  max-width: 180px;
+  width: auto;
+}
+
+/* Tips Box */
+.tips-box {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-inline-start: 4px solid var(--primary);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.tips-header {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid #fef0e8;
+}
+.tips-header h2 { font-size:0.9rem; color:var(--secondary); font-weight:600; margin:0; }
+.tips-content { padding:15px; font-size:0.85rem; line-height:1.6; color:#475569; }
+.tips-list { list-style:none; padding:0; margin:0; }
+.tips-list li { margin-bottom:10px; position:relative; padding-inline-start:18px; }
+.tips-list li::before {
+  content:"•";
+  position:absolute;
+  inset-inline-start:0;
+  color:var(--primary);
+  font-weight:bold;
+}
+
+/* Login Modal */
+.login-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+.login-modal-overlay.show { display: flex; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.login-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(30px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+.login-modal-header {
+  padding: 30px 30px 20px;
+  border-bottom: 1px solid #f5e6e0;
+  position: relative;
+}
+.login-modal-close {
+  position: absolute;
+  top: 20px;
+  inset-inline-start: 20px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #94a3b8;
+  cursor: pointer;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.login-modal-close:hover { background:rgba(0,0,0,0.05); color:var(--secondary); }
+.login-modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0 0 10px;
+  text-align: center;
+}
+.login-modal-subtitle {
+  font-size: 0.95rem;
+  color: #64748b;
+  text-align: center;
+  margin: 0;
+}
+.login-modal-body { padding: 30px; }
+
+.modal-form { display: none; }
+.modal-form.active { display: block; }
+
+.modal-alert {
+  padding:12px 15px; border-radius:8px; margin-bottom:20px;
+  font-weight:500; font-size:0.9rem; display:none;
+}
+.modal-alert.show { display:block; }
+.modal-alert.error { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+
+.modal-form .form-group { margin-bottom: 20px; }
+.modal-form .form-label {
+  display:block; font-weight:600; font-size:0.9rem; color:var(--secondary); margin-bottom:8px;
+}
+.modal-form .form-control {
+  width:100%; padding:12px 15px; border:1px solid var(--border); border-radius:8px;
+  font-family:inherit; font-size:0.95rem;
+}
+.modal-form .form-control:focus {
+  outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(249,115,22,0.1);
+}
+.modal-form .form-link {
+  color:var(--primary); text-decoration:none; font-weight:500; font-size:0.9rem;
+}
+.modal-form .form-link:hover { color:var(--primary-hover); text-decoration:underline; }
+.modal-form .btn { margin-top: 20px; }
+
+/* Large Mobile / Small Tablet */
+@media (min-width: 640px) {
+  .summary-card { padding:10px 20px; gap:20px; }
+  .form-control { height:44px; font-size:0.95rem; padding:9px 13px; }
+  textarea.form-control { font-size:0.95rem; }
+  .btn { font-size:0.95rem; padding:11px 17px; min-height:44px; }
+  .btn-sm { font-size:0.85rem; padding:7px 12px; min-height:38px; }
+  .label-mobile { font-size:0.8rem; }
+  select.form-control { font-size:0.95rem; padding:9px 8px; }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .item-summary { display: none !important; }
+  .label-mobile { display: none; }
+
+  .item-details {
+    display: grid !important;
+    grid-template-columns: 0.35fr 2fr 0.5fr 0.6fr 0.6fr 0.7fr 0.8fr 1.2fr 0.8fr;
+    gap: 8px;
+    padding: 10px;
+    align-items: center;
+  }
+
+  .summary-card {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #order-form { padding-bottom: 120px; }
+
+  .btn-toggle-optional { display: none !important; }
+  .optional-section { display: contents !important; }
+  .upload-container-new { margin-top:0; }
+
+  .cell-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--secondary);
+  }
+
+  .cell-url, .cell-qty, .cell-col, .cell-siz,
+  .cell-prc, .cell-cur, .cell-not, .cell-num,
+  .upload-container-new { grid-column: auto; }
+
+  .upload-info { display: none !important; }
+  .upload-btn { padding:6px 8px; font-size:0.75rem; }
+
+  #items-container-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+  #items-container {
+    gap: 0;
+    border: 1px solid #f5e6e0;
+    border-radius: 8px;
+    position: relative;
+    min-width: 900px;
+  }
+
+  .item-card {
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid #fef0e8;
+    transition: background-color 0.15s ease;
+  }
+  .item-card:hover { background-color:#fffaf7; }
+  .item-card::before {
+    content:'';
+    position:absolute;
+    inset-inline-start:0;
+    top:0; bottom:0;
+    width:4px;
+    background:var(--primary);
+    opacity:0;
+    transition:opacity 0.15s;
+  }
+  .item-card:hover::before { opacity:1; }
+  .item-card.is-valid::before { background:var(--success); }
+  .item-card:last-child { border-bottom:none; }
+  .item-card.is-minimized { background:#fff !important; opacity:1; }
+
+  .table-header {
+    display: grid !important;
+    grid-template-columns: 0.35fr 2fr 0.5fr 0.6fr 0.6fr 0.7fr 0.8fr 1.2fr 0.8fr;
+    gap: 8px;
+    padding: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--secondary);
+    background-color: #fef7f5;
+    border-radius: 6px;
+    margin-bottom: 0;
+  }
+}
+
+/* Hide table header on mobile */
+.table-header { display: none; }
+</style>
+
+<script>
+function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, threshold, pct, flat) {
+    return {
+        items: [],
+        orderNotes: '',
+        rates,
+        margin,
+        currencyList,
+        maxProducts,
+        defaultCurrency,
+        isLoggedIn,
+        threshold,
+        pct,
+        flat,
+        tipsOpen: false,
+        tipsHidden: false,
+        totalSar: 0,
+        filledCount: 0,
+        submitting: false,
+        _uploadIdx: null,
+
+        init() {
+            this.checkTipsHidden();
+            if (!this.loadDraft()) {
+                const count = window.innerWidth >= 1024 ? 5 : 1;
+                for (let i = 0; i < count; i++) this.items.push(this.emptyItem());
+            }
+            this.calcTotals();
+
+            window.addEventListener('beforeunload', (e) => {
+                if (this.submitting || !this.hasUnsavedData()) return;
+                e.preventDefault();
+            });
+        },
+
+        hasUnsavedData() {
+            return this.items.some(i =>
+                (i.url || '').trim() ||
+                (i.color || '').trim() ||
+                (i.size || '').trim() ||
+                (i.notes || '').trim() ||
+                (parseFloat(i.price) > 0)
+            ) || (this.orderNotes || '').trim();
+        },
+
+        emptyItem(cur) {
+            return {
+                url: '', qty: '1', color: '', size: '', price: '',
+                currency: cur || this.defaultCurrency, notes: '',
+                _expanded: true, _focused: false, _showOptional: false,
+                _file: null, _preview: null, _fileType: null, _fileName: null,
+                _uploadProgress: null
+            };
+        },
+
+        addProduct() {
+            if (this.items.length >= this.maxProducts) {
+                this.showNotify('error', this.maxProducts + ' {{ __('opus46.max_limit_suffix') }}');
+                return;
+            }
+            const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
+
+            if (window.innerWidth < 1024) {
+                const open = this.items.findIndex(i => i._expanded);
+                if (open !== -1) {
+                    this.items[open]._expanded = false;
+                    this.showNotify('success', '{{ __('opus46.item_minimized_prefix') }} ' + (open + 1) + ' {{ __('opus46.item_minimized_suffix') }}');
+                }
+            }
+
+            this.items.push(this.emptyItem(lastCur));
+            this.saveDraft();
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    const cards = document.querySelectorAll('#items-container > div');
+                    if (window.innerWidth < 1024 && cards.length >= 3) {
+                        cards[cards.length - 3].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else if (window.innerWidth < 1024 && cards.length >= 2) {
+                        cards[cards.length - 2].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        const last = cards[cards.length - 1];
+                        if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }, 150);
+            });
+        },
+
+        removeItem(idx) {
+            this.$wire.shiftFileIndex(idx);
+            this.items.splice(idx, 1);
+            if (this.items.length === 0) this.items.push(this.emptyItem());
+            this.calcTotals();
+            this.saveDraft();
+        },
+
+        toggleItem(idx) {
+            this.items[idx]._expanded = !this.items[idx]._expanded;
+        },
+
+        itemSummary(idx) {
+            const item = this.items[idx];
+            const num = idx + 1;
+            const url = (item.url || '').trim();
+            if (!url) return '{{ __('opus46.product_num') }} ' + num;
+            try {
+                const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
+                return '{{ __('opus46.product') }} ' + num + ': ' + host;
+            } catch { return '{{ __('opus46.product') }} ' + num + ': ' + url.substring(0, 30); }
+        },
+
+        onCurrencyChange(idx) {
+            if (this.items[idx].currency === 'OTHER') {
+                this.showNotify('success', '{{ __('opus46.other_currency_note') }}');
+            }
+        },
+
+        convertArabicNums(e) {
+            const ar = '٠١٢٣٤٥٦٧٨٩';
+            let v = e.target.value;
+            let changed = false;
+            v = v.replace(/[٠-٩]/g, d => { changed = true; return ar.indexOf(d); });
+            if (changed) e.target.value = v;
+        },
+
+        calcTotals() {
+            let total = 0;
+            let filled = 0;
+            this.items.forEach(item => {
+                if (item.url.trim()) filled++;
+                const q = Math.max(1, parseFloat(item.qty) || 1);
+                const p = parseFloat(item.price) || 0;
+                const r = this.rates[item.currency] || 0;
+                if (p > 0 && r > 0) total += (p * q * r);
+            });
+            this.totalSar = Math.floor(total * (1 + this.margin));
+            this.filledCount = filled;
+        },
+
+        productCountText() {
+            return '{{ __('opus46.products_count') }}: ' + this.filledCount;
+        },
+
+        totalText() {
+            return '{{ __('opus46.products_value') }}: ' + this.totalSar.toLocaleString('en-US') + ' {{ __('SAR') }}';
+        },
+
+        saveDraft() {
+            const data = this.items.map(i => ({
+                url: i.url, qty: i.qty, color: i.color, size: i.size,
+                price: i.price, currency: i.currency, notes: i.notes
+            }));
+            try {
+                localStorage.setItem('wz_opus46_draft', JSON.stringify(data));
+                localStorage.setItem('wz_opus46_notes', this.orderNotes);
+            } catch {}
+        },
+
+        loadDraft() {
+            try {
+                const raw = localStorage.getItem('wz_opus46_draft');
+                const notes = localStorage.getItem('wz_opus46_notes');
+                if (notes) this.orderNotes = notes;
+                if (!raw) return false;
+                const data = JSON.parse(raw);
+                if (!Array.isArray(data) || data.length === 0) return false;
+                this.items = data.map(d => ({
+                    url: d.url || '', qty: d.qty || '1', color: d.color || '',
+                    size: d.size || '', price: d.price || '',
+                    currency: d.currency || this.defaultCurrency, notes: d.notes || '',
+                    _expanded: false, _focused: false, _showOptional: false,
+                    _file: null, _preview: null, _fileType: null, _fileName: null,
+                    _uploadProgress: null
+                }));
+                if (this.items.length > 0) this.items[0]._expanded = true;
+                return true;
+            } catch { return false; }
+        },
+
+        clearDraft() {
+            try {
+                localStorage.removeItem('wz_opus46_draft');
+                localStorage.removeItem('wz_opus46_notes');
+            } catch {}
+        },
+
+        resetAll() {
+            if (!confirm('{{ __('opus46.reset_confirm') }}')) return;
+            this.items = [];
+            this.orderNotes = '';
+            this.clearDraft();
+            const count = window.innerWidth >= 1024 ? 5 : 1;
+            for (let i = 0; i < count; i++) this.items.push(this.emptyItem());
+            this.calcTotals();
+            this.showNotify('success', '{{ __('opus46.cleared') }}');
+        },
+
+        triggerUpload(idx) {
+            if (!this.isLoggedIn) {
+                this.showNotify('error', '{{ __('opus46.login_to_upload') }}');
+                return;
+            }
+            if (this.items[idx]._file) {
+                this.showNotify('error', '{{ __('opus46.one_file') }}');
+                return;
+            }
+            const totalFiles = this.items.filter(i => i._file).length;
+            if (totalFiles >= 10) {
+                this.showNotify('error', '{{ __('opus46.max_files') }}');
+                return;
+            }
+            this._uploadIdx = idx;
+            this.$refs.fileInput.click();
+        },
+
+        handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file || this._uploadIdx === null) return;
+            const idx = this._uploadIdx;
+
+            const allowed = ['image/jpeg','image/png','image/gif','application/pdf',
+                'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+            if (!allowed.includes(file.type)) {
+                this.showNotify('error', '{{ __('opus46.invalid_type') }}');
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                this.showNotify('error', '{{ __('opus46.file_too_large') }}');
+                e.target.value = '';
+                return;
+            }
+
+            this.items[idx]._file = file;
+            this.items[idx]._fileName = file.name;
+
+            if (file.type === 'application/pdf') {
+                this.items[idx]._fileType = 'pdf';
+            } else if (file.type.includes('excel') || file.type.includes('spreadsheetml')) {
+                this.items[idx]._fileType = 'xls';
+            } else {
+                this.items[idx]._fileType = 'img';
+                const reader = new FileReader();
+                reader.onload = (ev) => { this.items[idx]._preview = ev.target.result; };
+                reader.readAsDataURL(file);
+            }
+
+            this.items[idx]._uploadProgress = 0;
+            this.$wire.upload(
+                'itemFiles.' + idx,
+                file,
+                () => {
+                    this.items[idx]._uploadProgress = null;
+                    this.showNotify('success', '{{ __('opus46.file_attached') }}');
+                },
+                () => {
+                    this.items[idx]._uploadProgress = null;
+                    this.showNotify('error', '{{ __('opus46.upload_failed') }}');
+                },
+                (event) => {
+                    this.items[idx]._uploadProgress = event.detail.progress;
+                }
+            );
+            e.target.value = '';
+        },
+
+        removeFile(idx) {
+            this.items[idx]._file = null;
+            this.items[idx]._preview = null;
+            this.items[idx]._fileType = null;
+            this.items[idx]._fileName = null;
+            this.$wire.set('itemFiles.' + idx, null);
+        },
+
+        async submitOrder() {
+            if (this.submitting) return;
+            const cleanItems = this.items.map(i => ({
+                url: i.url, qty: i.qty, color: i.color, size: i.size,
+                price: i.price, currency: i.currency, notes: i.notes
+            }));
+            this.submitting = true;
+            try {
+                await this.$wire.set('items', cleanItems);
+                await this.$wire.set('orderNotes', this.orderNotes);
+                await this.$wire.submitOrder();
+                if (this.$wire.showLoginModal) {
+                    this.submitting = false;
+                    return;
+                }
+                this.clearDraft();
+            } catch (_) {
+                // validation errors are handled by Livewire
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        checkTipsHidden() {
+            try {
+                const until = localStorage.getItem('wz_opus46_tips_until');
+                if (until && Date.now() < parseInt(until)) this.tipsHidden = true;
+                else localStorage.removeItem('wz_opus46_tips_until');
+            } catch {}
+        },
+
+        hideTips30Days() {
+            try {
+                localStorage.setItem('wz_opus46_tips_until', (Date.now() + 30*24*60*60*1000).toString());
+            } catch {}
+            this.tipsHidden = true;
+            this.showNotify('success', '{{ __('opus46.tips_hidden') }}');
+        },
+
+        showNotify(type, msg) {
+            const c = this.$refs.toasts;
+            if (!c) return;
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            const icon = type === 'error'
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
+                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981;flex-shrink:0"><path d="M20 6L9 17l-5-5"/></svg>';
+            const dur = type === 'error' ? 4000 : 700;
+            t.innerHTML = `${icon}<span>${msg}</span>`;
+            c.appendChild(t);
+            t.addEventListener('click', () => {
+                t.style.animation = 'toastOut 0.4s ease forwards';
+                setTimeout(() => t.remove(), 400);
+            });
+            setTimeout(() => {
+                if (t.parentElement) {
+                    t.style.animation = 'toastOut 0.4s ease forwards';
+                    setTimeout(() => t.remove(), 400);
+                }
+            }, dur);
+        }
+    };
+}
+</script>
+@endpush

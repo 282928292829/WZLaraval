@@ -43,6 +43,19 @@ class NewOrder extends Component
 
     public array $exchangeRates = [];
 
+    /** Set by ?duplicate_from={id} — triggers pre-fill in mount() */
+    public ?int $duplicateFrom = null;
+
+    /** Set by ?product_url=... — pre-fills the first item's URL field */
+    public string $productUrl = '';
+
+    /** Triggers full-page success screen after order creation */
+    public bool $showSuccessScreen = false;
+
+    public ?int $createdOrderId = null;
+
+    public string $createdOrderNumber = '';
+
     // Guest login modal
     public bool $showLoginModal = false;
 
@@ -60,7 +73,7 @@ class NewOrder extends Component
 
     public string $modalSuccess = '';
 
-    public function mount(): void
+    public function mount(?int $duplicate_from = null, string $product_url = ''): void
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
@@ -69,6 +82,47 @@ class NewOrder extends Component
         $this->commissionFlat = (float) Setting::get('commission_flat_below', 50);
         $this->currencies = $this->buildCurrencies();
         $this->exchangeRates = $this->buildExchangeRates();
+
+        if ($duplicate_from && Auth::check()) {
+            $this->prefillFromDuplicate($duplicate_from);
+        } elseif ($product_url !== '') {
+            $this->productUrl = $product_url;
+            // Pre-fill the first item with the provided URL
+            $firstItem = $this->emptyItem($this->defaultCurrency);
+            $firstItem['url'] = $product_url;
+            $this->items = [$firstItem];
+        }
+    }
+
+    /**
+     * Pre-fill the form from an existing order the user owns (or staff can access).
+     */
+    private function prefillFromDuplicate(int $orderId): void
+    {
+        $user = Auth::user();
+        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+
+        $order = Order::with('items')
+            ->where('id', $orderId)
+            ->when(! $isStaff, fn ($q) => $q->where('user_id', $user->id))
+            ->first();
+
+        if (! $order) {
+            return;
+        }
+
+        $this->duplicateFrom = $orderId;
+        $this->orderNotes = (string) ($order->notes ?? '');
+
+        $this->items = $order->items->map(fn ($item) => [
+            'url' => (string) ($item->url ?? ''),
+            'qty' => (string) max(1, (int) $item->qty),
+            'color' => (string) ($item->color ?? ''),
+            'size' => (string) ($item->size ?? ''),
+            'price' => '',
+            'currency' => (string) ($item->currency ?? $this->defaultCurrency),
+            'notes' => (string) ($item->notes ?? ''),
+        ])->values()->toArray();
     }
 
     public function addItem(string $currency = ''): void
@@ -289,11 +343,22 @@ class NewOrder extends Component
                 ],
             ]);
 
-            session()->flash('success', __('order.created_successfully', [
-                'number' => $createdOrder->order_number,
-            ]));
+            $this->createdOrderId = $createdOrder->id;
+            $this->createdOrderNumber = $createdOrder->order_number;
 
-            $this->redirectRoute('orders.show', $createdOrder->id);
+            // Count total orders for this user (to decide success screen vs toast)
+            $totalOrders = Order::where('user_id', Auth::id())->count();
+
+            if ($totalOrders <= 3) {
+                // Full success screen for first 3 orders
+                $this->showSuccessScreen = true;
+            } else {
+                // Toast + immediate redirect for experienced users
+                session()->flash('success', __('order.created_successfully', [
+                    'number' => $createdOrder->order_number,
+                ]));
+                $this->redirectRoute('orders.show', $createdOrder->id);
+            }
         }
     }
 
@@ -445,10 +510,18 @@ class NewOrder extends Component
 
     private function generateOrderNumber(): string
     {
-        $max = (int) Order::query()
-            ->lockForUpdate()
-            ->whereRaw("order_number REGEXP '^[0-9]+$'")
-            ->max(DB::raw('CAST(order_number AS UNSIGNED)'));
+        $query = Order::query()->lockForUpdate();
+
+        if (DB::getDriverName() === 'mysql') {
+            $max = (int) $query
+                ->whereRaw("order_number REGEXP '^[0-9]+$'")
+                ->max(DB::raw('CAST(order_number AS UNSIGNED)'));
+        } else {
+            // SQLite-compatible fallback (used in tests)
+            $max = (int) $query
+                ->whereRaw("order_number GLOB '[0-9]*'")
+                ->max(DB::raw('CAST(order_number AS INTEGER)'));
+        }
 
         return (string) ($max + 1);
     }
