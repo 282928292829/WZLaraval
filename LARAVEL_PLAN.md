@@ -52,13 +52,48 @@ isProject: false
 # Laravel Full Rebuild — Wasetzon
 
 ## Current Task
-> **Orders list page (`/orders`) rebuilt to match WordPress reference — Kanban removed.**
+> **Customer-facing tracking card added to `/orders/{id}`. Carrier tracking URLs now admin-configurable.**
 >
 > **What was built:**
-> - `resources/views/orders/index.blade.php` — Completely rewritten. Removed the invented Kanban board. Now matches the WordPress reference (`template-list.php`) with: collapsible filter panel (البحث, الحالة, الترتيب, عدد الطلبات بالصفحة), mobile card layout (flex cards with colored inline-start border per status, labeled fields: رقم الطلب / التاريخ / الحالة / المنتجات, full-width "فتح" button), desktop table layout (thead + tbody with proper columns, click-any-row to open), pagination, empty state with CTA. All labels fully bilingual (inline locale check).
-> - `app/Http/Controllers/OrderController.php` — `customerIndex()` updated to accept `search`, `status`, `sort`, `per_page` query params; paginates results (10/25/50 per page); passes `$statuses` to view.
-> - Deleted `resources/views/orders/_card.blade.php` and `resources/views/orders/_empty-group.blade.php` (Kanban-only partials, no longer needed).
-> - **Verified in browser:** Customer view shows table with colored left borders, collapsible filters, "فتح" button. Staff/Editor view (staff.blade.php) unchanged — shows 66,605 orders with all filters, bulk select, CSV export, pagination. ✓
+> - `app/Filament/Pages/SettingsPage.php` — Added 5 carrier URL template defaults (`carrier_url_aramex/smsa/dhl/fedex/ups`) with `{tracking}` placeholder, group-mapped to `shipping`. Added "Carrier Tracking URLs" subsection to the Shipping Rates section in the Filament schema with 5 `TextInput` fields (url-validated, each with a sensible placeholder, helper text: "Leave blank to show tracking number only (no link)").
+> - `resources/views/orders/show.blade.php` — Added customer-visible tracking card between the timeline and the order items section. Reads carrier URL template from settings, replaces `{tracking}` with `urlencode($order->tracking_number)`. Shows: carrier badge, tracking number in monospace, copy-to-clipboard button (Alpine.js, 2s "Copied ✓" feedback), and a primary "Track Shipment" button linking to the carrier's tracking page (only rendered when a URL template is set and carrier is known). Card is visible to all users whenever `$order->tracking_number` is set — not gated to staff.
+> - `lang/ar.json` + `lang/en.json` — Added 4 new keys: `orders.tracking_card_title`, `orders.track_shipment`, `orders.copy`, `orders.copied`.
+>
+> **Hourly order rate limiting implemented and tested.**
+>
+> **What was built:**
+> - `app/Http/Middleware/RoleBasedThrottle.php` — Updated to read `orders_per_hour_admin` and `orders_per_hour_customer` from the settings table instead of hardcoded values.
+> - `app/Livewire/NewOrder.php` — `submitOrder()` now enforces hourly rate limit before proceeding: counts orders created in the past hour for the current user; dispatches `notify` error and returns early if limit is exceeded. Staff use the admin limit; customers use the customer limit. Daily limit check preserved but only runs for non-staff.
+> - `database/factories/OrderFactory.php` — Created for test scaffolding.
+> - `database/migrations/2026_02_20_170247_add_comment_to_order_files_type_enum.php` — Guarded raw `MODIFY` SQL with a MySQL driver check so SQLite (test env) doesn't fail.
+> - `tests/Feature/HourlyOrderRateLimitTest.php` — 4 passing tests: customer blocked at limit, old orders not counted, staff not blocked at customer threshold, staff blocked at admin limit.
+>
+> **Next session should start with:** Implement duplicate order support — `?duplicate_from={id}` param in `NewOrder::mount()` should load the referenced order's items and notes and pre-fill the form. Then implement `?product_url=...` pre-fill for the first item URL (from homepage CTA links).
+
+> **Previous session — Quick Actions section on `/orders/{id}` rebuilt to match WordPress 100%.**
+>
+> **What was built:**
+> - `database/migrations/2026_02_22_083738_add_tracking_and_payment_fields_to_orders_table.php` — Added 6 new columns to `orders`: `tracking_number`, `tracking_company`, `payment_amount` (decimal), `payment_date` (date), `payment_method`, `payment_receipt`.
+> - `app/Models/Order.php` — Added new fields to `$fillable`, added `payment_amount`/`payment_date` casts, added `isCancellable()` helper (returns true when status is `pending` or `needs_payment`).
+> - `routes/web.php` — 6 new routes: `orders.payment-notify`, `orders.cancel`, `orders.customer-merge`, `orders.transfer`, `orders.shipping-tracking`, `orders.update-payment`.
+> - `app/Http/Controllers/OrderController.php` — 6 new methods: `paymentNotify` (customer posts bank transfer comment), `cancelOrder` (customer cancels if cancellable), `customerMerge` (customer posts merge-request comment), `transferOrder` (staff transfers to email — creates new user with 5-char temp password if needed, shows credentials modal), `updateShippingTracking` (tracking number + carrier), `updatePayment` (amount, date, method, receipt upload). `show()` now also passes `$customerRecentOrders` for customer merge modal.
+> - `resources/views/orders/show.blade.php` — Replaced old single staff quick-actions section with two separate sections: **Customer Quick Actions** (إجراءات سريعة للعميل) gated to `$isOwner`, and **Staff Quick Actions** (إجراءات سريعة للفريق) gated to `$isStaff`. Old standalone status-change, invoice, and merge sections removed (now inside team QA panel as collapsible sub-panels). New modals added: payment-notify, similar-order, customer-merge, customer-cancel, transfer-order, transfer-new-user-credentials. All buttons individually gated by `Setting::get()` keys.
+> - `app/Filament/Pages/SettingsPage.php` — 11 new `qa_*` keys added to defaults, group mapping, boolean keys list, and Filament toggle schema (2 section-level toggles + 5 customer + 4 team + legacy 4 = 15 total toggles).
+> - `lang/ar.json` + `lang/en.json` — ~80 new translation keys added.
+>
+> **Next session should start with:** Build the blog system — `/blog` index (paginated, card grid) and `/blog/{slug}` show (full post with HTML body, SEO meta). The `posts`, `post_categories`, and `post_comments` tables are already migrated and the `Post`, `PostCategory`, `PostComment` models exist. Create `BlogController` with `index` and `show` methods, add routes, build `blog/index.blade.php` and `blog/show.blade.php` views (bilingual titles/bodies, published-only filter, responsive card grid). Also audit the new WordPress site (`pwa3/app/public/`) blog pages before building to capture any behaviour or edge cases.
+
+> **Previous session — الرصيد (Balance) tab added to `/account` page — append-only ledger with per-currency grouping.**
+>
+> **What was built:**
+> - `database/migrations/2026_02_22_080215_create_user_balances_table.php` — New `user_balances` table: `user_id`, `created_by`, `type` (credit/debit), `amount`, `currency` (3-char ISO), `note`, `date`. Append-only (no edit/update actions on past entries).
+> - `app/Models/UserBalance.php` — Model with `totalsForUser(int $userId)` static method that returns grouped net/credit/debit totals per currency code.
+> - `app/Models/User.php` — Added `balances()` HasMany relation.
+> - `app/Filament/Resources/Users/RelationManagers/BalancesRelationManager.php` — Filament relation manager on the User edit page. Admin/superadmin can add credit or debit entries (type, amount, currency dropdown with major world currencies, note textarea, date datepicker defaulting to today). Table shows date / type badge / amount+currency / note / added-by. No edit of past entries — CreateAction only.
+> - `app/Filament/Resources/Users/UserResource.php` — Registered `BalancesRelationManager` in `getRelations()`.
+> - `app/Http/Controllers/AccountController.php` — `index()` now fetches `$balanceTransactions` (paginated 25/page, desc date) and `$balanceTotals` (grouped by currency) and passes to view. `balance` added to valid tabs array.
+> - `resources/views/account/index.blade.php` — Added الرصيد tab button (wallet icon) and balance tab panel: summary cards per currency (net balance, total credits, total debits) + transaction list (mobile stacked cards, desktop table with date/type/amount/note columns) + pagination.
+> - `lang/ar.json` + `lang/en.json` — Added all `account.balance_*` translation keys (15 keys each file).
 >
 > **Next session should start with:** Build the blog system — `/blog` index (paginated, card grid) and `/blog/{slug}` show (full post with HTML body, SEO meta). The `posts`, `post_categories`, and `post_comments` tables are already migrated and the `Post`, `PostCategory`, `PostComment` models exist. Create `BlogController` with `index` and `show` methods, add routes, build `blog/index.blade.php` and `blog/show.blade.php` views (bilingual titles/bodies, published-only filter, responsive card grid). Also audit the new WordPress site (`pwa3/app/public/`) blog pages before building to capture any behaviour or edge cases.
 
