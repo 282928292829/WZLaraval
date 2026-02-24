@@ -190,10 +190,9 @@
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('orders.per_page') }}</label>
                         <select name="per_page"
                                 class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
-                            @foreach ([25, 50, 100] as $n)
+                            @foreach ([25, 50, 100, 250] as $n)
                                 <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }}</option>
                             @endforeach
-                            <option value="0" @selected($perPage === 0)>{{ __('orders.per_page_all') }}</option>
                         </select>
                     </div>
                 </div>
@@ -245,9 +244,6 @@
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                         {{ __('staff.status') }}
-                                    </th>
-                                    <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        {{ __('staff.total') }}
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                         {{ __('staff.payment') }}
@@ -304,17 +300,6 @@
                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
                                                 {{ $order->statusLabel() }}
                                             </span>
-                                        </td>
-                                        <td class="px-3 py-3 text-gray-600 tabular-nums whitespace-nowrap">
-                                            @if ($order->total_amount)
-                                                <span class="font-medium">{{ number_format($order->total_amount, 2) }}</span>
-                                                <span class="text-xs text-gray-400">{{ $order->currency }}</span>
-                                            @elseif ($order->subtotal)
-                                                <span class="text-gray-400">~{{ number_format($order->subtotal, 2) }}</span>
-                                                <span class="text-xs text-gray-400">{{ $order->currency }}</span>
-                                            @else
-                                                <span class="text-gray-300">—</span>
-                                            @endif
                                         </td>
                                         <td class="px-3 py-3">
                                             @if ($order->is_paid)

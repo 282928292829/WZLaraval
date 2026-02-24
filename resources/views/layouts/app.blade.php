@@ -9,10 +9,62 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <meta name="apple-mobile-web-app-title" content="{{ __('app.name') }}">
-        <meta name="description" content="{{ $description ?? __('app.description') }}">
+        @php
+            $siteName = \App\Models\Setting::get('site_name') ?: __('app.name');
+            $siteDefaultDesc = \App\Models\Setting::get('seo_default_meta_description') ?: __('app.description');
+            $siteDefaultOg = \App\Models\Setting::get('seo_default_og_image')
+                ? url(\Illuminate\Support\Facades\Storage::disk('public')->url(\App\Models\Setting::get('seo_default_og_image')))
+                : null;
+        @endphp
+        <meta name="apple-mobile-web-app-title" content="{{ $siteName }}">
+        <meta name="description" content="{{ $description ?? $siteDefaultDesc }}">
+        @if(isset($robots) && $robots)
+        <meta name="robots" content="{{ $robots }}">
+        @endif
+        @if(isset($canonicalUrl) && $canonicalUrl)
+        <link rel="canonical" href="{{ $canonicalUrl }}">
+        @endif
+        <x-hreflang />
+        {{-- Open Graph --}}
+        @php $effectiveOgImage = $ogImage ?? $siteDefaultOg ?? null; @endphp
+        <meta property="og:type" content="{{ $ogType ?? 'website' }}">
+        <meta property="og:title" content="{{ $ogTitle ?? ($title ?? $siteName) }}">
+        <meta property="og:description" content="{{ $ogDescription ?? ($description ?? $siteDefaultDesc) }}">
+        <meta property="og:url" content="{{ $canonicalUrl ?? url()->current() }}">
+        <meta property="og:locale" content="{{ app()->getLocale() === 'ar' ? 'ar_SA' : 'en_US' }}">
+        @if($effectiveOgImage)
+        <meta property="og:image" content="{{ $effectiveOgImage }}">
+        @if(request()->secure())
+        <meta property="og:image:secure_url" content="{{ $effectiveOgImage }}">
+        @endif
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:image:alt" content="{{ $ogImageAlt ?? $siteName }}">
+        @endif
+        {{-- Twitter Card --}}
+        <meta name="twitter:card" content="summary_large_image">
+        @php $twitterHandle = trim(ltrim((string) (\App\Models\Setting::get('seo_twitter_handle') ?? ''), '@')); @endphp
+        @if($twitterHandle !== '')
+        <meta name="twitter:site" content="@{{ $twitterHandle }}">
+        @endif
+        <meta name="twitter:title" content="{{ $ogTitle ?? ($title ?? $siteName) }}">
+        <meta name="twitter:description" content="{{ $ogDescription ?? ($description ?? $siteDefaultDesc) }}">
+        @if($effectiveOgImage)
+        <meta name="twitter:image" content="{{ $effectiveOgImage }}">
+        @endif
 
-        <title>{{ isset($title) ? $title . ' — ' . __('app.name') : __('app.name') }}</title>
+        <title>{{ isset($title) ? $title . ' — ' . $siteName : $siteName }}</title>
+
+        @if($googleVerification = \App\Models\Setting::get('seo_google_verification'))
+        <meta name="google-site-verification" content="{{ $googleVerification }}">
+        @endif
+        @if($bingVerification = \App\Models\Setting::get('seo_bing_verification'))
+        <meta name="msvalidate.01" content="{{ $bingVerification }}">
+        @endif
+
+        @if(isset($schema))
+        <script type="application/ld+json">{!! is_array($schema) ? json_encode($schema) : $schema !!}</script>
+        @endif
 
         {{-- PWA manifest + icons --}}
         <link rel="manifest" href="/manifest.json">
@@ -55,6 +107,7 @@
         </main>
 
         {{-- Footer --}}
+        @unless($hideFooter ?? false)
         @php
             $footerWhatsapp = \App\Models\Setting::get('whatsapp', '');
             $footerEmail    = \App\Models\Setting::get('contact_email', '');
@@ -236,9 +289,12 @@
             </div>
 
         </footer>
+        @endunless
 
         @livewireScripts
         @stack('scripts')
+
+        <x-impersonate::banner />
 
         <x-dev-toolbar />
 

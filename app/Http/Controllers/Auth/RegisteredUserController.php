@@ -34,7 +34,7 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::min(4)],
         ]);
 
@@ -45,11 +45,11 @@ class RegisteredUserController extends Controller
         $campaign = AdCampaign::resolveFromRequest($request);
 
         $user = User::create([
-            'name'             => trim($name) ?: $request->email,
-            'email'            => $request->email,
-            'password'         => Hash::make($request->password),
-            'ad_campaign_id'   => $campaign?->id,
-            'google_click_id'  => $request->query('gclid'),
+            'name' => trim($name) ?: $request->email,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'ad_campaign_id' => $campaign?->id,
+            'google_click_id' => $request->query('gclid'),
         ]);
 
         $user->assignRole('customer');
@@ -60,7 +60,9 @@ class RegisteredUserController extends Controller
 
         // Send welcome email if email sending is enabled
         if (Setting::get('email_enabled', false) && Setting::get('email_welcome', false)) {
-            Mail::to($user->email)->queue(new RegistrationWelcome($user));
+            Mail::to($user->email)
+                ->locale($user->locale ?? 'ar')
+                ->queue(new RegistrationWelcome($user));
         }
 
         return redirect(route('register.success', absolute: false));

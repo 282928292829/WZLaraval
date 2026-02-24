@@ -14,6 +14,8 @@ Migrate ~66k+ orders and related data from the legacy WordPress system into Lara
 - Legacy uploads: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/old-wp-content/uploads/`
 - Laravel site: `wasetzonlaraval/`
 
+**Config:** `config/migration.php` defines `legacy_uploads_path` (from `LEGACY_UPLOADS_PATH` env). Set in `.env` for migration.
+
 ## Phases
 
 1. **Match WordPress statuses** — Align Laravel to WP's 8 order statuses (0–7) before import. Same meaning, same labels. Store as string slugs in Laravel.
@@ -71,7 +73,7 @@ Write generic, reusable migration scripts:
 | 6 | طلب ملغي | cancelled |
 | 7 | بإنتظار توضيح العميل | on_hold |
 
-Note: Laravel currently has 9 statuses (includes `completed`). Consolidate to 8 to match WP, or map WP 5 → delivered/completed as appropriate.
+**Final mapping:** WP 5 (تــم التسليم) → Laravel `delivered`. Laravel `completed` is for closed/finalized orders (use when order is fully done and archived). Migration script maps WP 0–7 to Laravel slugs; keep Order model `getStatuses()` and migration in sync.
 
 ## Import Command
 
@@ -87,6 +89,20 @@ Or run step-by-step: `--users`, `--addresses`, `--orders`, `--items`, `--comment
 - Spot-check: sample orders with full chain (user → order → items → comments → timeline)
 - Referential integrity: no orphaned FKs
 - Status distribution: compare WP vs Laravel status counts
+
+## Phase 5 — Pre-Production Checklist (Blocking)
+
+**Do not go live until all steps pass.**
+
+1. **Configure legacy DB** — Add `legacy` connection in `config/database.php` pointing at the legacy dump (or imported MySQL). Set `LEGACY_UPLOADS_PATH` in `.env` for file migration.
+
+2. **Dry-run** — `php artisan migrate:all --dry-run` runs `migrate:validate` only. Use this to verify the legacy connection and schema before importing.
+
+3. **Full migration in staging** — Run `php artisan migrate:all --fresh` (or incremental without `--fresh`) against a staging copy of the legacy DB. Expect ~66k+ orders.
+
+4. **Validate** — `php artisan migrate:validate --sample=20` checks row counts, spot-checks orders, and FK integrity. Fix any issues before production.
+
+5. **Spot-check** — Manually verify sample orders in the Laravel UI: user → order → items → comments → timeline. Document any mapping fixes here.
 
 ## Migration Template Design
 

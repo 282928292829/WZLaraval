@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Page extends Model
 {
@@ -16,6 +17,9 @@ class Page extends Model
         'seo_title_en',
         'seo_description_ar',
         'seo_description_en',
+        'og_image',
+        'canonical_url',
+        'robots',
         'is_published',
         'show_in_header',
         'show_in_footer',
@@ -36,5 +40,45 @@ class Page extends Model
         $locale = app()->getLocale();
 
         return $locale === 'ar' ? ($this->title_ar ?: $this->title_en) : ($this->title_en ?: $this->title_ar);
+    }
+
+    public function getOgImageUrl(): ?string
+    {
+        $path = $this->og_image ?: Setting::get('seo_default_og_image', '');
+
+        if (! $path) {
+            return null;
+        }
+
+        return url(Storage::disk('public')->url($path));
+    }
+
+    public function getSeoTitle(): string
+    {
+        $locale = app()->getLocale();
+        $seo = $locale === 'ar' ? ($this->seo_title_ar ?: $this->seo_title_en) : ($this->seo_title_en ?: $this->seo_title_ar);
+
+        return $seo ?: $this->getTitle();
+    }
+
+    public function getSeoDescription(): string
+    {
+        $locale = app()->getLocale();
+        $seo = $locale === 'ar' ? ($this->seo_description_ar ?? $this->seo_description_en ?? '') : ($this->seo_description_en ?? $this->seo_description_ar ?? '');
+
+        if ($seo !== '') {
+            return $seo;
+        }
+
+        $body = $locale === 'ar' ? ($this->body_ar ?: $this->body_en) : ($this->body_en ?: $this->body_ar);
+        if ($body) {
+            $plain = trim(strip_tags($body));
+
+            return \Illuminate\Support\Str::limit($plain, 160);
+        }
+
+        $siteDefault = \App\Models\Setting::get('seo_default_meta_description', '');
+
+        return $siteDefault !== '' ? $siteDefault : (string) __('app.description');
     }
 }

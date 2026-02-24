@@ -91,7 +91,7 @@
                 type="text"
                 wire:model.live.debounce.400ms="items.{{ $index }}.price"
                 class="item-price w-full rounded-lg border border-gray-200 px-3 py-2.5 lg:px-2 lg:py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400"
-                placeholder="0.00"
+                placeholder="{{ __('placeholder.amount') }}"
                 inputmode="decimal"
             >
         </div>

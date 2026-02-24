@@ -243,7 +243,7 @@ Manual SSH deployment (no Forge/Ploi):
 - **Font family:** Configurable in Filament settings (default: IBM Plex Sans Arabic for Arabic, Inter for English)
 - **Mobile-first:** All customer-facing pages designed for mobile (95% of users), desktop is secondary. Filament admin is desktop-first.
 - **No-scroll forms:** Key forms must fit on screen without scrolling on mobile — sign-in (email, password, forgot password link, login button all visible), sign-up, and each new-order item row (all fields for one product visible without scrolling). If a form cannot fit, compact the layout — never require vertical scrolling to reach the submit action.
-- **Bilingual (100%):** Every string translatable, language toggle in header, RTL auto-switches with Arabic
+- **Bilingual (100%):** Every string translatable, language toggle in footer, RTL auto-switches with Arabic
 - **Templates:** All rewritten from scratch, no WordPress copy/paste — clean Laravel/Livewire components
 - **PWA:** Service worker, app manifest, offline support, performance optimizations (lazy loading, code splitting, debouncing)
 

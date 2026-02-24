@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="title">{{ $post->getTitle() }}</x-slot>
     <x-slot name="description">{{ $post->getExcerpt() ?: (app()->getLocale() === 'ar' ? ($post->seo_description_ar ?? '') : ($post->seo_description_en ?? '')) }}</x-slot>
+    @if($post->featured_image)
+    <x-slot name="ogImage">{{ url(\Illuminate\Support\Facades\Storage::disk('public')->url($post->featured_image)) }}</x-slot>
+    <x-slot name="ogImageAlt">{{ $post->getTitle() }}</x-slot>
+    @endif
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div class="lg:grid lg:grid-cols-4 lg:gap-10">

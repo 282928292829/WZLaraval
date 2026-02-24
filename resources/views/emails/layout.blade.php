@@ -1,5 +1,9 @@
+@php
+    $locale = $locale ?? app()->getLocale();
+    $dir = $locale === 'ar' ? 'rtl' : 'ltr';
+@endphp
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ $locale }}" dir="{{ $dir }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,8 +15,8 @@
             font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
             background-color: #f3f4f6;
             color: #1f2937;
-            direction: rtl;
-            text-align: right;
+            direction: {{ $dir }};
+            text-align: {{ $dir === 'rtl' ? 'right' : 'left' }};
         }
         .wrapper {
             max-width: 600px;
@@ -116,7 +120,7 @@
         }
         .footer a { color: #f97316; text-decoration: none; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #f3f4f6; padding: 10px 12px; text-align: right; color: #6b7280; font-size: 12px; font-weight: 600; }
+        th { background: #f3f4f6; padding: 10px 12px; text-align: {{ $dir === 'rtl' ? 'right' : 'left' }}; color: #6b7280; font-size: 12px; font-weight: 600; }
         td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; color: #374151; }
         tr:last-child td { border-bottom: none; }
     </style>
@@ -124,19 +128,18 @@
 <body>
 <div class="wrapper">
     <div class="header">
-        <h1>Wasetzon</h1>
-        <p>واسطزون — متجرك الذكي للتسوق الدولي</p>
+        <h1>{{ config('app.name') }}</h1>
+        <p>{{ __('emails.layout.tagline') }}</p>
     </div>
     <div class="body">
         {{ $slot }}
     </div>
     <div class="footer">
         <p>
-            هذا البريد أُرسل تلقائياً من نظام Wasetzon.
-            إذا لم تكن قد طلبت ذلك، يمكنك تجاهل هذه الرسالة.
+            {{ __('emails.layout.footer') }}
         </p>
         <p style="margin-top:8px;">
-            <a href="{{ config('app.url') }}">wasetzon.com</a>
+            <a href="{{ config('app.url') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) ?? 'wasetzon.com' }}</a>
         </p>
     </div>
 </div>

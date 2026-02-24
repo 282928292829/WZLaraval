@@ -22,7 +22,7 @@
          class="flex items-center gap-1.5 bg-gray-900/95 backdrop-blur text-white text-xs rounded-2xl shadow-2xl px-3 py-2 ring-1 ring-white/10">
 
         {{-- Dev badge --}}
-        <span class="px-2 py-0.5 rounded-full bg-yellow-400 text-yellow-900 font-bold text-[10px] tracking-wide me-1">DEV</span>
+        <span class="px-2 py-0.5 rounded-full bg-yellow-400 text-yellow-900 font-bold text-[10px] tracking-wide me-1">{{ __('dev.badge') }}</span>
 
         @if ($currentUser)
             {{-- Current user indicator --}}
@@ -92,7 +92,7 @@
             class="flex items-center gap-1.5 bg-gray-900/90 backdrop-blur text-white text-[11px] font-medium rounded-full shadow-xl ring-1 ring-white/10 hover:bg-gray-800 transition-colors"
             style="display:none; padding:6px 12px;">
         <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
-        DEV
+        {{ __('dev.badge') }}
         @if ($currentUser)
             <span class="text-white/50">· {{ $currentRole }}</span>
         @endif

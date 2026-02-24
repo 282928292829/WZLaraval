@@ -2,18 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\OrderExport;
+use App\Http\Requests\Order\BulkUpdateOrdersRequest;
+use App\Http\Requests\Order\CustomerMergeRequestRequest;
+use App\Http\Requests\Order\GenerateInvoiceRequest;
+use App\Http\Requests\Order\PaymentNotifyRequest;
+use App\Http\Requests\Order\TransferOrderRequest;
+use App\Http\Requests\Order\UpdatePaymentRequest;
+use App\Http\Requests\Order\UpdatePricesRequest;
+use App\Http\Requests\Order\UpdateShippingAddressRequest;
+use App\Http\Requests\Order\UpdateStaffNotesRequest;
+use App\Http\Requests\Order\UpdateTrackingRequest;
 use App\Mail\OrderConfirmation;
-use App\Models\CommentTemplate;
 use App\Models\EmailLog;
 use App\Models\Order;
-use App\Models\OrderComment;
-use App\Models\OrderCommentRead;
+use App\Models\OrderFile;
+use App\Models\OrderItem;
 use App\Models\OrderTimeline;
 use App\Models\Setting;
 use App\Models\UserActivityLog;
 use App\Models\UserAddress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
@@ -28,16 +40,14 @@ class OrderController extends Controller
             'timeline' => fn ($q) => $q->with('user')->orderBy('created_at'),
             'comments' => fn ($q) => $q
                 ->with(['user', 'edits.editor', 'reads.user', 'notificationLogs.user'])
-                ->withTrashed()
+                ->when(auth()->user()?->hasAnyRole(['editor', 'admin', 'superadmin']), fn ($q) => $q->withTrashed())
                 ->orderBy('created_at'),
         ])->findOrFail($id);
 
+        $this->authorize('view', $order);
+
         $isOwner = $order->user_id === $user->id;
         $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
-
-        if (! $isOwner && ! $isStaff) {
-            abort(403);
-        }
 
         // Read state is recorded by viewport-based tracking (JS), not on page load (matches WordPress).
 
@@ -101,212 +111,14 @@ class OrderController extends Controller
         ));
     }
 
-    // ─── Comment actions ─────────────────────────────────────────────────────
-
-    public function storeComment(Request $request, int $id)
-    {
-        $user = auth()->user();
-        $order = Order::findOrFail($id);
-
-        $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
-
-        if (! $isOwner && ! $isStaff) {
-            abort(403);
-        }
-
-        $isInternal = $isStaff && $request->boolean('is_internal');
-
-        $maxFiles = (int) Setting::get('comment_max_files', 5);
-        $maxFileMb = (int) Setting::get('comment_max_file_size_mb', 10);
-        $maxFileKb = $maxFileMb * 1024;
-
-        $validated = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
-            'is_internal' => ['sometimes', 'boolean'],
-            'template_id' => ['sometimes', 'nullable', 'integer', 'exists:comment_templates,id'],
-            'files' => ['sometimes', 'array', 'max:'.$maxFiles],
-            'files.*' => ['file', 'max:'.$maxFileKb,
-                'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
-        ]);
-
-        // Track template usage when staff uses a quick-reply template
-        if ($isStaff && ! empty($validated['template_id'])) {
-            CommentTemplate::where('id', $validated['template_id'])->increment('usage_count');
-        }
-
-        $comment = $order->comments()->create([
-            'user_id' => $user->id,
-            'body' => $validated['body'],
-            'is_internal' => $isInternal,
-        ]);
-
-        // Attach files to comment if present
-        foreach ($request->file('files', []) as $file) {
-            $path = $file->store('order-files/'.$order->id, 'public');
-            $order->files()->create([
-                'user_id' => $user->id,
-                'comment_id' => $comment->id,
-                'path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'type' => 'comment',
-            ]);
-        }
-
-        // Timeline entry
-        $order->timeline()->create([
-            'user_id' => $user->id,
-            'type' => $isInternal ? 'note' : 'comment',
-            'body' => $isInternal ? __('orders.timeline_internal_note') : __('orders.timeline_comment_added'),
-        ]);
-
-        return redirect()->route('orders.show', $order->id)->with('success', __('orders.comment_added'));
-    }
-
-    public function updateComment(Request $request, int $orderId, int $commentId)
-    {
-        $user = auth()->user();
-        $order = Order::findOrFail($orderId);
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
-
-        $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
-        $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
-
-        if (! $canEdit) {
-            abort(403);
-        }
-
-        $validated = $request->validate(['body' => ['required', 'string', 'max:5000']]);
-
-        // Save edit history
-        $comment->edits()->create([
-            'old_body' => $comment->body,
-            'edited_by' => $user->id,
-            'edited_at' => now(),
-        ]);
-
-        $comment->update([
-            'body' => $validated['body'],
-            'is_edited' => true,
-            'edited_at' => now(),
-        ]);
-
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.comment_updated'));
-    }
-
-    public function destroyComment(Request $request, int $orderId, int $commentId)
-    {
-        $user = auth()->user();
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
-
-        $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
-
-        if (! $isOwner && ! ($isStaff && $user->can('delete-any-comment'))) {
-            abort(403);
-        }
-
-        $comment->update(['deleted_by' => $user->id]);
-        $comment->delete();
-
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.comment_deleted'));
-    }
-
-    // ─── Staff: change status ─────────────────────────────────────────────
-
-    public function updateStatus(Request $request, int $id)
-    {
-        $this->authorize('update-order-status');
-
-        $order = Order::findOrFail($id);
-        $validated = $request->validate([
-            'status' => ['required', 'in:'.implode(',', array_keys(Order::getStatuses()))],
-        ]);
-
-        $old = $order->status;
-        $order->update(['status' => $validated['status']]);
-
-        $order->timeline()->create([
-            'user_id' => auth()->id(),
-            'type' => 'status_change',
-            'status_from' => $old,
-            'status_to' => $validated['status'],
-            'body' => null,
-        ]);
-
-        return redirect()->route('orders.show', $id)->with('success', __('orders.status_updated'));
-    }
-
-    // ─── Staff: quick-action mark as paid ────────────────────────────────
-
-    public function markPaid(Request $request, int $id)
-    {
-        $this->authorize('update-order-status');
-
-        $order = Order::findOrFail($id);
-
-        if (! $order->is_paid) {
-            $order->update(['is_paid' => true]);
-
-            $order->timeline()->create([
-                'user_id' => auth()->id(),
-                'type' => 'payment',
-                'status_from' => null,
-                'status_to' => null,
-                'body' => __('orders.marked_paid_by_staff'),
-            ]);
-        }
-
-        return redirect()->route('orders.show', $id)->with('success', __('orders.marked_as_paid'));
-    }
-
-    // ─── Staff: upload order-level file ──────────────────────────────────
-
-    public function storeFile(Request $request, int $id)
-    {
-        $this->authorize('reply-to-comments');
-
-        $order = Order::findOrFail($id);
-        $validated = $request->validate([
-            'file' => ['required', 'file', 'max:10240',
-                'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
-            'type' => ['sometimes', 'in:receipt,attachment'],
-        ]);
-
-        $file = $request->file('file');
-        $path = $file->store('order-files/'.$order->id, 'public');
-        $order->files()->create([
-            'user_id' => auth()->id(),
-            'comment_id' => null,
-            'path' => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'type' => $validated['type'] ?? 'attachment',
-        ]);
-
-        return redirect()->route('orders.show', $id)->with('success', __('orders.file_uploaded'));
-    }
-
     // ─── Staff: update prices on items ───────────────────────────────────
 
-    public function updatePrices(Request $request, int $id)
+    public function updatePrices(UpdatePricesRequest $request, int $id)
     {
         $this->authorize('edit-prices');
 
         $order = Order::with('items')->findOrFail($id);
-        $validated = $request->validate([
-            'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'integer'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.commission' => ['nullable', 'numeric', 'min:0'],
-            'items.*.shipping' => ['nullable', 'numeric', 'min:0'],
-            'items.*.final_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.currency' => ['nullable', 'string', 'max:10'],
-        ]);
+        $validated = $request->validated();
 
         foreach ($validated['items'] as $itemData) {
             $item = $order->items->firstWhere('id', $itemData['id']);
@@ -330,91 +142,214 @@ class OrderController extends Controller
         return redirect()->route('orders.show', $id)->with('success', __('orders.prices_updated'));
     }
 
-    // ─── Staff: generate invoice (posts as comment) ───────────────────────
+    // ─── Staff: generate invoice (PDF attached to comment) ─────────────────
 
-    public function generateInvoice(Request $request, int $id)
+    public function generateInvoice(GenerateInvoiceRequest $request, int $id)
     {
         $this->authorize('generate-pdf-invoice');
 
-        $order = Order::with('items')->findOrFail($id);
-        $validated = $request->validate([
-            'custom_amount' => ['nullable', 'numeric', 'min:0'],
-            'custom_notes' => ['nullable', 'string', 'max:1000'],
-            'invoice_type' => ['sometimes', 'in:detailed,simple'],
-        ]);
+        $order = Order::with(['items', 'user'])->findOrFail($id);
+        $validated = $request->validated();
+        $action = $validated['action'] ?? 'publish';
 
-        $subtotal = $order->items->sum(fn ($i) => ($i->unit_price ?? 0) * ($i->qty ?? 1));
-        $total = ! empty($validated['custom_amount']) ? (float) $validated['custom_amount'] : $subtotal;
+        $invoiceType = $validated['invoice_type'] ?? 'detailed';
+        $notes = $validated['custom_notes'] ?? '';
+        $showOriginalCurrency = filter_var($validated['show_original_currency'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $lines = [];
-        if (($validated['invoice_type'] ?? 'detailed') === 'detailed') {
-            foreach ($order->items as $idx => $item) {
-                $lineTotal = ($item->unit_price ?? 0) * ($item->qty ?? 1);
-                if ($lineTotal > 0) {
-                    $lines[] = sprintf(
-                        __('orders.invoice_line'),
-                        $idx + 1,
-                        $item->qty,
-                        number_format($item->unit_price, 2),
-                        $item->currency,
-                        number_format($lineTotal, 2)
-                    );
+        $itemsSubtotal = 0;
+
+        if ($invoiceType === 'detailed') {
+            foreach ($order->items as $item) {
+                $priceSar = (float) ($item->final_price ?? $item->unit_price ?? 0);
+                $lineTotalSar = $priceSar * ($item->qty ?? 1);
+                if ($lineTotalSar > 0) {
+                    $desc = $item->url
+                        ? (strlen($item->url) > 60 ? substr($item->url, 0, 57).'...' : $item->url)
+                        : ($item->notes ?: __('orders.item').' #'.(count($lines) + 1));
+                    $currency = $item->currency ?: 'SAR';
+                    $unitOriginal = (float) ($item->unit_price ?? 0);
+                    $lines[] = [
+                        'description' => $desc,
+                        'qty' => $item->qty,
+                        'unit_price' => number_format($priceSar, 2),
+                        'unit_price_original' => $unitOriginal,
+                        'currency' => $currency,
+                        'line_total' => $lineTotalSar,
+                        'show_original' => $showOriginalCurrency && $currency !== 'SAR' && $unitOriginal > 0,
+                    ];
+                    $itemsSubtotal += $lineTotalSar;
+                }
+            }
+
+            $feeConfig = [
+                'agent_fee' => ['key' => 'include_agent_fee', 'override' => 'fee_agent_fee', 'label' => 'orders.fee_agent_fee'],
+                'local_shipping' => ['key' => 'include_local_shipping', 'override' => 'fee_local_shipping', 'label' => 'orders.fee_local_shipping'],
+                'international_shipping' => ['key' => 'include_international_shipping', 'override' => 'fee_international_shipping', 'label' => 'orders.fee_international_shipping'],
+                'photo_fee' => ['key' => 'include_photo_fee', 'override' => 'fee_photo_fee', 'label' => 'orders.fee_photo_fee'],
+                'extra_packing' => ['key' => 'include_extra_packing', 'override' => 'fee_extra_packing', 'label' => 'orders.fee_extra_packing'],
+            ];
+            foreach ($feeConfig as $field => $cfg) {
+                if (empty($validated[$cfg['key']])) {
+                    continue;
+                }
+                $amount = isset($validated[$cfg['override']]) && $validated[$cfg['override']] !== ''
+                    ? (float) $validated[$cfg['override']]
+                    : (float) ($order->{$field} ?? 0);
+                if ($amount > 0) {
+                    $lines[] = [
+                        'description' => __($cfg['label']),
+                        'qty' => 1,
+                        'unit_price' => number_format($amount, 2),
+                        'unit_price_original' => 0,
+                        'currency' => 'SAR',
+                        'line_total' => $amount,
+                        'show_original' => false,
+                        'is_fee' => true,
+                    ];
+                    $itemsSubtotal += $amount;
                 }
             }
         }
 
-        $body = view('orders._invoice_text', compact('order', 'lines', 'total', 'validated'))->render();
+        $total = ! empty($validated['custom_amount']) ? (float) $validated['custom_amount'] : $itemsSubtotal;
 
-        $order->comments()->create([
+        $invoiceCount = $order->files()->where('type', 'invoice')->count() + 1;
+        $filename = $invoiceCount > 1
+            ? 'Invoice-'.$order->order_number.'-'.$invoiceCount.'.pdf'
+            : 'Invoice-'.$order->order_number.'.pdf';
+
+        $pdfContent = $this->buildInvoicePdf($order, $lines, $total, $invoiceType, $notes, $filename);
+
+        if ($action === 'preview') {
+            return response()->streamDownload(
+                fn () => print $pdfContent,
+                $filename,
+                ['Content-Type' => 'application/pdf'],
+                'attachment'
+            );
+        }
+
+        $dir = 'order-files/'.$order->id;
+        $path = $dir.'/'.$filename;
+        $fullPath = storage_path('app/public/'.$path);
+
+        if (! is_dir(dirname($fullPath))) {
+            mkdir(dirname($fullPath), 0755, true);
+        }
+        file_put_contents($fullPath, $pdfContent);
+
+        $commentBody = $this->resolveInvoiceCommentMessage(
+            $validated['comment_message'] ?? '',
+            $total,
+            $order
+        );
+
+        $comment = $order->comments()->create([
             'user_id' => auth()->id(),
-            'body' => $body,
+            'body' => $commentBody,
             'is_internal' => false,
         ]);
+
+        $order->files()->create([
+            'user_id' => auth()->id(),
+            'comment_id' => $comment->id,
+            'path' => $path,
+            'original_name' => $filename,
+            'mime_type' => 'application/pdf',
+            'size' => (int) strlen($pdfContent),
+            'type' => 'invoice',
+        ]);
+
+        if ($invoiceType === 'detailed') {
+            $feeFields = ['agent_fee', 'local_shipping', 'international_shipping', 'photo_fee', 'extra_packing'];
+            $updates = [];
+            foreach ($feeFields as $field) {
+                if (! empty($validated['include_'.$field])) {
+                    $val = isset($validated['fee_'.$field]) && $validated['fee_'.$field] !== ''
+                        ? (float) $validated['fee_'.$field]
+                        : (float) ($order->{$field} ?? 0);
+                    $updates[$field] = $val;
+                }
+            }
+            if (! empty($updates)) {
+                $order->update($updates);
+            }
+        }
 
         return redirect()->route('orders.show', $id)->with('success', __('orders.invoice_generated'));
     }
 
-    // ─── Staff: merge orders ──────────────────────────────────────────────
-
-    public function merge(Request $request, int $id)
+    private function buildInvoicePdf(Order $order, array $lines, float $total, string $invoiceType, string $notes, string $filename): string
     {
-        $this->authorize('merge-orders');
+        $invoiceLocale = $order->user?->locale ?? config('app.locale', 'ar');
+        $isRtl = $invoiceLocale === 'ar';
 
-        $order = Order::findOrFail($id);
-        $validated = $request->validate([
-            'merge_with' => ['required', 'integer', 'different:id', 'exists:orders,id'],
+        $originalLocale = app()->getLocale();
+        app()->setLocale($invoiceLocale);
+
+        $html = view('orders.invoice-pdf-mpdf', [
+            'order' => $order,
+            'lines' => $lines,
+            'total' => $total,
+            'invoiceType' => $invoiceType,
+            'notes' => $notes,
+            'isRtl' => $isRtl,
+            'invoiceLocale' => $invoiceLocale,
+        ])->render();
+
+        app()->setLocale($originalLocale);
+
+        $defaultConfig = (new \Mpdf\Config\ConfigVariables)->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        $defaultFontConfig = (new \Mpdf\Config\FontVariables)->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+        $fontPath = realpath(base_path('storage/fonts')) ?: base_path('storage/fonts');
+
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'tempDir' => storage_path('framework/cache'),
+            'fontDir' => array_merge($fontDirs, [$fontPath]),
+            'fontdata' => $fontData + [
+                'ibmplexarabic' => [
+                    'R' => 'IBMPlexSansArabic-Regular.ttf',
+                    'B' => 'IBMPlexSansArabic-Bold.ttf',
+                    'useOTL' => 0xFF,
+                    'useKashida' => 75,
+                ],
+            ],
+            'default_font' => $isRtl ? 'ibmplexarabic' : 'dejavusans',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
         ]);
+        $mpdf->SetTitle($isRtl ? 'فاتورة رقم '.$order->order_number : 'Invoice '.$order->order_number);
+        if ($isRtl) {
+            $mpdf->SetDirectionality('rtl');
+        }
+        $mpdf->WriteHTML($html);
 
-        $target = Order::with('items')->findOrFail($validated['merge_with']);
+        return $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+    }
 
-        // Move all items from target into this order
-        $target->items()->update(['order_id' => $order->id]);
+    private function resolveInvoiceCommentMessage(string $message, float $total, Order $order): string
+    {
+        $default = Setting::get('invoice_comment_default') ?: __('orders.invoice_attached');
+        $text = trim($message) !== '' ? $message : $default;
 
-        // Mark target as merged
-        $target->update([
-            'merged_into' => $order->id,
-            'merged_at' => now(),
-            'merged_by' => auth()->id(),
-        ]);
+        $replacements = [
+            '{amount}' => number_format($total, 2),
+            '{order_number}' => $order->order_number,
+            '{date}' => now()->format('Y-m-d H:i'),
+            '{currency}' => 'SAR',
+        ];
 
-        // Timeline on both
-        $order->timeline()->create([
-            'user_id' => auth()->id(),
-            'type' => 'merge',
-            'body' => __('orders.timeline_merged_from', ['number' => $target->order_number]),
-        ]);
-        $target->timeline()->create([
-            'user_id' => auth()->id(),
-            'type' => 'merge',
-            'body' => __('orders.timeline_merged_into', ['number' => $order->order_number]),
-        ]);
-
-        return redirect()->route('orders.show', $order->id)->with('success', __('orders.merged'));
+        return '📄 '.str_replace(array_keys($replacements), array_values($replacements), $text);
     }
 
     // ─── Update shipping address on order ────────────────────────────────
 
-    public function updateShippingAddress(Request $request, int $id)
+    public function updateShippingAddress(UpdateShippingAddressRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -433,9 +368,7 @@ class OrderController extends Controller
                 ->with('error', __('orders.address_change_not_allowed'));
         }
 
-        $validated = $request->validate([
-            'shipping_address_id' => ['required', 'integer'],
-        ]);
+        $validated = $request->validated();
 
         // Address must belong to the order's owner
         $address = UserAddress::where('user_id', $order->user_id)
@@ -461,166 +394,6 @@ class OrderController extends Controller
 
         return redirect()->route('orders.show', $id)
             ->with('success', __('orders.address_updated'));
-    }
-
-    // ─── Staff: send comment notification ────────────────────────────────
-
-    public function sendNotification(Request $request, int $orderId, int $commentId)
-    {
-        $this->authorize('send-comment-notification');
-
-        $comment = OrderComment::where('order_id', $orderId)->with('order.user')->findOrFail($commentId);
-        $order = $comment->order;
-
-        if (! Setting::get('email_enabled', false)) {
-            return redirect()->route('orders.show', $orderId)
-                ->with('error', __('orders.notification_email_disabled'));
-        }
-
-        if (! $order->user || ! $order->user->email) {
-            return redirect()->route('orders.show', $orderId)
-                ->with('error', __('orders.notification_no_recipient'));
-        }
-
-        try {
-            Mail::to($order->user->email, $order->user->name)
-                ->queue(new \App\Mail\CommentNotification($comment));
-
-            $order->timeline()->create([
-                'user_id' => auth()->id(),
-                'type' => 'note',
-                'body' => __('orders.timeline_notification_sent', ['email' => $order->user->email]),
-            ]);
-
-            return redirect()->route('orders.show', $orderId)
-                ->with('success', __('orders.notification_queued'));
-        } catch (\Throwable $e) {
-            return redirect()->route('orders.show', $orderId)
-                ->with('error', __('orders.notification_failed').': '.$e->getMessage());
-        }
-    }
-
-    /** Staff: log that comment was sent via WhatsApp (opens wa.me in front; this records the action). */
-    public function logWhatsAppSend(Request $request, int $orderId, int $commentId): \Illuminate\Http\JsonResponse
-    {
-        $this->authorize('send-comment-notification');
-
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
-        if ($comment->is_internal) {
-            return response()->json(['success' => false, 'message' => __('orders.cannot_notify_internal')], 422);
-        }
-
-        $order = $comment->order;
-        if (! $order->user || ! preg_match('/[0-9]/', (string) $order->user->phone)) {
-            return response()->json(['success' => false, 'message' => __('orders.whatsapp_no_phone')], 422);
-        }
-
-        \App\Models\OrderCommentNotificationLog::create([
-            'order_id' => $orderId,
-            'comment_id' => $commentId,
-            'user_id' => auth()->id(),
-            'channel' => 'whatsapp',
-            'sent_at' => now(),
-        ]);
-
-        return response()->json(['success' => true, 'message' => __('orders.whatsapp_send_logged')]);
-    }
-
-    /** Staff: add a timeline entry as a comment (visible to customer). */
-    public function addTimelineAsComment(Request $request, int $orderId, int $timelineId)
-    {
-        $user = auth()->user();
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
-            abort(403);
-        }
-
-        $order = Order::findOrFail($orderId);
-        $entry = $order->timeline()->findOrFail($timelineId);
-
-        $body = $this->formatTimelineEntryAsCommentText($entry);
-
-        $order->comments()->create([
-            'user_id' => $user->id,
-            'body' => $body,
-            'is_internal' => false,
-        ]);
-
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.timeline_added_as_comment'));
-    }
-
-    /** Viewport-based: mark comments as read (batch). */
-    public function markCommentsRead(Request $request, int $orderId): \Illuminate\Http\JsonResponse
-    {
-        $user = auth()->user();
-        $order = Order::with('comments')->findOrFail($orderId);
-        $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
-        if (! $isOwner && ! $isStaff) {
-            return response()->json(['success' => false], 403);
-        }
-
-        $commentIds = $request->input('comment_ids', []);
-        if (! is_array($commentIds)) {
-            $commentIds = [];
-        }
-        $commentIds = array_unique(array_filter(array_map('intval', $commentIds)));
-
-        $visibleCommentIds = $order->comments
-            ->filter(fn ($c) => ! $c->is_internal || $isStaff)
-            ->filter(fn ($c) => ! $c->deleted_at)
-            ->pluck('id')
-            ->flip();
-
-        $toUpsert = [];
-        $now = now();
-        foreach ($commentIds as $cid) {
-            if (! $visibleCommentIds->has($cid)) {
-                continue;
-            }
-            $toUpsert[] = [
-                'comment_id' => $cid,
-                'user_id' => $user->id,
-                'read_at' => $now,
-            ];
-        }
-
-        if (! empty($toUpsert)) {
-            OrderCommentRead::upsert(
-                $toUpsert,
-                ['comment_id', 'user_id'],
-                ['read_at']
-            );
-        }
-
-        return response()->json(['success' => true]);
-    }
-
-    private function formatTimelineEntryAsCommentText(OrderTimeline $entry): string
-    {
-        $prefix = '📋 ';
-        if ($entry->type === 'status_change') {
-            $from = $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : '—';
-            $to = $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : '—';
-
-            return $prefix.__('orders.timeline_label_status_change').": {$from} → {$to}\n\n— ".optional($entry->user)->name.' — '.$entry->created_at?->format('Y/m/d H:i');
-        }
-
-        $label = match ($entry->type) {
-            'comment' => __('orders.timeline_label_comment'),
-            'note' => __('orders.timeline_label_note'),
-            'payment' => __('orders.timeline_label_payment'),
-            'merge' => __('orders.timeline_label_merge'),
-            'file_upload' => __('orders.timeline_label_file_upload'),
-            default => $entry->type,
-        };
-
-        $text = $prefix.$label;
-        if ($entry->body) {
-            $text .= ': '.$entry->body;
-        }
-        $text .= "\n\n— ".optional($entry->user)->name.' — '.$entry->created_at?->format('Y/m/d H:i');
-
-        return $text;
     }
 
     public function index(Request $request)
@@ -665,7 +438,10 @@ class OrderController extends Controller
 
     private function staffIndex(Request $request)
     {
-        $query = Order::with('user')->withCount('items');
+        $query = Order::query()
+            ->select(['id', 'order_number', 'user_id', 'status', 'created_at', 'subtotal', 'total_amount', 'currency', 'is_paid'])
+            ->with(['user:id,name,email'])
+            ->withCount('items');
 
         if ($search = trim($request->get('search', ''))) {
             $query->where(function ($q) use ($search) {
@@ -690,30 +466,31 @@ class OrderController extends Controller
 
         $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
         $requestedPerPage = (int) $request->get('per_page');
-        $perPage = in_array($requestedPerPage, [25, 50, 100, 0]) ? $requestedPerPage : 25;
+        $allowedPerPage = [25, 50, 100, 250];
+        $perPage = in_array($requestedPerPage, $allowedPerPage) ? $requestedPerPage : 25;
 
         $query->orderBy('created_at', $sort);
 
-        // per_page=0 means show all — use a large number to avoid memory issues
-        $orders = $perPage === 0
-            ? $query->paginate(10000)->withQueryString()
-            : $query->paginate($perPage)->withQueryString();
+        $orders = $query->paginate($perPage)->withQueryString();
         $statuses = Order::getStatuses();
 
         return view('orders.staff', compact('orders', 'perPage', 'statuses', 'sort'));
     }
 
-    public function bulkUpdate(Request $request)
+    public function bulkUpdate(BulkUpdateOrdersRequest $request)
     {
         $this->authorize('bulk-update-orders');
 
-        $validated = $request->validate([
-            'order_ids' => ['required', 'array', 'min:1'],
-            'order_ids.*' => ['integer', 'exists:orders,id'],
-            'new_status' => ['required', 'in:'.implode(',', array_keys(Order::getStatuses()))],
-        ]);
+        $validated = $request->validated();
 
         $count = count($validated['order_ids']);
+
+        if (in_array($validated['new_status'], ['cancelled', 'shipped', 'delivered'])) {
+            $orders = Order::whereIn('id', $validated['order_ids'])->with('user')->get();
+            foreach ($orders as $order) {
+                \App\Models\AdCampaign::incrementForOrderStatus($order, $validated['new_status']);
+            }
+        }
 
         Order::whereIn('id', $validated['order_ids'])->update(['status' => $validated['new_status']]);
 
@@ -814,6 +591,7 @@ class OrderController extends Controller
 
         try {
             Mail::to($order->user->email, $order->user->name)
+                ->locale($order->user->locale ?? 'ar')
                 ->queue(new OrderConfirmation($order));
 
             $log->update(['status' => 'queued', 'sent_at' => now()]);
@@ -835,7 +613,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => __('Failed to queue email: ').$e->getMessage(),
+                'message' => __('orders.email_queue_failed', ['error' => $e->getMessage()]),
             ], 500);
         }
     }
@@ -843,7 +621,7 @@ class OrderController extends Controller
     // ─── Customer quick actions ───────────────────────────────────────────────
 
     /** Customer: report a bank transfer / payment notification → creates a comment */
-    public function paymentNotify(Request $request, int $id)
+    public function paymentNotify(PaymentNotifyRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -852,15 +630,15 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'transfer_amount' => ['required', 'numeric', 'min:0.01'],
-            'transfer_bank' => ['required', 'string', 'max:100'],
-            'transfer_notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
+
+        $bankLabel = $validated['transfer_bank'] === 'other'
+            ? __('orders.bank_other')
+            : __('orders.banks.'.$validated['transfer_bank']);
 
         $body = __('orders.payment_notify_comment', [
             'amount' => $validated['transfer_amount'],
-            'bank' => $validated['transfer_bank'],
+            'bank' => $bankLabel,
         ]);
 
         if (! empty($validated['transfer_notes'])) {
@@ -901,6 +679,8 @@ class OrderController extends Controller
         $oldStatus = $order->status;
         $order->update(['status' => 'cancelled']);
 
+        \App\Models\AdCampaign::incrementCancelledForOrder($order);
+
         $order->timeline()->create([
             'user_id' => $user->id,
             'type' => 'status_change',
@@ -913,7 +693,7 @@ class OrderController extends Controller
     }
 
     /** Customer: request merge with another of their own orders → posts a comment */
-    public function customerMerge(Request $request, int $id)
+    public function customerMerge(CustomerMergeRequestRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -922,9 +702,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'merge_with_order' => ['required', 'integer', 'different:'.$id],
-        ]);
+        $validated = $request->validated();
 
         $targetOrder = Order::where('user_id', $user->id)
             ->where('id', $validated['merge_with_order'])
@@ -951,7 +729,7 @@ class OrderController extends Controller
     // ─── Staff quick actions ──────────────────────────────────────────────────
 
     /** Staff: transfer order ownership to another customer by email */
-    public function transferOrder(Request $request, int $id)
+    public function transferOrder(TransferOrderRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::with('user')->findOrFail($id);
@@ -960,17 +738,15 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'transfer_email' => ['required', 'email', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         $targetUser = \App\Models\User::where('email', $validated['transfer_email'])->first();
 
         if (! $targetUser) {
-            // Create a new customer account with a 5-char temporary password
+            // Create a new customer account with a 6-char temporary password
             $chars = 'abcdefghjkmnpqrstuvwxyz';
             $tempPass = '';
-            for ($i = 0; $i < 5; $i++) {
+            for ($i = 0; $i < 6; $i++) {
                 $tempPass .= $chars[random_int(0, strlen($chars) - 1)];
             }
             $targetUser = \App\Models\User::create([
@@ -1021,7 +797,7 @@ class OrderController extends Controller
     }
 
     /** Staff: update tracking number and shipping company */
-    public function updateShippingTracking(Request $request, int $id)
+    public function updateShippingTracking(UpdateTrackingRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -1030,10 +806,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'tracking_number' => ['nullable', 'string', 'max:100'],
-            'tracking_company' => ['nullable', 'string', 'max:50'],
-        ]);
+        $validated = $request->validated();
 
         $order->update($validated);
 
@@ -1050,7 +823,7 @@ class OrderController extends Controller
     }
 
     /** Staff: record payment details (amount, date, method, receipt) */
-    public function updatePayment(Request $request, int $id)
+    public function updatePayment(UpdatePaymentRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -1059,12 +832,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'payment_amount' => ['nullable', 'numeric', 'min:0'],
-            'payment_date' => ['nullable', 'date'],
-            'payment_method' => ['nullable', 'string', 'in:bank_transfer,credit_card,cash,other'],
-            'payment_receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:10240'],
-        ]);
+        $validated = $request->validated();
 
         $data = collect($validated)->except('payment_receipt')->toArray();
 
@@ -1088,7 +856,7 @@ class OrderController extends Controller
     }
 
     /** Staff: update internal notes about this order/customer */
-    public function updateStaffNotes(Request $request, int $id)
+    public function updateStaffNotes(UpdateStaffNotesRequest $request, int $id)
     {
         $user = auth()->user();
         $order = Order::findOrFail($id);
@@ -1097,13 +865,60 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'staff_notes' => ['nullable', 'string', 'max:5000'],
-        ]);
+        $validated = $request->validated();
 
         $order->update(['staff_notes' => $validated['staff_notes'] ?? null]);
 
         return redirect()->route('orders.show', $id)
             ->with('success', __('orders.staff_notes_saved'));
+    }
+
+    /** Staff: delete product image (from order_items.image_path or order_files) */
+    public function deleteProductImage(Request $request, int $orderId)
+    {
+        $user = auth()->user();
+        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $order = Order::findOrFail($orderId);
+
+        $itemId = $request->input('item_id');
+        $fileId = $request->input('file_id');
+
+        if ($itemId) {
+            $item = OrderItem::where('order_id', $orderId)->findOrFail($itemId);
+            if ($item->image_path) {
+                Storage::disk('public')->delete($item->image_path);
+                $item->update(['image_path' => null]);
+            }
+        } elseif ($fileId) {
+            $file = OrderFile::where('order_id', $orderId)
+                ->where('type', 'product_image')
+                ->findOrFail($fileId);
+            Storage::disk('public')->delete($file->path);
+            $file->delete();
+        } else {
+            abort(400, __('orders.delete_image_param_required'));
+        }
+
+        return redirect()->route('orders.show', $orderId)
+            ->with('success', __('orders.product_image_deleted'));
+    }
+
+    /** Staff: export single order to Excel (links, specs, image URLs) */
+    public function exportExcel(int $id)
+    {
+        $user = auth()->user();
+        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $order = Order::with(['items' => fn ($q) => $q->orderBy('sort_order'), 'files'])->findOrFail($id);
+        $this->authorize('view', $order);
+
+        $filename = 'order-'.$order->order_number.'-'.now()->format('Y-m-d').'.xlsx';
+
+        return Excel::download(new OrderExport($order), $filename, \Maatwebsite\Excel\Excel::XLSX);
     }
 }

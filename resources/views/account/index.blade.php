@@ -1234,15 +1234,12 @@
             <div class="grid gap-3 sm:grid-cols-{{ count($balanceTotals) > 1 ? count($balanceTotals) : '1' }}">
                 @foreach ($balanceTotals as $currency => $totals)
                     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-                        <p class="text-xs text-gray-400 mb-1">{{ __('account.balance_net') }} — {{ $currency }}</p>
+                        @php $currencyKey = 'order.currency_'.strtolower($currency); $currencyLabel = __($currencyKey) !== $currencyKey ? __($currencyKey) : $currency; @endphp
+                        <p class="text-xs text-gray-400 mb-1">{{ __('account.balance_net') }} — {{ $currencyLabel }}</p>
                         <p class="text-2xl font-bold {{ $totals['net'] >= 0 ? 'text-green-600' : 'text-red-500' }}">
                             {{ number_format($totals['net'], 2) }}
-                            <span class="text-base font-medium">{{ $currency }}</span>
+                            <span class="text-base font-medium">{{ $currencyLabel }}</span>
                         </p>
-                        <div class="flex gap-4 mt-2 text-xs text-gray-400">
-                            <span class="text-green-600">↑ {{ number_format($totals['credit'], 2) }}</span>
-                            <span class="text-red-500">↓ {{ number_format($totals['debit'], 2) }}</span>
-                        </div>
                     </div>
                 @endforeach
             </div>

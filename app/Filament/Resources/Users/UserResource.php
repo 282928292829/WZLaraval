@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -58,6 +59,104 @@ class UserResource extends Resource
 
         return $schema
             ->components([
+                Section::make(__('Account Info'))
+                    ->description(__('Read-only account and registration details.'))
+                    ->schema([
+                        Placeholder::make('joined')
+                            ->label(__('Joined'))
+                            ->content(fn (?User $record): string => $record?->created_at
+                                ? $record->created_at->format('d M Y H:i')
+                                : '—'),
+
+                        Placeholder::make('last_login')
+                            ->label(__('Last login'))
+                            ->content(fn (?User $record): string => $record?->last_login_at
+                                ? $record->last_login_at->format('d M Y H:i')
+                                : '—'),
+
+                        Placeholder::make('email_verified')
+                            ->label(__('Email verified'))
+                            ->content(fn (?User $record): string => $record?->email_verified_at
+                                ? $record->email_verified_at->format('d M Y')
+                                : __('No')),
+
+                        Placeholder::make('oauth_providers')
+                            ->label(__('OAuth providers'))
+                            ->content(function (?User $record): string {
+                                if (! $record) {
+                                    return '—';
+                                }
+                                $providers = [];
+                                if ($record->google_id) {
+                                    $providers[] = 'Google';
+                                }
+                                if ($record->twitter_id) {
+                                    $providers[] = 'Twitter';
+                                }
+                                if ($record->apple_id) {
+                                    $providers[] = 'Apple';
+                                }
+
+                                return $providers ? implode(', ', $providers) : '—';
+                            }),
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
+
+                Section::make(__('Last Visit'))
+                    ->description(__('Device and location from most recent activity.'))
+                    ->schema([
+                        Placeholder::make('last_visit_at')
+                            ->label(__('Last visit'))
+                            ->content(function (?User $record): string {
+                                if (! $record) {
+                                    return '—';
+                                }
+                                $latest = $record->activityLogs()->latest('created_at')->first();
+
+                                return $latest?->created_at?->format('d M Y H:i') ?? '—';
+                            }),
+
+                        Placeholder::make('last_ip')
+                            ->label(__('IP address'))
+                            ->content(function (?User $record): string {
+                                if (! $record) {
+                                    return '—';
+                                }
+                                $latest = $record->activityLogs()->latest('created_at')->first();
+
+                                return $latest?->ip_address ?? '—';
+                            }),
+
+                        Placeholder::make('last_city_country')
+                            ->label(__('City / Country'))
+                            ->content(function (?User $record): string {
+                                if (! $record) {
+                                    return '—';
+                                }
+                                $latest = $record->activityLogs()->latest('created_at')->first();
+
+                                return $latest && ($latest->city || $latest->country)
+                                    ? trim(implode(', ', array_filter([$latest->city, $latest->country])))
+                                    : '—';
+                            }),
+
+                        Placeholder::make('last_device_os')
+                            ->label(__('Device / OS'))
+                            ->content(function (?User $record): string {
+                                if (! $record) {
+                                    return '—';
+                                }
+                                $latest = $record->activityLogs()->latest('created_at')->first();
+
+                                return $latest && ($latest->device || $latest->os)
+                                    ? trim(implode(' / ', array_filter([$latest->device, $latest->os])))
+                                    : '—';
+                            }),
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
+
                 Section::make(__('Account Details'))
                     ->schema([
                         TextInput::make('name')
@@ -215,6 +314,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
+            \App\Filament\Resources\Users\RelationManagers\ActivityLogsRelationManager::class,
             \App\Filament\Resources\Users\RelationManagers\BalancesRelationManager::class,
         ];
     }

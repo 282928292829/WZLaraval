@@ -6,6 +6,7 @@ use App\Console\Commands\FetchExchangeRates;
 use App\Models\Setting;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -181,6 +182,13 @@ class SettingsPage extends Page
             // Blog
             'blog_comments_enabled' => true,
 
+            // SEO (site-wide defaults)
+            'seo_default_og_image' => '',
+            'seo_default_meta_description' => '',
+            'seo_twitter_handle' => '',
+            'seo_google_verification' => '',
+            'seo_bing_verification' => '',
+
             // Shipping rates (SAR)
             'aramex_first_half_kg' => '119',
             'aramex_rest_half_kg' => '39',
@@ -269,6 +277,47 @@ class SettingsPage extends Page
                             ->required(),
                     ])
                     ->columns(3),
+
+                // ── SEO (Site-Wide Defaults) ───────────────────────────────────
+                Section::make(__('SEO'))
+                    ->icon(Heroicon::OutlinedMagnifyingGlass)
+                    ->description(__('These settings apply across your entire site. Individual pages and blog posts can override some of these. Used by search engines (Google, Bing) and social networks (Facebook, Twitter) when your links are shared.'))
+                    ->schema([
+                        FileUpload::make('data.seo_default_og_image')
+                            ->label(__('Default Share Image'))
+                            ->helperText(__('The image shown when a page or post is shared on social media (Facebook, Twitter, WhatsApp). Used when a page or post has no image of its own. Recommended size: 1200×630 pixels. Leave empty to show no image.'))
+                            ->image()
+                            ->directory('og-images')
+                            ->nullable()
+                            ->columnSpanFull(),
+
+                        Textarea::make('data.seo_default_meta_description')
+                            ->label(__('Default Meta Description'))
+                            ->helperText(__('Short text shown when your site appears in search results. Used when a page has no description of its own. Keep it under 160 characters. Example: "Buy from any store worldwide. We deliver to your door."'))
+                            ->rows(2)
+                            ->maxLength(200)
+                            ->columnSpanFull(),
+
+                        TextInput::make('data.seo_twitter_handle')
+                            ->label(__('Twitter / X Handle'))
+                            ->helperText(__('Your Twitter/X username without @. Example: wasetzon. Shown when links are shared on Twitter.'))
+                            ->placeholder('wasetzon')
+                            ->maxLength(30),
+
+                        TextInput::make('data.seo_google_verification')
+                            ->label(__('Google Search Console Verification'))
+                            ->helperText(__('The "content" value from the meta tag Google gives you when you add your site. Example: abc123xyz. Leave empty if not using Google Search Console.'))
+                            ->placeholder('abc123xyz...')
+                            ->maxLength(100),
+
+                        TextInput::make('data.seo_bing_verification')
+                            ->label(__('Bing Webmaster Verification'))
+                            ->helperText(__('The "content" value from the meta tag Bing gives you when you add your site. Example: 1234567890ABCD. Leave empty if not using Bing Webmaster Tools.'))
+                            ->placeholder('1234567890ABCD...')
+                            ->maxLength(100),
+                    ])
+                    ->columns(3)
+                    ->collapsible(),
 
                 // ── Blog ─────────────────────────────────────────────────────
                 Section::make(__('Blog'))
@@ -833,6 +882,11 @@ class SettingsPage extends Page
             'site_name' => 'general',
             'default_language' => 'general',
             'default_currency' => 'general',
+            'seo_default_og_image' => 'seo',
+            'seo_default_meta_description' => 'seo',
+            'seo_twitter_handle' => 'seo',
+            'seo_google_verification' => 'seo',
+            'seo_bing_verification' => 'seo',
             'blog_comments_enabled' => 'blog',
             'primary_color' => 'appearance',
             'font_family' => 'appearance',

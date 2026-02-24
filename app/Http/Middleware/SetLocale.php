@@ -10,10 +10,23 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $locale = session('locale', config('app.locale'));
+        $locales = config('app.available_locales', ['ar', 'en']);
 
-        if (! in_array($locale, ['ar', 'en'])) {
+        // Priority: ?lang= (for hreflang crawlable URLs) → session → user preference → default
+        $locale = $request->query('lang')
+            ?? session('locale')
+            ?? auth()->user()?->locale
+            ?? config('app.locale');
+
+        if (! in_array($locale, $locales)) {
             $locale = config('app.locale');
+        }
+
+        if ($request->has('lang')) {
+            session(['locale' => $locale]);
+            if (auth()->check()) {
+                auth()->user()->update(['locale' => $locale]);
+            }
         }
 
         app()->setLocale($locale);

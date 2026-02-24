@@ -5,12 +5,11 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
-    Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
-    Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
+    Artisan::call('db:seed', ['--class' => 'RoleAndPermissionSeeder']);
 
     Setting::set('order_edit_enabled', true, 'boolean', 'orders');
     Setting::set('order_edit_click_window_minutes', 10, 'integer', 'orders');

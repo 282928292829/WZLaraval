@@ -4,19 +4,39 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevController;
+use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
+use App\Http\Controllers\OrderCommentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderFileController;
+use App\Http\Controllers\OrderMergeController;
+use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\NewOrder;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/language/{locale}', function (string $locale) {
-    if (in_array($locale, ['ar', 'en'])) {
-        session(['locale' => $locale]);
+Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
+    $locales = config('app.available_locales', ['ar', 'en']);
+    if (! in_array($locale, $locales)) {
+        return redirect()->back();
     }
 
-    return redirect()->back();
+    session(['locale' => $locale]);
+    if (auth()->check()) {
+        auth()->user()->update(['locale' => $locale]);
+    }
+
+    $url = url()->previous();
+    $parsed = parse_url($url);
+    $path = $parsed['path'] ?? '/';
+    $query = [];
+    if (! empty($parsed['query'])) {
+        parse_str($parsed['query'], $query);
+    }
+    $query['lang'] = $locale;
+
+    return redirect()->to($path.'?'.http_build_query($query));
 })->name('language.switch');
 
 Route::get('/', function () {
@@ -31,6 +51,8 @@ Route::get('/offline', function () {
     return view('offline');
 })->name('offline');
 
+Route::get('/go/{slug}', GoController::class)->name('go');
+
 // Public blog
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
@@ -42,6 +64,7 @@ Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
 Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
 
 Route::get('/new-order', NewOrder::class)
+    ->middleware('role.throttle:new-order')
     ->name('new-order');
 
 Route::middleware('auth')->group(function () {
@@ -49,19 +72,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/bulk', [OrderController::class, 'bulkUpdate'])->name('orders.bulk-update');
 
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{id}/comments', [OrderController::class, 'storeComment'])->name('orders.comments.store');
-    Route::patch('/orders/{orderId}/comments/{commentId}', [OrderController::class, 'updateComment'])->name('orders.comments.update');
-    Route::delete('/orders/{orderId}/comments/{commentId}', [OrderController::class, 'destroyComment'])->name('orders.comments.destroy');
-    Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.status.update');
-    Route::post('/orders/{id}/mark-paid', [OrderController::class, 'markPaid'])->name('orders.mark-paid');
-    Route::post('/orders/{id}/files', [OrderController::class, 'storeFile'])->name('orders.files.store');
+    Route::post('/orders/{id}/comments', [OrderCommentController::class, 'store'])->name('orders.comments.store');
+    Route::patch('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'update'])->name('orders.comments.update');
+    Route::delete('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'destroy'])->name('orders.comments.destroy');
+    Route::post('/orders/{id}/status', [OrderStatusController::class, 'update'])->name('orders.status.update');
+    Route::post('/orders/{id}/mark-paid', [OrderStatusController::class, 'markPaid'])->name('orders.mark-paid');
+    Route::post('/orders/{id}/files', [OrderFileController::class, 'store'])->name('orders.files.store');
     Route::post('/orders/{id}/prices', [OrderController::class, 'updatePrices'])->name('orders.prices.update');
     Route::post('/orders/{id}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
-    Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->name('orders.merge');
-    Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderController::class, 'sendNotification'])->name('orders.comments.notify');
-    Route::post('/orders/{orderId}/comments/{commentId}/log-whatsapp', [OrderController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
-    Route::post('/orders/{orderId}/comments/mark-read', [OrderController::class, 'markCommentsRead'])->name('orders.comments.mark-read');
-    Route::post('/orders/{id}/timeline/{timelineId}/add-as-comment', [OrderController::class, 'addTimelineAsComment'])->name('orders.timeline.add-as-comment');
+    Route::post('/orders/{id}/merge', OrderMergeController::class)->name('orders.merge');
+    Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderCommentController::class, 'sendNotification'])->name('orders.comments.notify');
+    Route::post('/orders/{orderId}/comments/{commentId}/log-whatsapp', [OrderCommentController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
+    Route::post('/orders/{orderId}/comments/mark-read', [OrderCommentController::class, 'markRead'])->name('orders.comments.mark-read');
+    Route::post('/orders/{id}/timeline/{timelineId}/add-as-comment', [OrderCommentController::class, 'addTimelineAsComment'])->name('orders.timeline.add-as-comment');
     Route::patch('/orders/{id}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
     Route::post('/orders/{id}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
 
@@ -75,6 +98,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{id}/shipping-tracking', [OrderController::class, 'updateShippingTracking'])->name('orders.shipping-tracking');
     Route::post('/orders/{id}/update-payment', [OrderController::class, 'updatePayment'])->name('orders.update-payment');
     Route::patch('/orders/{id}/staff-notes', [OrderController::class, 'updateStaffNotes'])->name('orders.staff-notes.update');
+    Route::delete('/orders/{orderId}/product-image', [OrderController::class, 'deleteProductImage'])->name('orders.product-image.delete');
+    Route::get('/orders/{id}/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export-excel');
 });
 
 Route::get('/dashboard', DashboardController::class)

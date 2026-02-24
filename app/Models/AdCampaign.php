@@ -15,6 +15,11 @@ class AdCampaign extends Model
         'notes',
         'is_active',
         'order_count',
+        'orders_cancelled',
+        'orders_shipped',
+        'orders_delivered',
+        'click_count',
+        'destination_url',
     ];
 
     protected $casts = [
@@ -44,5 +49,29 @@ class AdCampaign extends Model
         }
 
         return static::where('slug', $slug)->where('is_active', true)->first();
+    }
+
+    /** Increment campaign counter when an attributed user's order reaches a status. */
+    public static function incrementForOrderStatus(\App\Models\Order $order, string $status): void
+    {
+        $campaignId = $order->user?->ad_campaign_id;
+        if (! $campaignId) {
+            return;
+        }
+        $column = match ($status) {
+            'cancelled' => 'orders_cancelled',
+            'shipped' => 'orders_shipped',
+            'delivered' => 'orders_delivered',
+            default => null,
+        };
+        if ($column) {
+            static::where('id', $campaignId)->increment($column);
+        }
+    }
+
+    /** @deprecated Use incrementForOrderStatus($order, 'cancelled') */
+    public static function incrementCancelledForOrder(\App\Models\Order $order): void
+    {
+        static::incrementForOrderStatus($order, 'cancelled');
     }
 }

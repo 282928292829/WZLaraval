@@ -52,10 +52,17 @@ class AdCampaignResource extends Resource
 
                 TextInput::make('slug')
                     ->label(__('Slug'))
-                    ->helperText(__('Used in utm_campaign URL parameter'))
+                    ->helperText(__('Used in /go/{slug} and utm_campaign'))
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(100),
+
+                TextInput::make('destination_url')
+                    ->label(__('Destination URL'))
+                    ->helperText(__('Optional. If empty, redirects to homepage.'))
+                    ->placeholder('https://… or /path')
+                    ->nullable()
+                    ->maxLength(500),
 
                 TextInput::make('tracking_code')
                     ->label(__('Tracking Code'))
@@ -66,13 +73,13 @@ class AdCampaignResource extends Resource
                     ->label(__('Platform'))
                     ->nullable()
                     ->options([
-                        'google'    => 'Google',
-                        'facebook'  => 'Facebook',
+                        'google' => 'Google',
+                        'facebook' => 'Facebook',
                         'instagram' => 'Instagram',
-                        'twitter'   => 'Twitter / X',
-                        'tiktok'    => 'TikTok',
-                        'snapchat'  => 'Snapchat',
-                        'other'     => __('Other'),
+                        'twitter' => 'Twitter / X',
+                        'tiktok' => 'TikTok',
+                        'snapchat' => 'Snapchat',
+                        'other' => __('Other'),
                     ]),
 
                 Textarea::make('notes')
@@ -110,6 +117,31 @@ class AdCampaignResource extends Resource
                     ->label(__('Tracking Code'))
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('click_count')
+                    ->label(__('Clicks'))
+                    ->sortable()
+                    ->alignEnd(),
+
+                TextColumn::make('order_count')
+                    ->label(__('Orders'))
+                    ->sortable()
+                    ->alignEnd(),
+
+                TextColumn::make('orders_cancelled')
+                    ->label(__('Cancelled'))
+                    ->sortable()
+                    ->alignEnd(),
+
+                TextColumn::make('orders_shipped')
+                    ->label(__('Shipped'))
+                    ->sortable()
+                    ->alignEnd(),
+
+                TextColumn::make('orders_delivered')
+                    ->label(__('Delivered'))
+                    ->sortable()
+                    ->alignEnd(),
+
                 TextColumn::make('users_count')
                     ->label(__('Users'))
                     ->counts('users')
@@ -135,9 +167,9 @@ class AdCampaignResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListAdCampaigns::route('/'),
+            'index' => ListAdCampaigns::route('/'),
             'create' => CreateAdCampaign::route('/create'),
-            'edit'   => EditAdCampaign::route('/{record}/edit'),
+            'edit' => EditAdCampaign::route('/{record}/edit'),
         ];
     }
 }

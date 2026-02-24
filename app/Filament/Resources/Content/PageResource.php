@@ -10,7 +10,9 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -125,6 +127,30 @@ class PageResource extends Resource
                     ->label(__('SEO Description (English)'))
                     ->rows(2)
                     ->maxLength(160),
+
+                FileUpload::make('og_image')
+                    ->label(__('OG Image'))
+                    ->helperText(__('Image for social sharing. Min 1200×630px. Falls back to site default if empty.'))
+                    ->image()
+                    ->directory('og-images')
+                    ->nullable(),
+
+                TextInput::make('canonical_url')
+                    ->label(__('Canonical URL'))
+                    ->url()
+                    ->placeholder('https://example.com/pages/slug')
+                    ->nullable()
+                    ->maxLength(500),
+
+                Select::make('robots')
+                    ->label(__('Robots'))
+                    ->options([
+                        '' => __('Default (index, follow)'),
+                        'noindex, follow' => __('noindex, follow'),
+                        'index, nofollow' => __('index, nofollow'),
+                        'noindex, nofollow' => __('noindex, nofollow'),
+                    ])
+                    ->nullable(),
             ])->columns(2)->collapsible(),
         ]);
     }

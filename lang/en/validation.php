@@ -195,6 +195,23 @@ return [
     |
     */
 
-    'attributes' => [],
+    'attributes' => [
+        'email' => 'Email',
+        'password' => 'Password',
+        'password_confirmation' => 'Password confirmation',
+        'body' => 'Message',
+        'modalEmail' => 'Email',
+        'modalPassword' => 'Password',
+        'orderNotes' => 'General notes',
+        'items' => 'Items',
+        'url' => 'URL',
+        'qty' => 'Quantity',
+        'color' => 'Color',
+        'size' => 'Size',
+        'price' => 'Price',
+        'currency' => 'Currency',
+        'notes' => 'Notes',
+        'files' => 'Files',
+    ],
 
 ];

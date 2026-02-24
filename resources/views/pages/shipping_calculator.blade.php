@@ -22,8 +22,7 @@
     $domDays       = Setting::get('domestic_delivery_days', '4-7');
 @endphp
 <x-app-layout>
-    <x-slot name="title">{{ $isAr ? $page->seo_title_ar : $page->seo_title_en }}</x-slot>
-    <x-slot name="description">{{ $isAr ? $page->seo_description_ar : $page->seo_description_en }}</x-slot>
+    @include('components.page-seo-slots', ['page' => $page])
 
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 

@@ -29,6 +29,7 @@ class RoleAndPermissionSeeder extends Seeder
 
         // ── Editor-level (editors + admins + superadmins) ───────────────
         'editor' => [
+            'view-staff-dashboard',    // see staff dashboard section
             'view-all-orders',         // see every order in the system
             'update-order-status',     // change order status dropdown
             'reply-to-comments',       // comment on any order
@@ -79,10 +80,10 @@ class RoleAndPermissionSeeder extends Seeder
         }
 
         // ── Create roles ──────────────────────────────────────────────────
-        $guest      = Role::firstOrCreate(['name' => 'guest',      'guard_name' => 'web']);
-        $customer   = Role::firstOrCreate(['name' => 'customer',   'guard_name' => 'web']);
-        $editor     = Role::firstOrCreate(['name' => 'editor',     'guard_name' => 'web']);
-        $admin      = Role::firstOrCreate(['name' => 'admin',      'guard_name' => 'web']);
+        $guest = Role::firstOrCreate(['name' => 'guest',      'guard_name' => 'web']);
+        $customer = Role::firstOrCreate(['name' => 'customer',   'guard_name' => 'web']);
+        $editor = Role::firstOrCreate(['name' => 'editor',     'guard_name' => 'web']);
+        $admin = Role::firstOrCreate(['name' => 'admin',      'guard_name' => 'web']);
         $superadmin = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
 
         // ── Assign permissions to roles (cumulative / hierarchical) ───────
@@ -136,34 +137,34 @@ class RoleAndPermissionSeeder extends Seeder
     ): void {
         $users = [
             [
-                'name'     => 'Guest User',
-                'email'    => 'guest@wasetzon.test',
+                'name' => 'Guest User',
+                'email' => 'guest@wasetzon.test',
                 'password' => 'password',
-                'role'     => $guest,
+                'role' => $guest,
             ],
             [
-                'name'     => 'Customer User',
-                'email'    => 'customer@wasetzon.test',
+                'name' => 'Customer User',
+                'email' => 'customer@wasetzon.test',
                 'password' => 'password',
-                'role'     => $customer,
+                'role' => $customer,
             ],
             [
-                'name'     => 'Editor User',
-                'email'    => 'editor@wasetzon.test',
+                'name' => 'Editor User',
+                'email' => 'editor@wasetzon.test',
                 'password' => 'password',
-                'role'     => $editor,
+                'role' => $editor,
             ],
             [
-                'name'     => 'Admin User',
-                'email'    => 'admin@wasetzon.test',
+                'name' => 'Admin User',
+                'email' => 'admin@wasetzon.test',
                 'password' => 'password',
-                'role'     => $admin,
+                'role' => $admin,
             ],
             [
-                'name'     => 'Super Admin',
-                'email'    => 'superadmin@wasetzon.test',
+                'name' => 'Super Admin',
+                'email' => 'superadmin@wasetzon.test',
                 'password' => 'password',
-                'role'     => $superadmin,
+                'role' => $superadmin,
             ],
         ];
 
@@ -171,8 +172,8 @@ class RoleAndPermissionSeeder extends Seeder
             $user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name'              => $data['name'],
-                    'password'          => Hash::make($data['password']),
+                    'name' => $data['name'],
+                    'password' => Hash::make($data['password']),
                     'email_verified_at' => now(),
                 ]
             );

@@ -1,6 +1,5 @@
 <x-app-layout>
-    <x-slot name="title">{{ app()->getLocale() === 'ar' ? $page->seo_title_ar : $page->seo_title_en }}</x-slot>
-    <x-slot name="description">{{ app()->getLocale() === 'ar' ? $page->seo_description_ar : $page->seo_description_en }}</x-slot>
+    @include('components.page-seo-slots', ['page' => $page])
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 

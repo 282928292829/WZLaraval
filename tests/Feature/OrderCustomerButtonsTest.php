@@ -3,11 +3,10 @@
 use App\Models\Order;
 use App\Models\User;
 use App\Models\UserAddress;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function (): void {
-    Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
-    Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
+    Artisan::call('db:seed', ['--class' => 'RoleAndPermissionSeeder']);
 });
 
 test('customer can view own order page', function (): void {

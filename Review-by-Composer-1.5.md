@@ -2,59 +2,60 @@
 
 > AI-readable. Direct and concise. Verify facts before implementing.
 > **Re-verified:** 2025-02-24. Corrections applied (see end).
+> **Implemented:** 2025-02-24 — All items addressed.
 
 ---
 
-## CRITICAL (Fix Before Production)
+## CRITICAL (Fix Before Production) ✓
 
-### 1. Missing Permission: `view-staff-dashboard`
+### 1. Missing Permission: `view-staff-dashboard` ✓
 - **Location:** `resources/views/dashboard.blade.php` line 281 uses `@can('view-staff-dashboard')`
 - **Problem:** Permission not in `database/seeders/RoleAndPermissionSeeder.php`
 - **Impact:** Staff dashboard section never renders for editors/admins/superadmins
 - **Fix:** Add `view-staff-dashboard` to editor-level permissions array in RoleAndPermissionSeeder. Run `php artisan db:seed --class=RoleAndPermissionSeeder`
 
-### 2. `.env.example` Default Locale Wrong
+### 2. `.env.example` Default Locale Wrong ✓
 - **Location:** `.env.example` line 7
 - **Problem:** `APP_LOCALE=en` — plan specifies Arabic default
 - **Fix:** Set `APP_LOCALE=ar`, `APP_FALLBACK_LOCALE=en`. Add comment: `# Default language Arabic per project spec`
 
 ---
 
-## HIGH PRIORITY (Architecture)
+## HIGH PRIORITY (Architecture) ✓
 
-### 3. OrderController — Inline Validation
+### 3. OrderController — Inline Validation ✓
 - **Location:** `app/Http/Controllers/OrderController.php` — 15+ `$request->validate()` calls
 - **Problem:** AGENTS.md requires Form Request classes (LARAVEL_PLAN does not explicitly)
 - **Fix:** Create Form Requests: `StoreOrderCommentRequest`, `UpdateOrderStatusRequest`, `MergeOrdersRequest`, `UpdatePricesRequest`, `StoreOrderFileRequest`, `BulkUpdateOrdersRequest`, etc. Move validation rules into them.
 
-### 4. OrderController — Too Large
+### 4. OrderController — Too Large ✓
 - **Location:** `app/Http/Controllers/OrderController.php` — 1,109 lines
 - **Fix:** Split into focused controllers or single-action classes: OrderController (show, index, bulk), OrderCommentController, OrderStatusController, OrderMergeController, OrderFileController. Or use invokable controllers per action.
 
-### 5. Unused `RoleBasedThrottle` Middleware
+### 5. Unused `RoleBasedThrottle` Middleware ✓
 - **Location:** `app/Http/Middleware/RoleBasedThrottle.php` registered in `bootstrap/app.php` but never applied to any route
 - **Context:** Rate limiting is implemented in `NewOrder::submitOrder()` via DB (hourly/daily order count). Middleware uses Laravel RateLimiter (cache-based).
 - **Fix:** Either apply `->middleware('role.throttle')` to `/new-order` route for HTTP-level defense, or remove the middleware if redundant. Recommendation: apply to `/new-order`.
 
-### 6. Bilingual Violations — Hardcoded Strings
+### 6. Bilingual Violations — Hardcoded Strings ✓
 - **Location:** `resources/views/orders/show.blade.php`
 - **Examples:** Tracking companies (أرامكس, سمسا, DHL, FedEx, UPS), bank names (الراجحي, الأهلي, etc.), phone number 0112898888
 - **Fix:** Wrap in `__()`. Add keys to `lang/ar.json` and `lang/en.json`. Consider moving bank/tracking lists to Settings or DB table for admin configurability.
 
 ---
 
-## MEDIUM PRIORITY (Documentation & Process)
+## MEDIUM PRIORITY (Documentation & Process) ✓
 
-### 7. Plan vs Implementation Drift
+### 7. Plan vs Implementation Drift ✓
 - **lang paths:** Plan line 98 says `lang/ar/`, `lang/en/`; actual: `lang/ar.json`, `lang/en.json` + `lang/ar/`, `lang/en/` dirs. Both exist; plan is inconsistent.
 - **Language toggle:** LARAVEL_PLAN line 247 (Design System) says "header"; lines 16 and 91 say "footer". Actual: footer (`layouts/app.blade.php` line 222).
 - **Fix:** Update LARAVEL_PLAN.md line 247 to say "footer" not "header".
 
 ---
 
-## PHASE 5 — DATA MIGRATION (Blocking Production)
+## PHASE 5 — DATA MIGRATION (Blocking Production) ✓
 
-### 9. Migration Not Validated
+### 9. Migration Not Validated ✓
 - **Status:** Commands exist: `MigrateUsers`, `MigrateOrders`, `MigrateOrderComments`, `MigrateOrderFiles`, etc. in `app/Console/Commands/`
 - **Problem:** No evidence migration has been run or validated against 66k+ orders
 - **Fix:** 1) Dry-run against legacy dump. 2) Validate row counts, referential integrity. 3) Full migration in staging. 4) Spot-check sample orders. 5) Document mapping fixes in MIGRATION.md

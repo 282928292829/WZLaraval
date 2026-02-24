@@ -12,6 +12,8 @@
         <meta name="apple-mobile-web-app-title" content="{{ __('app.name') }}">
         <meta name="description" content="{{ $description ?? __('app.description') }}">
 
+        <x-hreflang />
+
         <title>{{ isset($title) ? $title . ' — ' . __('app.name') : __('app.name') }}</title>
 
         <link rel="manifest" href="/manifest.json">

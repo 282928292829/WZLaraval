@@ -91,7 +91,7 @@
         {{ $commissionThreshold }},
         {{ $commissionPct }},
         {{ $commissionFlat }},
-        @js($editingOrderId ? $items : null),
+        @js(($editingOrderId || $productUrl || $duplicateFrom) ? $items : null),
         @js($editingOrderId ? $orderNotes : null)
     )"
     x-init="
@@ -241,7 +241,7 @@
                                            x-model="item.price"
                                            @input="convertArabicNums($event)"
                                            @blur="calcTotals(); saveDraft()"
-                                           inputmode="decimal" placeholder="0.00"
+                                           inputmode="decimal" placeholder="{{ __('placeholder.amount') }}"
                                            class="form-control item-price">
                                 </div>
 
@@ -1100,11 +1100,12 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
         init() {
             this.checkTipsHidden();
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
-                this.items = initialItems.map(d => ({
+                const isMobile = window.innerWidth < 1024;
+                this.items = initialItems.map((d, i) => ({
                     url: d.url || '', qty: (d.qty || '1').toString(), color: d.color || '', size: d.size || '',
                     price: (d.price !== null && d.price !== undefined) ? String(d.price) : '',
                     currency: d.currency || this.defaultCurrency, notes: d.notes || '',
-                    _expanded: true, _focused: false, _showOptional: false,
+                    _expanded: isMobile ? (i === 0) : true, _focused: false, _showOptional: false,
                     _file: null, _preview: null, _fileType: null, _fileName: null, _uploadProgress: null
                 }));
                 this.orderNotes = initialOrderNotes || '';

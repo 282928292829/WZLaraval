@@ -30,6 +30,7 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
+        'locale',
         'phone',
         'phone_secondary',
         'google_id',
@@ -106,6 +107,16 @@ class User extends Authenticatable implements FilamentUser
     public function balances(): HasMany
     {
         return $this->hasMany(UserBalance::class);
+    }
+
+    public function canImpersonate(): bool
+    {
+        return $this->hasPermissionTo('manage-users');
+    }
+
+    public function canBeImpersonated(): bool
+    {
+        return ! $this->is(auth()->user());
     }
 
     public function initials(): string

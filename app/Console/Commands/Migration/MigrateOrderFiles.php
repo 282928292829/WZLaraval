@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Storage;
  *
  * Run this AFTER migrate:orders and migrate:order-comments.
  *
- * Set LEGACY_UPLOADS_PATH in .env to the absolute path of the legacy
- * wp-content/uploads directory:
+ * Set LEGACY_UPLOADS_PATH in .env (or config/migration.php) to the absolute
+ * path of the legacy wp-content/uploads directory:
  *   LEGACY_UPLOADS_PATH=/path/to/old-wp-content/uploads
  */
 class MigrateOrderFiles extends Command
@@ -38,21 +38,22 @@ class MigrateOrderFiles extends Command
     protected $description = 'Copy legacy WP upload files into Laravel storage and seed order_files table';
 
     private string $uploadsPath = '';
-    private bool   $dryRun      = false;
 
-    private int $copied  = 0;
+    private bool $dryRun = false;
+
+    private int $copied = 0;
+
     private int $skipped = 0;
+
     private int $missing = 0;
-    private int $errors  = 0;
+
+    private int $errors = 0;
 
     public function handle(): int
     {
         $this->info('=== MigrateOrderFiles ===');
 
-        $this->uploadsPath = rtrim(
-            env('LEGACY_UPLOADS_PATH', base_path('../Wordpress/pwa3/old-wordpress/old-wp-content/uploads')),
-            '/'
-        );
+        $this->uploadsPath = rtrim(config('migration.legacy_uploads_path'), '/');
 
         $this->dryRun = (bool) $this->option('dry-run');
 
@@ -134,6 +135,7 @@ class MigrateOrderFiles extends Command
 
             if (! $attachment || empty($attachment->guid)) {
                 $this->missing++;
+
                 continue;
             }
 
@@ -142,15 +144,17 @@ class MigrateOrderFiles extends Command
 
             if (! $srcPath || ! file_exists($srcPath)) {
                 $this->missing++;
+
                 continue;
             }
 
             // Determine target path.
             $relativePath = $this->guidToRelativePath($attachment->guid);
-            $destPath     = 'orders/products/' . $relativePath;
+            $destPath = 'orders/products/'.$relativePath;
 
             if (! $this->dryRun && Storage::disk('public')->exists($destPath)) {
                 $this->skipped++;
+
                 continue;
             }
 
@@ -160,6 +164,7 @@ class MigrateOrderFiles extends Command
                     Storage::disk('public')->put($destPath, file_get_contents($srcPath));
                 } catch (\Exception $e) {
                     $this->errors++;
+
                     continue;
                 }
             }
@@ -175,6 +180,7 @@ class MigrateOrderFiles extends Command
 
             if (! $orderId) {
                 $this->copied++;
+
                 continue;
             }
 
@@ -201,16 +207,16 @@ class MigrateOrderFiles extends Command
 
             if (! $this->dryRun) {
                 DB::table('order_files')->insertOrIgnore([
-                    'order_id'      => $orderId,
-                    'user_id'       => $userId,
-                    'comment_id'    => null,
-                    'path'          => $destPath,
+                    'order_id' => $orderId,
+                    'user_id' => $userId,
+                    'comment_id' => null,
+                    'path' => $destPath,
                     'original_name' => basename($srcPath),
-                    'mime_type'     => $attachment->post_mime_type ?? null,
-                    'size'          => filesize($srcPath) ?: null,
-                    'type'          => 'product_image',
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
+                    'mime_type' => $attachment->post_mime_type ?? null,
+                    'size' => filesize($srcPath) ?: null,
+                    'type' => 'product_image',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
 
@@ -230,10 +236,10 @@ class MigrateOrderFiles extends Command
         $this->line('');
         $this->line('--- Comment attachments (wp_commentmeta) ---');
 
-        $orderMap        = $this->buildOrderMap();
-        $userMap         = DB::table('users')->pluck('id', 'email')->toArray();
+        $orderMap = $this->buildOrderMap();
+        $userMap = DB::table('users')->pluck('id', 'email')->toArray();
         $wpPostToOrderId = $this->buildWpPostToOrderIdMap($orderMap);
-        $fallbackUserId  = DB::table('users')->min('id');
+        $fallbackUserId = DB::table('users')->min('id');
 
         $baseQuery = DB::connection('legacy')
             ->table('wp_commentmeta as cm')
@@ -250,7 +256,7 @@ class MigrateOrderFiles extends Command
             return;
         }
 
-        $bar       = $this->output->createProgressBar($total);
+        $bar = $this->output->createProgressBar($total);
         $chunkSize = (int) $this->option('chunk');
         $bar->start();
 
@@ -276,6 +282,7 @@ class MigrateOrderFiles extends Command
 
                         if (! $attachment || empty($attachment->guid)) {
                             $this->missing++;
+
                             continue;
                         }
 
@@ -283,14 +290,16 @@ class MigrateOrderFiles extends Command
 
                         if (! $srcPath || ! file_exists($srcPath)) {
                             $this->missing++;
+
                             continue;
                         }
 
                         $relativePath = $this->guidToRelativePath($attachment->guid);
-                        $destPath     = 'orders/receipts/' . $relativePath;
+                        $destPath = 'orders/receipts/'.$relativePath;
 
                         if (! $this->dryRun && Storage::disk('public')->exists($destPath)) {
                             $this->skipped++;
+
                             continue;
                         }
 
@@ -302,24 +311,25 @@ class MigrateOrderFiles extends Command
 
                         if (! $orderId) {
                             $this->copied++;
+
                             continue;
                         }
 
                         $uploaderEmail = ! empty($row->comment_author_email) ? $row->comment_author_email : null;
-                        $userId        = ($uploaderEmail ? ($userMap[$uploaderEmail] ?? null) : null) ?? $fallbackUserId;
+                        $userId = ($uploaderEmail ? ($userMap[$uploaderEmail] ?? null) : null) ?? $fallbackUserId;
 
                         if (! $this->dryRun) {
                             DB::table('order_files')->insertOrIgnore([
-                                'order_id'      => $orderId,
-                                'user_id'       => $userId,
-                                'comment_id'    => null,
-                                'path'          => $destPath,
+                                'order_id' => $orderId,
+                                'user_id' => $userId,
+                                'comment_id' => null,
+                                'path' => $destPath,
                                 'original_name' => basename($srcPath),
-                                'mime_type'     => $attachment->post_mime_type ?? null,
-                                'size'          => filesize($srcPath) ?: null,
-                                'type'          => 'receipt',
-                                'created_at'    => $row->comment_date ?? now(),
-                                'updated_at'    => $row->comment_date ?? now(),
+                                'mime_type' => $attachment->post_mime_type ?? null,
+                                'size' => filesize($srcPath) ?: null,
+                                'type' => 'receipt',
+                                'created_at' => $row->comment_date ?? now(),
+                                'updated_at' => $row->comment_date ?? now(),
                             ]);
                         }
 
@@ -344,7 +354,7 @@ class MigrateOrderFiles extends Command
     private function guidToLocalPath(string $guid): ?string
     {
         if (preg_match('#/uploads/(.+)$#', $guid, $m)) {
-            return $this->uploadsPath . '/' . $m[1];
+            return $this->uploadsPath.'/'.$m[1];
         }
 
         return null;
