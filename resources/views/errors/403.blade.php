@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ app()->getLocale() === 'ar' ? 'غير مصرح — وسيط زون' : 'Forbidden — Wasetzon' }}</title>
+    <title>{{ __('errors.page_title_403') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600|ibm-plex-sans-arabic:400,500,600&display=swap" rel="stylesheet">
     <style>
@@ -79,27 +79,15 @@
 </head>
 <body>
     <div class="card">
-        @if(app()->getLocale() === 'ar')
-            <span class="badge">403 — محظور</span>
-            <h1>ليس لديك صلاحية</h1>
-            <p>لا تملك الصلاحيات الكافية للوصول إلى هذه الصفحة. إن كنت تعتقد أن هذا خطأ، تواصل مع الدعم.</p>
-            <div class="actions">
-                <a href="{{ url('/') }}" class="btn-primary">الرئيسية</a>
-                @guest
-                    <a href="{{ route('login') }}" class="btn-ghost">تسجيل الدخول</a>
-                @endguest
-            </div>
-        @else
-            <span class="badge">403 — Forbidden</span>
-            <h1>{{ __('Access Denied') }}</h1>
-            <p>You don't have permission to view this page. If you think this is a mistake, please contact support.</p>
-            <div class="actions">
-                <a href="{{ url('/') }}" class="btn-primary">{{ __('Go Home') }}</a>
-                @guest
-                    <a href="{{ route('login') }}" class="btn-ghost">{{ __('Sign In') }}</a>
-                @endguest
-            </div>
-        @endif
+        <span class="badge">{{ __('errors.403.badge') }}</span>
+        <h1>{{ __('errors.403.title') }}</h1>
+        <p>{{ __('errors.403.paragraph') }}</p>
+        <div class="actions">
+            <a href="{{ url('/') }}" class="btn-primary">{{ __('errors.403.home') }}</a>
+            @guest
+                <a href="{{ route('login') }}" class="btn-ghost">{{ __('errors.403.sign_in') }}</a>
+            @endguest
+        </div>
     </div>
     <p class="site-name">{{ config('app.name', 'Wasetzon') }}</p>
 </body>

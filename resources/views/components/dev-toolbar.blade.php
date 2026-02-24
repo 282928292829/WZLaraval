@@ -1,10 +1,10 @@
 @if (app()->environment('local') && config('app.dev_toolbar', true))
 @php
     $roles = [
-        'customer'   => ['label' => 'Customer',   'color' => 'bg-sky-500 hover:bg-sky-600'],
-        'editor'     => ['label' => 'Editor',     'color' => 'bg-teal-500 hover:bg-teal-600'],
-        'admin'      => ['label' => 'Admin',      'color' => 'bg-indigo-500 hover:bg-indigo-600'],
-        'superadmin' => ['label' => 'Super Admin','color' => 'bg-purple-500 hover:bg-purple-600'],
+        'customer'   => ['label' => __('dev.customer'),   'color' => 'bg-sky-500 hover:bg-sky-600'],
+        'editor'     => ['label' => __('dev.editor'),     'color' => 'bg-teal-500 hover:bg-teal-600'],
+        'admin'      => ['label' => __('dev.admin'),      'color' => 'bg-indigo-500 hover:bg-indigo-600'],
+        'superadmin' => ['label' => __('dev.super_admin'),'color' => 'bg-purple-500 hover:bg-purple-600'],
     ];
     $currentUser  = auth()->user();
     $currentRole  = $currentUser?->getRoleNames()->first();
@@ -36,7 +36,7 @@
                 @csrf
                 <button type="submit"
                         class="px-2.5 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors text-[11px]">
-                    Logout
+                    {{ __('dev.logout') }}
                 </button>
             </form>
 
@@ -58,7 +58,7 @@
 
         @else
             {{-- Not logged in — show all role buttons --}}
-            <span class="text-white/50 me-1">Login as:</span>
+            <span class="text-white/50 me-1">{{ __('dev.login_as') }}:</span>
 
             @foreach ($roles as $role => $cfg)
                 <form method="POST" action="{{ route('dev.login-as') }}">

@@ -1,31 +1,31 @@
 <x-emails.layout :subject="__('orders.order_confirmation_email_subject', ['number' => $order->order_number])">
 
-    <p class="greeting">مرحباً {{ $order->user->name ?? 'عزيزنا العميل' }}،</p>
+    <p class="greeting">{{ __('email.order_greeting') }} {{ $order->user->name ?? __('email.greeting_fallback') }}{{ __('email.comma') }}</p>
 
     <p class="intro">
-        شكراً على ثقتك بواسطزون! تم استلام طلبك بنجاح وسيقوم فريقنا بمراجعته في أقرب وقت.
+        {{ __('email.order_intro') }}
     </p>
 
     {{-- Order summary card --}}
     <div class="card">
-        <div class="card-title">تفاصيل الطلب</div>
+        <div class="card-title">{{ __('email.order_details') }}</div>
         <div class="info-row">
-            <span class="info-label">رقم الطلب</span>
+            <span class="info-label">{{ __('email.order_number') }}</span>
             <span class="info-value">{{ $order->order_number }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">تاريخ الطلب</span>
+            <span class="info-label">{{ __('email.order_date') }}</span>
             <span class="info-value">{{ $order->created_at->format('Y/m/d H:i') }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">الحالة</span>
+            <span class="info-label">{{ __('email.status') }}</span>
             <span class="info-value">
                 <span class="badge badge-orange">{{ __('order.status.' . $order->status) }}</span>
             </span>
         </div>
         @if($order->total_amount)
         <div class="info-row">
-            <span class="info-label">المبلغ الإجمالي</span>
+            <span class="info-label">{{ __('email.total_amount') }}</span>
             <span class="info-value">{{ number_format($order->total_amount, 2) }} {{ $order->currency ?? 'SAR' }}</span>
         </div>
         @endif
@@ -34,14 +34,14 @@
     {{-- Items table --}}
     @if($order->items->count())
     <div class="card">
-        <div class="card-title">المنتجات</div>
+        <div class="card-title">{{ __('email.products') }}</div>
         <table>
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>المنتج</th>
-                    <th>الكمية</th>
-                    <th>السعر</th>
+                    <th>{{ __('email.product') }}</th>
+                    <th>{{ __('email.quantity') }}</th>
+                    <th>{{ __('email.price') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -76,15 +76,14 @@
     {{-- CTA --}}
     <div style="text-align:center;margin:28px 0;">
         <a href="{{ url('/orders/' . $order->id) }}" class="btn">
-            عرض الطلب
+            {{ __('email.view_order') }}
         </a>
     </div>
 
     <hr class="divider">
 
     <p style="font-size:13px;color:#6b7280;line-height:1.7;">
-        يمكنك متابعة حالة طلبك في أي وقت من خلال صفحة طلباتك على الموقع.
-        إذا كان لديك أي استفسار، لا تتردد في التواصل معنا عبر واتساب.
+        {{ __('email.footer') }}
     </p>
 
 </x-emails.layout>

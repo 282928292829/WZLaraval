@@ -29,7 +29,7 @@
                         id="hero-product-input"
                         aria-label="{{ __('Paste product link') }}"
                         class="flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 text-base px-4 py-3 focus:outline-none"
-                        placeholder="{{ app()->getLocale() === 'ar' ? 'الصق رابط المنتج، أو وصفه إذا لم يكن لديك رابط' : 'Paste a product link, or describe it if you don\'t have one' }}"
+                        placeholder="{{ __('Paste a product link, or describe it if you don\'t have one') }}"
                         autocomplete="off"
                         dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"
                     >

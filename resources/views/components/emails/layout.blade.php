@@ -125,15 +125,14 @@
 <div class="wrapper">
     <div class="header">
         <h1>Wasetzon</h1>
-        <p>واسطزون — متجرك الذكي للتسوق الدولي</p>
+        <p>{{ __('emails.layout.tagline') }}</p>
     </div>
     <div class="body">
         {{ $slot }}
     </div>
     <div class="footer">
         <p>
-            هذا البريد أُرسل تلقائياً من نظام Wasetzon.
-            إذا لم تكن قد طلبت ذلك، يمكنك تجاهل هذه الرسالة.
+            {{ __('emails.layout.footer') }}
         </p>
         <p style="margin-top:8px;">
             <a href="{{ config('app.url') }}">wasetzon.com</a>

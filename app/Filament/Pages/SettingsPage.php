@@ -100,6 +100,9 @@ class SettingsPage extends Page
 
             // Order rules
             'max_products_per_order' => '30',
+            'order_edit_enabled' => true,
+            'order_edit_click_window_minutes' => '10',
+            'order_edit_resubmit_window_minutes' => '10',
             'order_edit_window_minutes' => '10',
             'order_new_layout' => '1',
             'orders_per_hour_customer' => '50',
@@ -174,6 +177,9 @@ class SettingsPage extends Page
 
             // UI / behaviour
             'url_validation_strict' => true,
+
+            // Blog
+            'blog_comments_enabled' => true,
 
             // Shipping rates (SAR)
             'aramex_first_half_kg' => '119',
@@ -264,6 +270,16 @@ class SettingsPage extends Page
                     ])
                     ->columns(3),
 
+                // ── Blog ─────────────────────────────────────────────────────
+                Section::make(__('Blog'))
+                    ->icon(Heroicon::OutlinedNewspaper)
+                    ->schema([
+                        Toggle::make('data.blog_comments_enabled')
+                            ->label(__('Allow Blog Comments'))
+                            ->default(true)
+                            ->helperText(__('When OFF, the comment form and list are hidden on all blog posts.')),
+                    ]),
+
                 // ── Appearance ───────────────────────────────────────────────
                 Section::make(__('Appearance'))
                     ->icon(Heroicon::OutlinedPaintBrush)
@@ -293,10 +309,28 @@ class SettingsPage extends Page
                             ->minValue(1)
                             ->maxValue(500),
 
-                        TextInput::make('data.order_edit_window_minutes')
-                            ->label(__('Edit Window (minutes)'))
+                        Toggle::make('data.order_edit_enabled')
+                            ->label(__('Allow Order Edit'))
+                            ->helperText(__('When OFF, the edit link is hidden from customers.')),
+
+                        TextInput::make('data.order_edit_click_window_minutes')
+                            ->label(__('Minutes to Click Edit (from submission)'))
                             ->numeric()
-                            ->helperText(__('How long customers can edit after placing.')),
+                            ->minValue(1)
+                            ->maxValue(60)
+                            ->helperText(__('Customer must click Edit within this time after placing order.')),
+
+                        TextInput::make('data.order_edit_resubmit_window_minutes')
+                            ->label(__('Minutes to Resubmit (from clicking Edit)'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(60)
+                            ->helperText(__('After clicking Edit, customer has this long to save changes.')),
+
+                        TextInput::make('data.order_edit_window_minutes')
+                            ->label(__('Edit Window (minutes) — legacy'))
+                            ->numeric()
+                            ->helperText(__('Deprecated. Use the two windows above.')),
 
                         TextInput::make('data.max_orders_per_day')
                             ->label(__('Max Orders per Day (per user)'))
@@ -456,28 +490,28 @@ class SettingsPage extends Page
                             ->description(__('Use {tracking} as the placeholder for the tracking number. Shown to customers as a clickable link on the order page.'))
                             ->schema([
                                 TextInput::make('data.carrier_url_aramex')
-                                    ->label('Aramex')
+                                    ->label(__('carriers.aramex'))
                                     ->url()
                                     ->placeholder('https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}')
                                     ->helperText(__('Leave blank to show tracking number only (no link).')),
 
                                 TextInput::make('data.carrier_url_smsa')
-                                    ->label('SMSA')
+                                    ->label(__('carriers.smsa'))
                                     ->url()
                                     ->placeholder('https://www.smsaexpress.com/track/?tracknumbers={tracking}'),
 
                                 TextInput::make('data.carrier_url_dhl')
-                                    ->label('DHL')
+                                    ->label(__('carriers.dhl'))
                                     ->url()
                                     ->placeholder('https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}'),
 
                                 TextInput::make('data.carrier_url_fedex')
-                                    ->label('FedEx')
+                                    ->label(__('carriers.fedex'))
                                     ->url()
                                     ->placeholder('https://www.fedextrack/?trknbr={tracking}'),
 
                                 TextInput::make('data.carrier_url_ups')
-                                    ->label('UPS')
+                                    ->label(__('carriers.ups'))
                                     ->url()
                                     ->placeholder('https://www.ups.com/track?tracknum={tracking}'),
                             ])
@@ -799,10 +833,14 @@ class SettingsPage extends Page
             'site_name' => 'general',
             'default_language' => 'general',
             'default_currency' => 'general',
+            'blog_comments_enabled' => 'blog',
             'primary_color' => 'appearance',
             'font_family' => 'appearance',
             'logo_text' => 'appearance',
             'max_products_per_order' => 'orders',
+            'order_edit_enabled' => 'orders',
+            'order_edit_click_window_minutes' => 'orders',
+            'order_edit_resubmit_window_minutes' => 'orders',
             'order_edit_window_minutes' => 'orders',
             'order_new_layout' => 'orders',
             'orders_per_hour_customer' => 'orders',
@@ -892,10 +930,13 @@ class SettingsPage extends Page
             'qa_shipping_tracking', 'qa_team_merge',
             'qa_mark_paid', 'qa_mark_shipped', 'qa_request_info', 'qa_cancel_order',
             'url_validation_strict',
+            'order_edit_enabled',
+            'blog_comments_enabled',
         ];
 
         $integerKeys = [
-            'smtp_port', 'max_products_per_order', 'order_edit_window_minutes',
+            'smtp_port', 'max_products_per_order',
+            'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
             'orders_per_hour_customer', 'orders_per_hour_admin',
             'max_file_size_mb', 'max_orders_per_day',
             'comment_max_files', 'comment_max_file_size_mb',

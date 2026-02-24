@@ -54,7 +54,7 @@
                         <time datetime="{{ $post->published_at?->toIso8601String() ?? $post->created_at->toIso8601String() }}">
                             {{ ($post->published_at ?? $post->created_at)->translatedFormat('j F Y') }}
                         </time>
-                        @if ($comments->count())
+                        @if ($commentsEnabled && $comments->count())
                             <span class="text-gray-300">·</span>
                             <a href="#comments" class="hover:text-gray-700 transition-colors flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
@@ -64,13 +64,6 @@
                     </div>
                 </header>
 
-                {{-- Status alert --}}
-                @if (session('status'))
-                    <div class="mb-6 p-4 rounded-xl text-sm {{ session('status') === __('blog.comment_posted') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
                 {{-- Post body --}}
                 <div class="prose prose-gray max-w-none prose-headings:font-semibold prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-pre:bg-gray-900 prose-pre:text-gray-100">
                     @php
@@ -79,8 +72,16 @@
                     {!! $body !!}
                 </div>
 
-                {{-- Divider --}}
+                {{-- Divider and comments section --}}
+                @if ($commentsEnabled)
                 <hr class="my-10 border-gray-100">
+
+                {{-- Status alert (only when comments visible) --}}
+                @if (session('status'))
+                    <div class="mb-6 p-4 rounded-xl text-sm {{ session('status') === __('blog.comment_posted') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                        {{ session('status') }}
+                    </div>
+                @endif
 
                 {{-- Comments section --}}
                 <section id="comments" class="scroll-mt-20">
@@ -106,6 +107,11 @@
                         <form method="POST" action="{{ route('blog.comments.store', $post) }}"
                               x-data="{ replyTo: null }">
                             @csrf
+
+                            {{-- Honeypot: hidden from users, bots fill it --}}
+                            <div class="absolute -left-[9999px] top-0" aria-hidden="true">
+                                <input type="text" name="website" tabindex="-1" autocomplete="off">
+                            </div>
 
                             {{-- Guest fields --}}
                             @guest
@@ -140,11 +146,11 @@
 
                             <div>
                                 <x-input-label for="body" :value="__('blog.comment')" />
-                                <textarea id="body" name="body" rows="4"
-                                          class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm resize-none"
-                                          placeholder="{{ __('blog.comment_placeholder') }}"
-                                          required
-                                          maxlength="2000">{{ old('body') }}</textarea>
+                                <x-text-area id="body" name="body" rows="4"
+                                             class="mt-1 block w-full rounded-xl resize-none"
+                                             placeholder="{{ __('blog.comment_placeholder') }}"
+                                             required
+                                             maxlength="2000">{{ old('body') }}</x-text-area>
                                 <x-input-error :messages="$errors->get('body')" class="mt-1.5" />
                             </div>
 
@@ -161,6 +167,7 @@
                         </form>
                     </div>
                 </section>
+                @endif
 
             </article>
 

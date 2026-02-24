@@ -15,12 +15,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.order')]
-#[Title('طلب جديد')]
 class NewOrder extends Component
 {
     use WithFileUploads;
@@ -47,6 +45,12 @@ class NewOrder extends Component
 
     /** Set by ?duplicate_from={id} — triggers pre-fill in mount() */
     public ?int $duplicateFrom = null;
+
+    /** Set by ?edit={id} — editing existing order; triggers pre-fill and update flow */
+    public ?int $editingOrderId = null;
+
+    /** Order number when editing (for display) */
+    public string $editingOrderNumber = '';
 
     /** Set by ?product_url=... — pre-fills the first item's URL field */
     public string $productUrl = '';
@@ -78,7 +82,7 @@ class NewOrder extends Component
 
     public string $modalSuccess = '';
 
-    public function mount(?int $duplicate_from = null, string $product_url = ''): void
+    public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = ''): void
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
@@ -87,6 +91,14 @@ class NewOrder extends Component
         $this->commissionFlat = (float) Setting::get('commission_flat_below', 50);
         $this->currencies = $this->buildCurrencies();
         $this->exchangeRates = $this->buildExchangeRates();
+
+        // Edit mode: ?edit={id} — must be logged in, load order, start resubmit window
+        $editId = $edit ?? (int) request()->query('edit', 0);
+        if ($editId && Auth::check()) {
+            $this->prefillFromEdit($editId);
+
+            return;
+        }
 
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
@@ -97,6 +109,72 @@ class NewOrder extends Component
             $firstItem['url'] = $product_url;
             $this->items = [$firstItem];
         }
+    }
+
+    /**
+     * Pre-fill from order being edited. Validates: owner, unpaid, within click window.
+     * Sets can_edit_until on order to start the resubmit window.
+     */
+    private function prefillFromEdit(int $orderId): void
+    {
+        $user = Auth::user();
+        $orderEditEnabled = (bool) Setting::get('order_edit_enabled', true);
+        $clickWindowMinutes = (int) Setting::get('order_edit_click_window_minutes', 10);
+        $resubmitWindowMinutes = (int) Setting::get('order_edit_resubmit_window_minutes', 10);
+
+        if (! $orderEditEnabled) {
+            $this->redirectToOrderWithError($orderId, __('orders.edit_disabled'));
+
+            return;
+        }
+
+        $order = Order::with('items')->find($orderId);
+
+        if (! $order || $order->user_id !== $user->id) {
+            $this->redirectToOrderWithError($orderId, __('orders.edit_forbidden'));
+
+            return;
+        }
+
+        if ($order->is_paid) {
+            $this->redirectToOrderWithError($orderId, __('orders.edit_already_paid'));
+
+            return;
+        }
+
+        $clickEditDeadline = $order->created_at->copy()->addMinutes($clickWindowMinutes);
+        if (now()->gte($clickEditDeadline)) {
+            $this->redirectToOrderWithError($orderId, __('orders.edit_click_window_expired'));
+
+            return;
+        }
+
+        // Start resubmit window: set can_edit_until = now + resubmit_window_minutes
+        $order->update(['can_edit_until' => now()->addMinutes($resubmitWindowMinutes)]);
+
+        $this->editingOrderId = $order->id;
+        $this->editingOrderNumber = $order->order_number;
+        $this->orderNotes = (string) ($order->notes ?? '');
+
+        $this->items = $order->items->map(fn ($item) => [
+            'url' => (string) ($item->url ?? ''),
+            'qty' => (string) max(1, (int) $item->qty),
+            'color' => (string) ($item->color ?? ''),
+            'size' => (string) ($item->size ?? ''),
+            'price' => $item->unit_price !== null ? (string) $item->unit_price : '',
+            'currency' => (string) ($item->currency ?? $this->defaultCurrency),
+            'notes' => (string) ($item->notes ?? ''),
+        ])->values()->toArray();
+
+        if (empty($this->items)) {
+            $this->items = [$this->emptyItem($this->defaultCurrency)];
+        }
+    }
+
+    private function redirectToOrderWithError(int $orderId, string $message): void
+    {
+        session()->flash('error', $message);
+        $this->redirect(route('orders.show', $orderId));
     }
 
     /**
@@ -226,6 +304,13 @@ class NewOrder extends Component
         $totalFiles = count(array_filter($this->itemFiles));
         if ($totalFiles > 10) {
             $this->dispatch('notify', type: 'error', message: __('order.max_files_exceeded'));
+
+            return;
+        }
+
+        // Edit flow: update existing order
+        if ($this->editingOrderId) {
+            $this->submitOrderEdit($itemsWithOriginalIndex);
 
             return;
         }
@@ -361,8 +446,8 @@ class NewOrder extends Component
             // Count total orders for this user (to decide success screen vs toast)
             $totalOrders = Order::where('user_id', Auth::id())->count();
 
-            if ($totalOrders <= 3) {
-                // Full success screen for first 3 orders
+            if ($totalOrders <= 1000) {
+                // Full success screen for first 1000 orders
                 $this->showSuccessScreen = true;
             } else {
                 // Toast + immediate redirect for experienced users
@@ -372,6 +457,127 @@ class NewOrder extends Component
                 $this->redirectRoute('orders.show', $createdOrder->id);
             }
         }
+    }
+
+    /**
+     * Update existing order (edit flow). Validates resubmit window, rejects empty items.
+     */
+    private function submitOrderEdit(array $itemsWithOriginalIndex): void
+    {
+        $order = Order::with('items')->find($this->editingOrderId);
+
+        if (! $order || $order->user_id !== Auth::id()) {
+            $this->dispatch('notify', type: 'error', message: __('orders.edit_forbidden'));
+
+            return;
+        }
+
+        if ($order->is_paid) {
+            $this->dispatch('notify', type: 'error', message: __('orders.edit_already_paid'));
+
+            return;
+        }
+
+        if ($order->can_edit_until === null || now()->gte($order->can_edit_until)) {
+            $this->dispatch('notify', type: 'error', message: __('orders.edit_resubmit_window_expired'));
+
+            return;
+        }
+
+        if (empty($itemsWithOriginalIndex)) {
+            $this->dispatch('notify', type: 'error', message: __('orders.edit_empty_items_rejected'));
+
+            return;
+        }
+
+        $rates = $this->exchangeRates;
+        $threshold = $this->commissionThreshold;
+        $pct = $this->commissionPct;
+        $flat = $this->commissionFlat;
+
+        DB::transaction(function () use ($order, $itemsWithOriginalIndex, $rates, $threshold, $pct, $flat) {
+            $order->items()->delete();
+
+            $rawSubtotal = 0;
+
+            foreach ($itemsWithOriginalIndex as $sortOrder => $entry) {
+                $item = $entry['data'];
+                $origIndex = $entry['orig'];
+
+                $price = is_numeric($item['price']) ? (float) $item['price'] : null;
+                $qty = max(1, (int) ($item['qty'] ?: 1));
+                $curr = $item['currency'] ?? 'USD';
+                $rate = $rates[$curr] ?? 0;
+
+                if ($price && $rate > 0) {
+                    $rawSubtotal += $price * $qty * $rate;
+                }
+
+                $orderItem = OrderItem::create([
+                    'order_id' => $order->id,
+                    'url' => $item['url'],
+                    'is_url' => (bool) filter_var($item['url'], FILTER_VALIDATE_URL),
+                    'qty' => $qty,
+                    'color' => $item['color'] ?: null,
+                    'size' => $item['size'] ?: null,
+                    'notes' => $item['notes'] ?: null,
+                    'currency' => $curr,
+                    'unit_price' => $price,
+                    'sort_order' => $sortOrder,
+                ]);
+
+                if (isset($this->itemFiles[$origIndex]) && $this->itemFiles[$origIndex]) {
+                    $file = $this->itemFiles[$origIndex];
+                    $path = $file->store("orders/{$order->id}", 'public');
+                    $origName = $file->getClientOriginalName();
+                    $mime = $file->getMimeType();
+                    $size = $file->getSize();
+
+                    $orderItem->update(['image_path' => $path]);
+
+                    OrderFile::create([
+                        'order_id' => $order->id,
+                        'user_id' => Auth::id(),
+                        'path' => $path,
+                        'original_name' => $origName,
+                        'mime_type' => $mime,
+                        'size' => $size,
+                        'type' => 'product_image',
+                    ]);
+                }
+            }
+
+            $commission = 0;
+            if ($rawSubtotal > 0) {
+                $commission = $rawSubtotal >= $threshold
+                    ? $rawSubtotal * $pct
+                    : $flat;
+            }
+
+            $order->update([
+                'notes' => trim($this->orderNotes) ?: null,
+                'subtotal' => round($rawSubtotal, 2),
+                'total_amount' => round($rawSubtotal + $commission, 2),
+                'can_edit_until' => null,
+            ]);
+
+            OrderTimeline::create([
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'type' => 'note',
+                'body' => __('orders.timeline_items_edited'),
+            ]);
+
+            OrderComment::create([
+                'order_id' => $order->id,
+                'user_id' => null,
+                'body' => __('orders.edit_system_comment'),
+                'is_system' => true,
+            ]);
+        });
+
+        session()->flash('success', __('orders.edit_saved_successfully', ['number' => $order->order_number]));
+        $this->redirect(route('orders.show', $order->id));
     }
 
     /**
@@ -401,21 +607,6 @@ class NewOrder extends Component
             'body' => $body,
             'is_system' => true,
         ]);
-    }
-
-    /**
-     * Start the edit window timer. Call from the order show page
-     * on first customer view so the timer doesn't run while the
-     * customer hasn't even seen the order yet.
-     */
-    public static function initEditWindow(Order $order): void
-    {
-        if ($order->can_edit_until !== null) {
-            return;
-        }
-
-        $minutes = (int) Setting::get('order_edit_window_minutes', 10);
-        $order->update(['can_edit_until' => now()->addMinutes($minutes)]);
     }
 
     // -------------------------------------------------------------------------
@@ -451,6 +642,7 @@ class NewOrder extends Component
             $this->modalPassword = '';
             if ($this->loginModalReason === 'attach') {
                 $this->loginModalReason = 'submit';
+
                 return;
             }
             $this->submitOrder();
@@ -488,6 +680,7 @@ class NewOrder extends Component
         $this->modalPassword = '';
         if ($this->loginModalReason === 'attach') {
             $this->loginModalReason = 'submit';
+
             return;
         }
         $this->submitOrder();
@@ -638,6 +831,12 @@ class NewOrder extends Component
 
     public function render()
     {
-        return view('livewire.new-order');
+        $view = view('livewire.new-order');
+
+        if ($this->editingOrderId) {
+            return $view->title(__('orders.edit_order_title', ['number' => $this->editingOrderNumber]));
+        }
+
+        return $view->title(__('New Order'));
     }
 }

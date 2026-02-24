@@ -81,34 +81,12 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute start-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
                              style="display: none;">
-                            <a href="{{ url('/pages/how-to-order') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.how_to_order') }}
-                            </a>
-                            <a href="{{ url('/pages/calculator') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.calculator') }}
-                            </a>
-                            <a href="{{ url('/pages/shipping-calculator') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.shipping_calculator') }}
-                            </a>
-                            <a href="{{ url('/pages/payment-methods') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.payment_methods') }}
-                            </a>
-                            <a href="{{ url('/pages/membership') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.membership') }}
-                            </a>
-                            <a href="{{ url('/pages/faq') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.faq') }}
-                            </a>
-                            <a href="{{ url('/pages/testimonials') }}"
-                               class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                {{ __('nav.testimonials') }}
-                            </a>
+                            @foreach(\App\Models\Page::where('show_in_header', true)->where('is_published', true)->orderBy('menu_order')->get() as $headerPage)
+                                <a href="{{ url('/pages/' . $headerPage->slug) }}"
+                                   class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                                    {{ $headerPage->getTitle() }}
+                                </a>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -169,7 +147,7 @@
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                     </svg>
-                                    تسجيل الخروج
+                                    {{ __('Log Out') }}
                                 </button>
                             </form>
                         </div>
@@ -267,34 +245,12 @@
                      x-transition:enter-end="opacity-100"
                      class="ms-3 mt-1 mb-1 space-y-0 border-s-2 border-gray-100 ps-3"
                      style="display: none;">
-                    <a href="{{ url('/pages/how-to-order') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.how_to_order') }}
-                    </a>
-                    <a href="{{ url('/pages/calculator') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.calculator') }}
-                    </a>
-                    <a href="{{ url('/pages/shipping-calculator') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.shipping_calculator') }}
-                    </a>
-                    <a href="{{ url('/pages/payment-methods') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.payment_methods') }}
-                    </a>
-                    <a href="{{ url('/pages/membership') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.membership') }}
-                    </a>
-                    <a href="{{ url('/pages/faq') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.faq') }}
-                    </a>
-                    <a href="{{ url('/pages/testimonials') }}" @click="open = false"
-                       class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                        {{ __('nav.testimonials') }}
-                    </a>
+                    @foreach(\App\Models\Page::where('show_in_header', true)->where('is_published', true)->orderBy('menu_order')->get() as $headerPage)
+                        <a href="{{ url('/pages/' . $headerPage->slug) }}" @click="open = false"
+                           class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                            {{ $headerPage->getTitle() }}
+                        </a>
+                    @endforeach
                 </div>
             </div>
         </nav>
@@ -335,7 +291,7 @@
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                         </svg>
-                        تسجيل الخروج
+                        {{ __('Log Out') }}
                     </button>
                 </form>
             @endauth

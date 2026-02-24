@@ -12,49 +12,67 @@
 @if ($showSuccessScreen)
 <div
     class="wz-order-page"
-    x-data="{
-        seconds: 45,
-        orderUrl: '{{ route('orders.show', $createdOrderId) }}',
-        init() {
-            const timer = setInterval(() => {
-                this.seconds--;
-                if (this.seconds <= 0) { clearInterval(timer); window.location.href = this.orderUrl; }
-            }, 1000);
-        }
-    }"
-    x-init="init()"
-    style="min-height:100dvh;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:12px;box-sizing:border-box;overflow-y:auto;"
+    style="min-height:100dvh;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:16px;box-sizing:border-box;padding-top:48px;"
 >
-    <div style="text-align:center;max-width:480px;width:100%;padding:0 8px;">
+    <div class="wz-success-content" style="text-align:center;max-width:420px;width:100%;">
         {{-- Checkmark --}}
-        <div style="width:48px;height:48px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;animation:successScale 0.5s ease-out;">
-            <svg style="width:24px;height:24px;color:#fff;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+        <div class="wz-success-icon" style="width:56px;height:56px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;animation:successScale 0.5s ease-out;">
+            <svg style="width:28px;height:28px;color:#fff;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
         </div>
-        <h1 style="font-size:1.25rem;font-weight:700;color:#1e293b;margin:0 0 4px;">
+        <h1 class="wz-success-title" style="font-size:1.4rem;font-weight:700;color:#1e293b;margin:0 0 6px;">
             {{ __('order.success_title') }}
         </h1>
-        <div style="font-size:0.95rem;font-weight:600;color:#f97316;margin-bottom:8px;">
+        <div class="wz-success-subtitle" style="font-size:1.1rem;font-weight:600;color:#f97316;margin-bottom:10px;">
             {{ __('order.success_subtitle', ['number' => $createdOrderNumber]) }}
         </div>
-        <p style="color:#475569;line-height:1.4;font-size:0.75rem;margin:0 0 10px;white-space:pre-line;">
+        <p class="wz-success-message" style="color:#475569;line-height:1.5;font-size:0.9rem;margin:0 0 14px;white-space:pre-line;">
             {{ __('order.success_message') }}
         </p>
         <a
             href="{{ route('orders.show', $createdOrderId) }}"
-            style="display:inline-block;background:#f97316;color:#fff;font-weight:600;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.9rem;margin-bottom:8px;"
+            class="wz-success-btn"
+            style="display:inline-block;background:#f97316;color:#fff;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:1rem;margin-bottom:10px;"
         >
             {{ __('order.success_go_to_order') }}
         </a>
-        <div style="color:#94a3b8;font-size:0.75rem;">
-            {{ __('order.success_redirect_countdown_prefix') }}<span x-text="seconds"></span>{{ __('order.success_redirect_countdown_suffix') }}
+        <div class="wz-success-countdown" style="color:#64748b;font-size:0.9rem;">
+            {{ __('order.success_redirect_countdown_prefix') }}<span id="wz-countdown-seconds">45</span>{{ __('order.success_redirect_countdown_suffix') }}
         </div>
     </div>
+    @script
+    <script>
+        (function() {
+            const url = @js(route('orders.show', $createdOrderId));
+            function start() {
+                const span = document.getElementById('wz-countdown-seconds');
+                if (!span) return setTimeout(start, 50);
+                let s = 45;
+                const t = setInterval(function() {
+                    s--;
+                    span.textContent = s;
+                    if (s <= 0) { clearInterval(t); window.location.href = url; }
+                }, 1000);
+            }
+            setTimeout(start, 0);
+        })();
+    </script>
+    @endscript
     <style>
         @keyframes successScale {
             from { transform: scale(0); opacity: 0; }
             to   { transform: scale(1); opacity: 1; }
+        }
+        @media (min-width: 768px) {
+            .wz-success-icon { width: 72px !important; height: 72px !important; margin-bottom: 16px !important; }
+            .wz-success-icon svg { width: 36px !important; height: 36px !important; }
+            .wz-success-title { font-size: 1.75rem !important; margin-bottom: 8px !important; }
+            .wz-success-subtitle { font-size: 1.35rem !important; margin-bottom: 14px !important; }
+            .wz-success-message { font-size: 1.05rem !important; line-height: 1.6 !important; margin-bottom: 18px !important; }
+            .wz-success-btn { font-size: 1.1rem !important; padding: 14px 28px !important; margin-bottom: 14px !important; }
+            .wz-success-countdown { font-size: 1.05rem !important; }
+            .wz-success-content { max-width: 560px !important; }
         }
     </style>
 </div>
@@ -72,12 +90,17 @@
         {{ $isLoggedIn ? 'true' : 'false' }},
         {{ $commissionThreshold }},
         {{ $commissionPct }},
-        {{ $commissionFlat }}
+        {{ $commissionFlat }},
+        @js($editingOrderId ? $items : null),
+        @js($editingOrderId ? $orderNotes : null)
     )"
     x-init="
         init();
         @if ($duplicateFrom)
         $nextTick(() => showNotify('success', @js(__('order.duplicate_prefilled'))));
+        @endif
+        @if ($editingOrderId)
+        $nextTick(() => showNotify('success', @js(__('orders.edit_prefilled'))));
         @endif
     "
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
@@ -113,6 +136,15 @@
 
     {{-- Order Form --}}
     <div id="order-form">
+
+        @if ($editingOrderId)
+        <section class="order-card" style="padding:12px;margin-bottom:12px;background:#fef3c7;border:1px solid #fcd34d;">
+            <h2 style="font-size:1.1rem;font-weight:600;color:#92400e;margin:0;">
+                {{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}
+            </h2>
+            <p style="font-size:0.85rem;color:#b45309;margin:6px 0 0 0;">{{ __('orders.edit_resubmit_deadline_hint') }}</p>
+        </section>
+        @endif
 
         {{-- Products Section --}}
         <section class="order-card" style="padding:10px;">
@@ -304,7 +336,11 @@
             </div>
             <button type="button" @click="submitOrder()" :disabled="submitting"
                     id="submit-order" class="btn btn-success">
+                @if ($editingOrderId)
+                <span x-show="!submitting">{{ __('orders.save_changes') }}</span>
+                @else
                 <span x-show="!submitting">{{ __('opus46.confirm_order') }}</span>
+                @endif
                 <span x-show="submitting" x-cloak>{{ __('opus46.submitting') }}...</span>
             </button>
         </div>
@@ -1041,7 +1077,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 </style>
 
 <script>
-function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, threshold, pct, flat) {
+function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, threshold, pct, flat, initialItems, initialOrderNotes) {
     return {
         items: [],
         orderNotes: '',
@@ -1063,7 +1099,16 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
 
         init() {
             this.checkTipsHidden();
-            if (!this.loadDraft()) {
+            if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
+                this.items = initialItems.map(d => ({
+                    url: d.url || '', qty: (d.qty || '1').toString(), color: d.color || '', size: d.size || '',
+                    price: (d.price !== null && d.price !== undefined) ? String(d.price) : '',
+                    currency: d.currency || this.defaultCurrency, notes: d.notes || '',
+                    _expanded: true, _focused: false, _showOptional: false,
+                    _file: null, _preview: null, _fileType: null, _fileName: null, _uploadProgress: null
+                }));
+                this.orderNotes = initialOrderNotes || '';
+            } else if (!this.loadDraft()) {
                 const count = window.innerWidth >= 1024 ? 5 : 1;
                 for (let i = 0; i < count; i++) this.items.push(this.emptyItem());
             }

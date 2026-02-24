@@ -25,7 +25,6 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 - When blocked or uncertain, ask the owner — never guess or hallucinate a solution
 - Do not create new base folders or change dependencies without approval
 - Commit after every feature with small, atomic commits
-- After completing a task, update the `## Current Task` section in `LARAVEL_PLAN.md` with: what was just completed and exactly what the next session should start with. Then tell the user: **"Start next session with: `Read LARAVEL_PLAN.md then continue from the Current Task section.`"**
 
 ## Bilingual Rule (ALWAYS ENFORCE)
 - This site is **100% bilingual — Arabic (default) and English**

@@ -7,6 +7,7 @@ use App\Filament\Resources\Blog\PostResource\Pages\EditPost;
 use App\Filament\Resources\Blog\PostResource\Pages\ListPosts;
 use App\Models\Post;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
@@ -20,10 +21,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -106,7 +105,7 @@ class PostResource extends Resource
                 Select::make('status')
                     ->label(__('Status'))
                     ->options([
-                        'draft'     => __('Draft'),
+                        'draft' => __('Draft'),
                         'published' => __('Published'),
                     ])
                     ->required()
@@ -130,6 +129,11 @@ class PostResource extends Resource
                     ->searchable()
                     ->preload()
                     ->default(fn () => auth()->id()),
+
+                Toggle::make('allow_comments')
+                    ->label(__('Allow Comments'))
+                    ->default(true)
+                    ->helperText(__('When OFF, the comment form and list are hidden on this post.')),
             ])->collapsible(),
 
             Section::make(__('Featured Image'))->schema([
@@ -205,8 +209,8 @@ class PostResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'published' => 'success',
-                        'draft'     => 'gray',
-                        default     => 'gray',
+                        'draft' => 'gray',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('published_at')
@@ -225,7 +229,7 @@ class PostResource extends Resource
                 SelectFilter::make('status')
                     ->label(__('Status'))
                     ->options([
-                        'draft'     => __('Draft'),
+                        'draft' => __('Draft'),
                         'published' => __('Published'),
                     ]),
 
@@ -235,6 +239,11 @@ class PostResource extends Resource
                     ->preload(),
             ])
             ->recordActions([
+                Action::make('view')
+                    ->label(__('View page'))
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->url(fn (Post $record): string => route('blog.show', $record->slug))
+                    ->openUrlInNewTab(),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
@@ -243,9 +252,9 @@ class PostResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPosts::route('/'),
+            'index' => ListPosts::route('/'),
             'create' => CreatePost::route('/create'),
-            'edit'   => EditPost::route('/{record}/edit'),
+            'edit' => EditPost::route('/{record}/edit'),
         ];
     }
 

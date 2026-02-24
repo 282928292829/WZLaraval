@@ -29,10 +29,12 @@ class Post extends Model
         'seo_description_en',
         'status',
         'published_at',
+        'allow_comments',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
+        'allow_comments' => 'boolean',
     ];
 
     public function author(): BelongsTo

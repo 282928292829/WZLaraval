@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ app()->getLocale() === 'ar' ? 'الصفحة غير موجودة — وسيط زون' : 'Page Not Found — Wasetzon' }}</title>
+    <title>{{ __('errors.page_title_404') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600|ibm-plex-sans-arabic:400,500,600&display=swap" rel="stylesheet">
     <style>
@@ -79,23 +79,13 @@
 </head>
 <body>
     <div class="card">
-        @if(app()->getLocale() === 'ar')
-            <span class="badge">404 — غير موجود</span>
-            <h1>الصفحة غير موجودة</h1>
-            <p>الرابط الذي تحاول الوصول إليه غير موجود أو ربما تم نقله.</p>
-            <div class="actions">
-                <a href="{{ url('/') }}" class="btn-primary">الرئيسية</a>
-                <a href="{{ url('/orders') }}" class="btn-ghost">طلباتي</a>
-            </div>
-        @else
-            <span class="badge">404 — Not Found</span>
-            <h1>{{ __('Page Not Found') }}</h1>
-            <p>The link you followed doesn't exist or may have been moved.</p>
-            <div class="actions">
-                <a href="{{ url('/') }}" class="btn-primary">{{ __('Go Home') }}</a>
-                <a href="{{ url('/orders') }}" class="btn-ghost">{{ __('My Orders') }}</a>
-            </div>
-        @endif
+        <span class="badge">{{ __('errors.404.badge') }}</span>
+        <h1>{{ __('errors.404.title') }}</h1>
+        <p>{{ __('errors.404.paragraph') }}</p>
+        <div class="actions">
+            <a href="{{ url('/') }}" class="btn-primary">{{ __('errors.404.home') }}</a>
+            <a href="{{ url('/orders') }}" class="btn-ghost">{{ __('errors.404.my_orders') }}</a>
+        </div>
     </div>
     <p class="site-name">{{ config('app.name', 'Wasetzon') }}</p>
 </body>

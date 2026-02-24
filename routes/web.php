@@ -35,7 +35,7 @@ Route::get('/offline', function () {
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:5,15')
     ->name('blog.comments.store');
 
 // Public static pages

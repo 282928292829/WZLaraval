@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>خطأ في الخادم — وسيط زون</title>
+    <title>{{ __('errors.page_title_500') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=ibm-plex-sans-arabic:400,500,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600|ibm-plex-sans-arabic:400,500,600&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -16,9 +16,9 @@
             justify-content: center;
             background: #fff;
             color: #111827;
-            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            font-family: {{ app()->getLocale() === 'ar' ? "'IBM Plex Sans Arabic', sans-serif" : "'Inter', sans-serif" }};
             padding: 2rem 1.25rem;
-            text-align: right;
+            text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
         }
         .card {
             width: 100%;
@@ -64,15 +64,15 @@
 </head>
 <body>
     {{--
-        500 pages must be fully static — no @auth, no DB calls, no lang helpers,
-        no Vite, no Livewire. The app is broken; assume nothing works.
+        500 pages must be fully static — no @auth, no DB calls.
+        __() is safe: it uses the request locale and falls back to key if translator fails.
     --}}
     <div class="card">
-        <span class="badge">500 — خطأ في الخادم</span>
-        <h1>حدث خطأ غير متوقع</h1>
-        <p>نعمل على إصلاح المشكلة في أقرب وقت. جرّب إعادة تحميل الصفحة، أو عد لاحقاً.</p>
-        <a href="/" class="btn-primary">الرئيسية</a>
+        <span class="badge">{{ __('errors.500.badge') }}</span>
+        <h1>{{ __('errors.500.title') }}</h1>
+        <p>{{ __('errors.500.paragraph') }}</p>
+        <a href="/" class="btn-primary">{{ __('errors.500.home') }}</a>
     </div>
-    <p class="site-name">وسيط زون</p>
+    <p class="site-name">{{ config('app.name', 'Wasetzon') }}</p>
 </body>
 </html>

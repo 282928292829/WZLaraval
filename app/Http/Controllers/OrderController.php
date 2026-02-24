@@ -41,15 +41,18 @@ class OrderController extends Controller
 
         // Read state is recorded by viewport-based tracking (JS), not on page load (matches WordPress).
 
-        if ($isOwner && ! $order->is_paid && $order->can_edit_until === null) {
-            \App\Livewire\NewOrder::initEditWindow($order);
-            $order->refresh();
-        }
+        // Two-window edit flow: do NOT set can_edit_until on first view.
+        // Window 1 (click): show Edit link when within click_window of submission.
+        // Window 2 (resubmit): can_edit_until is set by NewOrder when user clicks Edit.
 
-        $canEditItems = $isOwner
+        $orderEditEnabled = (bool) Setting::get('order_edit_enabled', true);
+        $clickWindowMinutes = (int) Setting::get('order_edit_click_window_minutes', 10);
+        $clickEditDeadline = $order->created_at->copy()->addMinutes($clickWindowMinutes);
+
+        $canEditItems = $orderEditEnabled
+            && $isOwner
             && ! $order->is_paid
-            && $order->can_edit_until
-            && now()->lt($order->can_edit_until);
+            && now()->lt($clickEditDeadline);
 
         // Recent orders (same customer) for merge dropdown — staff only
         $recentOrders = collect();
@@ -91,8 +94,10 @@ class OrderController extends Controller
             cookie()->queue($cookieName, (string) ($visits + 1), 60 * 24 * 365); // 1 year
         }
 
+        $clickEditRemaining = $canEditItems ? now()->diffForHumans($clickEditDeadline, true) : null;
+
         return view('orders.show', compact(
-            'order', 'isOwner', 'isStaff', 'canEditItems', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery'
+            'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery'
         ));
     }
 

@@ -59,6 +59,14 @@
             $footerWhatsapp = \App\Models\Setting::get('whatsapp', '');
             $footerEmail    = \App\Models\Setting::get('contact_email', '');
             $commercialReg  = \App\Models\Setting::get('commercial_registration', '');
+            $footerInfoSlugs = ['how-to-order', 'shipping-calculator', 'payment-methods', 'faq'];
+            $footerServicesSlugs = ['calculator', 'membership'];
+            $footerPoliciesSlugs = ['terms-and-conditions', 'privacy-policy', 'refund-policy'];
+            $footerPages = \App\Models\Page::where('show_in_footer', true)->where('is_published', true)->orderBy('menu_order')->get();
+            $footerInfoPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerInfoSlugs));
+            $footerServicesPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerServicesSlugs));
+            $footerPoliciesPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerPoliciesSlugs));
+            $footerOtherPages = $footerPages->filter(fn ($p) => ! in_array($p->slug, array_merge($footerInfoSlugs, $footerServicesSlugs, $footerPoliciesSlugs)));
         @endphp
         <footer class="bg-gray-50 border-t border-gray-100 mt-auto">
 
@@ -70,10 +78,9 @@
                     <div>
                         <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.information') }}</h4>
                         <ul class="space-y-2.5">
-                            <li><a href="{{ url('/pages/how-to-order') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.how_to_order') }}</a></li>
-                            <li><a href="{{ url('/pages/shipping-calculator') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.shipping_calculator') }}</a></li>
-                            <li><a href="{{ url('/pages/payment-methods') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.payment_methods') }}</a></li>
-                            <li><a href="{{ url('/pages/faq') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.faq') }}</a></li>
+                            @foreach($footerInfoPages->merge($footerOtherPages) as $p)
+                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
+                            @endforeach
                         </ul>
                     </div>
 
@@ -83,8 +90,9 @@
                         <ul class="space-y-2.5">
                             <li><a href="{{ url('/new-order') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.new_order') }}</a></li>
                             <li><a href="{{ url('/orders') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.my_orders') }}</a></li>
-                            <li><a href="{{ url('/pages/calculator') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.currency_converter') }}</a></li>
-                            <li><a href="{{ url('/pages/membership') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.membership') }}</a></li>
+                            @foreach($footerServicesPages as $p)
+                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
+                            @endforeach
                         </ul>
                     </div>
 
@@ -92,9 +100,9 @@
                     <div>
                         <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.policies') }}</h4>
                         <ul class="space-y-2.5">
-                            <li><a href="{{ url('/pages/terms-and-conditions') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.terms') }}</a></li>
-                            <li><a href="{{ url('/pages/privacy-policy') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.privacy') }}</a></li>
-                            <li><a href="{{ url('/pages/refund-policy') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.refund') }}</a></li>
+                            @foreach($footerPoliciesPages as $p)
+                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
+                            @endforeach
                         </ul>
                     </div>
 
@@ -167,7 +175,7 @@
                             @endforeach
                         </div>
                         <img src="{{ asset('images/shipping-line.svg') }}"
-                             alt="Shipping"
+                             alt="{{ __('footer.shipping_alt') }}"
                              class="w-full max-w-2xl object-contain opacity-70"
                              loading="lazy"
                              height="18">
@@ -190,7 +198,7 @@
                            target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-600 transition-colors text-xs text-gray-500">
                             <img src="https://wasetzon.com/wp-content/uploads/2024/04/شعار-المركز-السعودي-للأعمال-–-Saudi-Business-Center-Logo-–-PNG-–-SVG-svg-1.png"
-                                 alt="Saudi Business Center"
+                                 alt="{{ __('footer.sbc_alt') }}"
                                  class="w-6 h-6 object-contain"
                                  loading="lazy">
                             {{ __('footer.certified_by') }}

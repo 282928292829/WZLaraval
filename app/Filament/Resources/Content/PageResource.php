@@ -7,6 +7,7 @@ use App\Filament\Resources\Content\PageResource\Pages\EditPage;
 use App\Filament\Resources\Content\PageResource\Pages\ListPages;
 use App\Models\Page;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\RichEditor;
@@ -99,6 +100,11 @@ class PageResource extends Resource
                     ->default(0)
                     ->minValue(0)
                     ->helperText(__('Lower number = appears first in navigation.')),
+
+                Toggle::make('allow_comments')
+                    ->label(__('Allow Comments'))
+                    ->default(false)
+                    ->helperText(__('When ON, comments are shown on this page. (Requires page comments feature.)')),
             ])->columns(2)->collapsible(),
 
             Section::make(__('SEO'))->schema([
@@ -186,6 +192,11 @@ class PageResource extends Resource
                     ->label(__('In Footer')),
             ])
             ->recordActions([
+                Action::make('view')
+                    ->label(__('View page'))
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->url(fn (Page $record): string => route('pages.show', $record->slug))
+                    ->openUrlInNewTab(),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
@@ -194,9 +205,9 @@ class PageResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPages::route('/'),
+            'index' => ListPages::route('/'),
             'create' => CreatePage::route('/create'),
-            'edit'   => EditPage::route('/{record}/edit'),
+            'edit' => EditPage::route('/{record}/edit'),
         ];
     }
 }

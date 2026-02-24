@@ -12,7 +12,7 @@
         </div>
 
         <x-filament::button wire:click="save">
-            Save All
+            {{ __('translations.save_all') }}
         </x-filament::button>
     </div>
 
@@ -21,9 +21,9 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
             <thead class="bg-gray-50 dark:bg-white/5">
                 <tr>
-                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">Key</th>
-                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">Arabic (ar)</th>
-                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">English (en)</th>
+                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">{{ __('translations.key') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">{{ __('translations.arabic_col') }}</th>
+                    <th class="px-4 py-3 text-start font-semibold text-gray-700 dark:text-gray-200 w-1/3">{{ __('translations.english_col') }}</th>
                     <th class="px-4 py-3 w-10"></th>
                 </tr>
             </thead>
@@ -70,7 +70,7 @@
                 @empty
                     <tr>
                         <td colspan="4" class="px-4 py-8 text-center text-gray-400">
-                            No translations found.
+                            {{ __('translations.no_found') }}
                         </td>
                     </tr>
                 @endforelse
@@ -83,7 +83,7 @@
         <p class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">{{ __('Add Translation Key') }}</p>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Key</label>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ __('translations.key') }}</label>
                 <input
                     wire:model="newKey"
                     type="text"
@@ -97,7 +97,7 @@
                     wire:model="newAr"
                     type="text"
                     dir="rtl"
-                    placeholder="النص العربي"
+                    placeholder="{{ __('translations.arabic_placeholder') }}"
                     class="block w-full rounded-lg border border-gray-300 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                 />
             </div>
@@ -114,7 +114,7 @@
         </div>
         <div class="mt-3 flex justify-end">
             <x-filament::button wire:click="addRow" color="gray" size="sm">
-                Add Key
+                {{ __('translations.add_key') }}
             </x-filament::button>
         </div>
     </div>

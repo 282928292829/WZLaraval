@@ -20,13 +20,15 @@ class Page extends Model
         'show_in_header',
         'show_in_footer',
         'menu_order',
+        'allow_comments',
     ];
 
     protected $casts = [
-        'is_published'   => 'boolean',
+        'is_published' => 'boolean',
         'show_in_header' => 'boolean',
         'show_in_footer' => 'boolean',
-        'menu_order'     => 'integer',
+        'menu_order' => 'integer',
+        'allow_comments' => 'boolean',
     ];
 
     public function getTitle(): string
