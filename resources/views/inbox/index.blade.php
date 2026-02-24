@@ -137,7 +137,7 @@
                                         <p class="text-sm {{ $isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-800' }}">
                                             {{ $activity->typeLabel() }}
                                             @if (!empty($activity->data['order_number']))
-                                                <span class="text-primary-600 font-bold">#{{ $activity->data['order_number'] }}</span>
+                                                <span class="text-primary-600 font-bold">{{ $activity->data['order_number'] }}</span>
                                             @endif
                                         </p>
 

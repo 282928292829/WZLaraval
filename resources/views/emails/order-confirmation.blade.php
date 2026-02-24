@@ -1,4 +1,4 @@
-<x-emails.layout :subject="'تأكيد الطلب #' . $order->order_number">
+<x-emails.layout :subject="__('orders.order_confirmation_email_subject', ['number' => $order->order_number])">
 
     <p class="greeting">مرحباً {{ $order->user->name ?? 'عزيزنا العميل' }}،</p>
 
@@ -11,7 +11,7 @@
         <div class="card-title">تفاصيل الطلب</div>
         <div class="info-row">
             <span class="info-label">رقم الطلب</span>
-            <span class="info-value">#{{ $order->order_number }}</span>
+            <span class="info-value">{{ $order->order_number }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">تاريخ الطلب</span>

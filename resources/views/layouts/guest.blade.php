@@ -19,6 +19,14 @@
 
         @include('layouts.navigation')
 
+        @if (session('error'))
+            <div class="bg-red-50 border-b border-red-100">
+                <div class="max-w-md mx-auto px-4 py-3">
+                    <p class="text-sm font-medium text-red-700">{{ session('error') }}</p>
+                </div>
+            </div>
+        @endif
+
         <div class="flex flex-col items-center px-4 pt-8 pb-12 flex-1">
             <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
                 {{ $slot }}

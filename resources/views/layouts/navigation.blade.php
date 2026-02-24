@@ -4,17 +4,16 @@
      class="bg-white border-b border-gray-100 sticky top-0 z-40">
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-14">
+        <div class="relative flex items-center h-14">
 
-            {{-- Logo + Desktop nav --}}
-            <div class="flex items-center gap-6">
-                <a href="{{ url('/') }}"
-                   class="text-lg font-bold text-primary-600 tracking-tight shrink-0">
-                    {{ __('app.name') }}
-                </a>
+            {{-- Left: Logo --}}
+            <a href="{{ url('/') }}"
+               class="text-lg font-bold text-primary-600 tracking-tight shrink-0 z-10">
+                {{ __('app.name') }}
+            </a>
 
-                {{-- Desktop nav links --}}
-                <div class="hidden sm:flex items-center gap-1">
+            {{-- Center: Desktop nav links --}}
+            <div class="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1">
 
                     <a href="{{ url('/new-order') }}"
                        class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
@@ -112,12 +111,10 @@
                             </a>
                         </div>
                     </div>
-
                 </div>
-            </div>
 
-            {{-- Right side: auth controls + hamburger --}}
-            <div class="flex items-center gap-1.5">
+            {{-- Right: auth controls + hamburger --}}
+            <div class="flex items-center gap-1.5 ms-auto shrink-0 z-10">
 
                 @guest
                     <div class="hidden sm:flex items-center gap-2 ms-1">

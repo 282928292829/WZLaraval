@@ -52,6 +52,13 @@ isProject: false
 # Laravel Full Rebuild — Wasetzon
 
 ## Current Task
+> **Order number display and success countdown aligned with WordPress:**
+>
+> - **No # on order number** — Order number is shown everywhere without "#" (e.g. "رقم الطلب: 900022" / "Order 900022"). Updated `lang/ar.json` and `lang/en.json`: removed "#" from `order.success_subtitle`, `orders.order_number`, `order.created_successfully`, notification/invoice/merge/timeline keys, and new `orders.order_confirmation_email_subject`. Removed "#" from Blade: `orders/show.blade.php`, `orders/staff.blade.php`, `emails/order-confirmation.blade.php`, `dashboard.blade.php`, `inbox/index.blade.php`, `livewire/payment-notification-form.blade.php`. `OrderController` and `OrderConfirmation` mailable now use translated subject without "#".
+> - **Success countdown text from WordPress** — Countdown line now matches WordPress exactly: Arabic "سيتم التحويل تلقائياً خلال X ثانية..." (three dots). Replaced single `order.success_redirect_countdown` with `order.success_redirect_countdown_prefix` and `order.success_redirect_countdown_suffix` in both lang files; success screen Blade uses prefix + Alpine `x-text="seconds"` + suffix (no hardcoded "ثانية"/"seconds").
+>
+> **Next session should start with:** Blog system — `/blog` index and `/blog/{slug}` show. Audit WordPress reference site first.
+
 > **Three backlog features implemented:**
 >
 > - **Admin/staff notes on orders** — New `staff_notes` (text, nullable) column added to `orders` table via migration. `Order` model `$fillable` updated. New `PATCH /orders/{id}/staff-notes` route + `OrderController::updateStaffNotes()`. Staff-only amber-tinted card on order show page (above Order Items) — displays notes or "no notes yet" placeholder, inline edit form with save/cancel, gated to `$isStaff`.
@@ -155,7 +162,7 @@ isProject: false
 ## Completed
 - **Roles & permissions seeded** — `RoleAndPermissionSeeder` creates 5 roles (guest/customer/editor/admin/superadmin) with 33 granular permissions hierarchically assigned. One test user per role at `{role}@wasetzon.test` / `password`. New registrations auto-assigned `customer` role via `RegisteredUserController`. Permission names: `create-orders`, `view-own-orders`, `upload-receipt`, `comment-on-own-orders`, `edit-own-comment`, `delete-own-comment`, `manage-own-profile` (customer) + `view-all-orders`, `update-order-status`, `reply-to-comments`, `delete-any-comment`, `add-internal-note`, `view-internal-note`, `merge-orders`, `edit-prices`, `export-csv`, `generate-pdf-invoice`, `bulk-update-orders`, `send-comment-notification`, `view-comment-reads` (editor) + `access-filament`, `manage-posts`, `manage-pages`, `manage-settings`, `manage-users`, `ban-users`, `assign-user-roles`, `assign-user-permissions`, `manage-currencies`, `manage-exchange-rates`, `edit-commission-rules` (admin) + `manage-admins`, `demote-admins` (superadmin only).
 - **Dashboard page** — Role-aware `/dashboard` via `DashboardController`. Customer sees: 3 stat cards (total/open/needs-action orders), recent 5 orders list with status badges, empty state with CTA, help card. Staff (editor/admin/superadmin) sees: 4 order stat cards (today/open/needs-payment/processing), quick-action links gated with `@can`, recent activity feed from `activities` table. Admin/superadmin see Filament links. `StatCard` Blade component created at `components/dashboard/stat-card.blade.php`. `Order` and `Activity` models created with full fillable/casts/relations stubs.
-- **Stack install** — Breeze v2.3.8, Livewire v3.7.10, Filament v4.7.1, Spatie Permission v6.24.1, Tailwind CSS v3.4, Alpine.js (via Livewire). Alpine.js is bundled by Livewire — no separate npm package needed.
+- **Stack install** — Breeze v2.3.8, Livewire v3.7.10, Filament v4.7.1, Spatie Permission v6.24.1, Tailwind CSS v4, Alpine.js (via Livewire). Alpine.js is bundled by Livewire — no separate npm package needed.
 - **MySQL** — `wasetzon` database created; `.env` switched from SQLite to MySQL.
 - **All schema migrations** — 20 migrations ran cleanly: users (extended), user_addresses, user_activity_logs, orders, order_items, order_timeline, order_comments, order_files, order_comment_edits, order_comment_reads, post_categories, posts, post_comments, pages, settings, activities, plus Spatie permission tables (roles, permissions, model_has_roles, model_has_permissions, role_has_permissions).
 - **RTL + bilingual system** — `SetLocale` middleware reads session locale, applies `app()->setLocale()` on every request. Language toggle route `POST /language/{locale}` stores choice in session. `dir="rtl"` applied automatically on `<html>` when locale is `ar`.
@@ -249,7 +256,7 @@ Key design constraints:
 - Fresh Laravel 12 install + full stack (Breeze, Livewire, Alpine, Tailwind, Filament 4, Spatie Permission)
 - **Design system:** White background, clean/minimal, primary color configurable per site (orange for Wasetzon), font family configurable — both set in Filament admin
 - **Fonts:** IBM Plex Sans Arabic (Arabic), Inter (English) — auto-switch with language
-- **Bilingual setup:** Laravel localization (`lang/ar.json`, `lang/en.json`) as single source of truth — no `translations` table. Filament includes a strings editor resource so team can edit translations from admin without touching files directly. Language toggle in header.
+- **Bilingual setup:** Laravel localization (`lang/ar.json`, `lang/en.json`) as single source of truth — no `translations` table. Filament includes a strings editor resource so team can edit translations from admin without touching files directly. Language toggle in footer.
 - RTL Tailwind config (`dir="rtl"`, RTL auto-switches with Arabic)
 - **PWA setup:** Service worker, app manifest, offline support, performance optimizations
 - MySQL schema: all migrations written upfront

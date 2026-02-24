@@ -23,32 +23,32 @@
         }
     }"
     x-init="init()"
-    style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:20px;"
+    style="min-height:100dvh;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:12px;box-sizing:border-box;overflow-y:auto;"
 >
-    <div style="text-align:center;max-width:520px;width:100%;">
-        {{-- Animated checkmark --}}
-        <div style="width:64px;height:64px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:successScale 0.5s ease-out;">
-            <svg style="width:32px;height:32px;color:#fff;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+    <div style="text-align:center;max-width:480px;width:100%;padding:0 8px;">
+        {{-- Checkmark --}}
+        <div style="width:48px;height:48px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;animation:successScale 0.5s ease-out;">
+            <svg style="width:24px;height:24px;color:#fff;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
         </div>
-        <h1 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin-bottom:8px;">
+        <h1 style="font-size:1.25rem;font-weight:700;color:#1e293b;margin:0 0 4px;">
             {{ __('order.success_title') }}
         </h1>
-        <div style="font-size:1rem;font-weight:600;color:#f97316;margin-bottom:16px;">
+        <div style="font-size:0.95rem;font-weight:600;color:#f97316;margin-bottom:8px;">
             {{ __('order.success_subtitle', ['number' => $createdOrderNumber]) }}
         </div>
-        <p style="color:#475569;line-height:1.7;font-size:0.93rem;margin-bottom:24px;white-space:pre-line;">
+        <p style="color:#475569;line-height:1.4;font-size:0.75rem;margin:0 0 10px;white-space:pre-line;">
             {{ __('order.success_message') }}
         </p>
         <a
             href="{{ route('orders.show', $createdOrderId) }}"
-            style="display:inline-block;background:#f97316;color:#fff;font-weight:600;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:0.95rem;margin-bottom:16px;"
+            style="display:inline-block;background:#f97316;color:#fff;font-weight:600;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.9rem;margin-bottom:8px;"
         >
             {{ __('order.success_go_to_order') }}
         </a>
-        <div style="color:#94a3b8;font-size:0.82rem;">
-            {{ __('order.success_redirect_countdown', ['seconds' => '']) }}<span x-text="seconds"></span>{{ app()->getLocale() === 'ar' ? ' ثانية…' : ' seconds…' }}
+        <div style="color:#94a3b8;font-size:0.75rem;">
+            {{ __('order.success_redirect_countdown_prefix') }}<span x-text="seconds"></span>{{ __('order.success_redirect_countdown_suffix') }}
         </div>
     </div>
     <style>
@@ -120,14 +120,14 @@
             {{-- Desktop Table Header --}}
             <div class="table-header">
                 <div>{{ __('opus46.th_num') }}</div>
-                <div>{{ __('opus46.th_url') }}</div>
-                <div>{{ __('opus46.th_qty') }}</div>
-                <div>{{ __('opus46.th_color') }}</div>
-                <div>{{ __('opus46.th_size') }}</div>
-                <div>{{ __('opus46.th_price') }}</div>
-                <div>{{ __('opus46.th_currency') }}</div>
-                <div>{{ __('opus46.th_notes') }}</div>
-                <div>{{ __('opus46.th_files') }}</div>
+                <div>{{ __('opus46.th_url') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_qty') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_color') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_size') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_price') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_currency') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_notes') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_files') }} ({{ __('opus46.optional') }})</div>
             </div>
 
             {{-- Items --}}
@@ -165,7 +165,7 @@
 
                                 {{-- URL --}}
                                 <div class="cell-url">
-                                    <span class="label-mobile">{{ __('opus46.lbl_url') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_url') }} ({{ __('opus46.optional') }})</span>
                                     <input type="text"
                                            x-model="item.url"
                                            @blur="calcTotals(); saveDraft()"
@@ -175,7 +175,7 @@
 
                                 {{-- Qty --}}
                                 <div class="cell-qty">
-                                    <span class="label-mobile">{{ __('opus46.lbl_qty') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_qty') }} ({{ __('opus46.optional') }})</span>
                                     <input type="tel"
                                            x-model="item.qty"
                                            @input="convertArabicNums($event)"
@@ -186,7 +186,7 @@
 
                                 {{-- Color --}}
                                 <div class="cell-col">
-                                    <span class="label-mobile">{{ __('opus46.lbl_color') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_color') }} ({{ __('opus46.optional') }})</span>
                                     <input type="text"
                                            x-model="item.color"
                                            @blur="saveDraft()"
@@ -195,7 +195,7 @@
 
                                 {{-- Size --}}
                                 <div class="cell-siz">
-                                    <span class="label-mobile">{{ __('opus46.lbl_size') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_size') }} ({{ __('opus46.optional') }})</span>
                                     <input type="text"
                                            x-model="item.size"
                                            @blur="saveDraft()"
@@ -204,7 +204,7 @@
 
                                 {{-- Price --}}
                                 <div class="cell-prc">
-                                    <span class="label-mobile">{{ __('opus46.lbl_price') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_price') }} ({{ __('opus46.optional') }})</span>
                                     <input type="text"
                                            x-model="item.price"
                                            @input="convertArabicNums($event)"
@@ -215,7 +215,7 @@
 
                                 {{-- Currency --}}
                                 <div class="cell-cur">
-                                    <span class="label-mobile">{{ __('opus46.lbl_currency') }}</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_currency') }} ({{ __('opus46.optional') }})</span>
                                     <select x-model="item.currency"
                                             @change="onCurrencyChange(idx)"
                                             @blur="calcTotals(); saveDraft()"
@@ -227,18 +227,11 @@
                                     </select>
                                 </div>
 
-                                {{-- Optional Toggle (mobile only) --}}
-                                <button type="button" class="btn-toggle-optional"
-                                        @click.stop="item._showOptional = !item._showOptional">
-                                    <span x-text="item._showOptional ? '{{ __('opus46.hide_optional') }}' : '{{ __('opus46.show_optional') }}'"></span>
-                                </button>
-
-                                {{-- Optional Section (notes + file) --}}
-                                <div class="optional-section"
-                                     :class="{ 'active': item._showOptional }">
+                                {{-- Optional Section (notes + file) always visible --}}
+                                <div class="optional-section">
 
                                     <div class="cell-not">
-                                        <span class="label-mobile">{{ __('opus46.lbl_notes') }}</span>
+                                        <span class="label-mobile">{{ __('opus46.lbl_notes') }} ({{ __('opus46.optional') }})</span>
                                         <input type="text"
                                                x-model="item.notes"
                                                @blur="saveDraft()"
@@ -338,10 +331,14 @@
     <div class="login-modal">
         <div class="login-modal-header">
             <button type="button" class="login-modal-close" @click="$wire.closeModal()">&times;</button>
-            <h2 class="login-modal-title">{{ __('opus46.modal_title') }}</h2>
-            <p class="login-modal-subtitle">✅ {{ __('opus46.data_saved') }}</p>
+            <h2 class="login-modal-title">
+                <span x-show="$wire.loginModalReason === 'submit'">{{ __('opus46.modal_title') }}</span>
+                <span x-show="$wire.loginModalReason === 'attach'" x-cloak>{{ __('opus46.modal_title_attach') }}</span>
+            </h2>
+            <p class="login-modal-subtitle" x-show="$wire.loginModalReason === 'submit'">✅ {{ __('opus46.data_saved') }}</p>
+            <p class="login-modal-subtitle" x-show="$wire.loginModalReason === 'attach'" x-cloak>✅ {{ __('opus46.modal_subtitle_attach') }}</p>
         </div>
-        <div class="login-modal-body">
+        <div class="login-modal-body" x-data="{ showPassword: false }">
             {{-- Error --}}
             <div class="modal-alert error"
                  :class="{ 'show': $wire.modalError }"
@@ -371,9 +368,14 @@
                         <a href="#" @click.prevent="$wire.set('modalStep', 'email'); $wire.set('modalError', '')"
                            style="margin-inline-start:10px;color:var(--primary);">{{ __('Change') }}</a>
                     </div>
-                    <div class="password-toggle">
-                        <input type="password" wire:model="modalPassword" required autocomplete="current-password"
-                               class="form-control password-input">
+                    <div class="password-toggle" style="display:flex;align-items:center;gap:8px;">
+                        <input :type="showPassword ? 'text' : 'password'" wire:model="modalPassword" required autocomplete="current-password"
+                               class="form-control password-input" style="flex:1;">
+                        <button type="button" class="btn-password-visibility" @click="showPassword = !showPassword"
+                                :aria-label="showPassword ? '{{ __('opus46.hide_password') }}' : '{{ __('opus46.show_password') }}'"
+                                style="flex-shrink:0;padding:8px 12px;font-size:0.8rem;color:#64748b;background:#f1f5f9;border:none;border-radius:8px;cursor:pointer;">
+                            <span x-text="showPassword ? '{{ __('opus46.hide_password') }}' : '{{ __('opus46.show_password') }}'"></span>
+                        </button>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success">{{ __('Log in') }}</button>
@@ -393,16 +395,16 @@
                         <a href="#" @click.prevent="$wire.set('modalStep', 'email'); $wire.set('modalError', '')"
                            style="margin-inline-start:10px;color:var(--primary);">{{ __('Change') }}</a>
                     </div>
-                    <label class="form-label" style="margin-top:15px;">{{ __('Name') }}</label>
-                    <input type="text" wire:model="modalName" required autocomplete="name"
-                           class="form-control">
-                    <label class="form-label" style="margin-top:10px;">{{ __('Phone') }} <span style="color:#94a3b8;font-weight:400;">({{ __('order.optional') }})</span></label>
-                    <input type="tel" wire:model="modalPhone" autocomplete="tel"
-                           class="form-control">
-                    <label class="form-label" style="margin-top:10px;">{{ __('Password') }}</label>
-                    <div class="password-toggle">
-                        <input type="password" wire:model="modalPassword" required autocomplete="new-password" minlength="4"
-                               class="form-control password-input">
+                    <p class="modal-register-hint" style="font-size:0.85rem;color:#64748b;margin:10px 0 8px 0;">{{ __('opus46.password_create_hint') }}</p>
+                    <label class="form-label">{{ __('Password') }}</label>
+                    <div class="password-toggle" style="display:flex;align-items:center;gap:8px;">
+                        <input :type="showPassword ? 'text' : 'password'" wire:model="modalPassword" required autocomplete="new-password" minlength="4"
+                               class="form-control password-input" style="flex:1;">
+                        <button type="button" class="btn-password-visibility" @click="showPassword = !showPassword"
+                                :aria-label="showPassword ? '{{ __('opus46.hide_password') }}' : '{{ __('opus46.show_password') }}'"
+                                style="flex-shrink:0;padding:8px 12px;font-size:0.8rem;color:#64748b;background:#f1f5f9;border:none;border-radius:8px;cursor:pointer;">
+                            <span x-text="showPassword ? '{{ __('opus46.hide_password') }}' : '{{ __('opus46.show_password') }}'"></span>
+                        </button>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success">{{ __('Create account and continue') }}</button>
@@ -498,6 +500,24 @@
 }
 .toast.success { border-color: var(--success); }
 .toast.error { border-color: var(--danger); }
+.toast-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-left: 4px;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  border-radius: 8px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.toast-close:hover { background: rgba(0,0,0,0.12); color: #334155; }
 
 @keyframes toastIn {
   from { opacity:0; transform:translateY(-20px) scale(0.9); }
@@ -695,33 +715,15 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 .cell-cur { grid-column: span 3; }
 .cell-not { grid-column: span 6; }
 
-/* Optional Toggle (mobile only) */
-.btn-toggle-optional {
-  grid-column: span 6;
-  background: none;
-  border: none;
-  color: var(--accent-amber);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 5px 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  text-decoration: underline;
-  font-family: inherit;
-}
-
 .optional-section {
   grid-column: span 6;
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 10px;
   padding-top: 10px;
   margin-top: 5px;
   border-top: 1px dashed #f5e6e0;
 }
-.optional-section.active { display: flex; }
 
 /* File Upload */
 .upload-container-new { display:flex; flex-direction:column; gap:5px; }
@@ -969,7 +971,6 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 
   #order-form { padding-bottom: 120px; }
 
-  .btn-toggle-optional { display: none !important; }
   .optional-section { display: contents !important; }
   .upload-container-new { margin-top:0; }
 
@@ -1105,7 +1106,11 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
                 const open = this.items.findIndex(i => i._expanded);
                 if (open !== -1) {
                     this.items[open]._expanded = false;
-                    this.showNotify('success', '{{ __('opus46.item_minimized_prefix') }} ' + (open + 1) + ' {{ __('opus46.item_minimized_suffix') }}');
+                    if (open === 0 && this.items.length === 1) {
+                        this.showNotify('success', '{{ __('opus46.item_saved_collapsed_tip') }}', 10000);
+                    } else {
+                        this.showNotify('success', '{{ __('opus46.item_minimized_prefix') }} ' + (open + 1) + ' {{ __('opus46.item_minimized_suffix') }}');
+                    }
                 }
             }
 
@@ -1145,8 +1150,8 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             if (!url) return '{{ __('opus46.product_num') }} ' + num;
             try {
                 const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
-                return '{{ __('opus46.product') }} ' + num + ': ' + host;
-            } catch { return '{{ __('opus46.product') }} ' + num + ': ' + url.substring(0, 30); }
+                return '{{ __('opus46.product_num') }} ' + num + ': ' + host;
+            } catch { return '{{ __('opus46.product_num') }} ' + num + ': ' + url.substring(0, 30); }
         },
 
         onCurrencyChange(idx) {
@@ -1237,7 +1242,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
 
         triggerUpload(idx) {
             if (!this.isLoggedIn) {
-                this.showNotify('error', '{{ __('opus46.login_to_upload') }}');
+                this.$wire.openLoginModalForAttach();
                 return;
             }
             if (this.items[idx]._file) {
@@ -1351,7 +1356,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             this.showNotify('success', '{{ __('opus46.tips_hidden') }}');
         },
 
-        showNotify(type, msg) {
+        showNotify(type, msg, duration) {
             const c = this.$refs.toasts;
             if (!c) return;
             const t = document.createElement('div');
@@ -1359,18 +1364,18 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             const icon = type === 'error'
                 ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
                 : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981;flex-shrink:0"><path d="M20 6L9 17l-5-5"/></svg>';
-            const dur = type === 'error' ? 4000 : 700;
-            t.innerHTML = `${icon}<span>${msg}</span>`;
+            const dur = duration ?? (type === 'error' ? 4000 : 700);
+            const closeLabel = '{{ __("Close") }}';
+            t.innerHTML = `${icon}<span style="flex:1">${msg}</span><button type="button" class="toast-close" aria-label="${closeLabel}">×</button>`;
             c.appendChild(t);
-            t.addEventListener('click', () => {
+            const closeToast = () => {
                 t.style.animation = 'toastOut 0.4s ease forwards';
                 setTimeout(() => t.remove(), 400);
-            });
+            };
+            t.querySelector('.toast-close').addEventListener('click', (e) => { e.stopPropagation(); closeToast(); });
+            t.addEventListener('click', closeToast);
             setTimeout(() => {
-                if (t.parentElement) {
-                    t.style.animation = 'toastOut 0.4s ease forwards';
-                    setTimeout(() => t.remove(), 400);
-                }
+                if (t.parentElement) closeToast();
             }, dur);
         }
     };

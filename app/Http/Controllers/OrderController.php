@@ -802,7 +802,7 @@ class OrderController extends Controller
             'recipient_email' => $order->user->email,
             'recipient_name' => $order->user->name,
             'type' => 'order_confirmation',
-            'subject' => "تأكيد الطلب #{$order->order_number} — Wasetzon",
+            'subject' => __('orders.order_confirmation_email_subject', ['number' => $order->order_number]),
             'queued' => true,
             'status' => 'queued',
         ]);

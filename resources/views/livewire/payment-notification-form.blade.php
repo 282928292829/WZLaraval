@@ -87,7 +87,7 @@
                         <option value="">-- اختر رقم الطلب --</option>
                         @foreach($userOrders as $index => $order)
                             <option value="{{ $order->id }}">
-                                طلب #{{ $order->id }}
+                                طلب {{ $order->order_number }}
                                 @if($order->total_amount) — {{ number_format($order->total_amount, 2) }} ريال @endif
                                 @if($index === 0) (الطلب الأخير) @endif
                             </option>

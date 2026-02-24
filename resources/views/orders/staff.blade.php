@@ -283,7 +283,7 @@
                                         <td class="px-3 py-3">
                                             <div class="flex items-center gap-2">
                                                 <span class="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                                                    #{{ $order->order_number }}
+                                                    {{ $order->order_number }}
                                                 </span>
                                                 @if ($order->items_count)
                                                     <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
@@ -373,7 +373,7 @@
                                 <div class="flex items-center justify-between gap-2 mb-1">
                                     <div class="flex items-center gap-1.5">
                                         <span class="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                                            #{{ $order->order_number }}
+                                            {{ $order->order_number }}
                                         </span>
                                         @if ($order->items_count)
                                             <span class="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">

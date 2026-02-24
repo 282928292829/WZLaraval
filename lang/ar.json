@@ -430,6 +430,7 @@
     "Translations": "Translations",
     "Translations Editor": "Translations Editor",
     "Translations saved": "Translations saved",
+    "Test user :email not found. Run: php artisan db:seed --class=RoleAndPermissionSeeder": "مستخدم الاختبار :email غير موجود. شغّل: php artisan db:seed --class=RoleAndPermissionSeeder",
     "Trusted Service": "نتسوق لكم منذ عام 2015",
     "URL path: /faq, /about, /calculator, etc.": "URL path: /faq, /about, /calculator, etc.",
     "URL-friendly identifier.": "URL-friendly identifier.",
@@ -936,7 +937,7 @@
     "opus46.add_product": "إضافة منتج آخر",
     "opus46.attach": "إرفاق ملف",
     "opus46.cleared": "تم مسح جميع الحقول بنجاح",
-    "opus46.confirm_order": "تأكيد الطلب",
+    "opus46.confirm_order": "إرسال الطلب",
     "opus46.cur_cny": "يوان صيني",
     "opus46.cur_eur": "يورو",
     "opus46.cur_gbp": "جنيه إسترليني",
@@ -957,6 +958,7 @@
     "opus46.invalid_type": "يرجى اختيار ملف مدعوم (صور، PDF، Excel)",
     "opus46.item_minimized_prefix": "تم حفظ وتصغير المنتج رقم",
     "opus46.item_minimized_suffix": "للأعلى",
+    "opus46.item_saved_collapsed_tip": "تم حفظ وتصغير المنتج السابق للأعلى لإتاحة الشاشة لإدخال بيانات أي منتج آخر إن وجد. عند الانتهاء من إدخال جميع المنتجات، أضف أي ملاحظات عامة إن وجدت ولا تنسى الضغط على زر إرسال الطلب.",
     "opus46.lbl_color": "اللون",
     "opus46.lbl_currency": "العملة",
     "opus46.lbl_notes": "ملاحظات",
@@ -969,12 +971,18 @@
     "opus46.max_limit_suffix": "منتج كحد أقصى في الطلب الواحد",
     "opus46.max_products": "الحد الأقصى :max منتج في الطلب الواحد",
     "opus46.modal_title": "تسجيل الدخول لإرسال الطلب",
+    "opus46.modal_title_attach": "تسجيل الدخول لإرفاق الملف",
+    "opus46.modal_subtitle_attach": "لن تفقد أي بيانات أدخلتها. سجّل الدخول لإرفاق الملف. إذا لم يكن لديك حساب، سننشئ واحداً باستخدام بريدك الإلكتروني.",
     "opus46.no_account": "لا يوجد حساب بهذا الايميل",
+    "opus46.optional": "اختياري",
+    "opus46.password_create_hint": "أدخل كلمة مرور لإنشاء حساب لك.",
+    "opus46.show_password": "إظهار",
+    "opus46.hide_password": "إخفاء",
     "opus46.notes_placeholder": "مثلاً: إذا لم يتوفر اللون الأزرق اختر الأخضر",
     "opus46.one_file": "يمكنك إرفاق ملف واحد فقط لكل منتج حالياً.",
     "opus46.other_currency_note": "بما أن هذه العملة غير متاحة، يمكنك إضافة المنتج وسنتولى حساب التكلفة يدويًا.",
     "opus46.product": "المنتج",
-    "opus46.product_num": "رقم المنتج",
+    "opus46.product_num": "المنتج رقم:",
     "opus46.products_count": "عدد المنتجات",
     "opus46.products_value": "قيمة المنتجات",
     "opus46.remove": "حذف",
@@ -1045,12 +1053,13 @@
     "order.hide_tips": "إخفاء النصائح",
     "order.logging_in": "جاري تسجيل الدخول",
     "order.login_required_file": "لإرفاق الملفات يرجى تسجيل الدخول",
-    "order.created_successfully": "تم إرسال الطلب رقم #:number بنجاح.",
-    "order.success_title": "تم استلام طلبك!",
-    "order.success_subtitle": "رقم الطلب: #:number",
-    "order.success_message": "سيتم تحويلك إلى صفحة الطلب المخصصة لمتابعة طلبك والتواصل مع الفريق عبر التعليقات.\n\nسنراجع الطلب يدويًا ونوافيك خلال ساعات بقيمة المنتجات ورسوم الخدمة.",
-    "order.success_go_to_order": "انتقل لمتابعة طلبك",
-    "order.success_redirect_countdown": "سيتم التحويل خلال :seconds ثانية…",
+    "order.created_successfully": "تم إرسال الطلب رقم :number بنجاح.",
+    "order.success_title": "تم استلام طلبك بنجاح!",
+    "order.success_subtitle": "رقم الطلب: :number",
+    "order.success_message": "سيتم تحويلك الآن إلى صفحة الطلب المخصصة لمتابعة طلبك والتواصل مع الفريق عبر التعليقات.\n\nسنراجع الطلب يدويًا ونوافيك خلال ساعات بقيمة المنتجات ورسوم الخدمة. ستصلك إشعارات بالبريد الإلكتروني عند أي رد جديد (تحقق من مجلد Spam).\n\nلمتابعة الطلب عبر واتساب، اطلب ذلك بكتابة تعليق داخل صفحة الطلب.",
+    "order.success_go_to_order": "انتقل لمتابعة طلبك الآن",
+    "order.success_redirect_countdown_prefix": "سيتم التحويل تلقائياً خلال ",
+    "order.success_redirect_countdown_suffix": " ثانية...",
     "order.duplicate_prefilled": "تم تعبئة البيانات من طلبك السابق.",
     "order.max_files_exceeded": "يمكنك إرفاق ١٠ ملفات كحد أقصى.",
     "order.max_products_label": "الحد الأقصى :max منتج",
@@ -1094,10 +1103,10 @@
     "orders.notification_email_disabled": "إرسال البريد معطّل. فعّله من الإعدادات أولاً.",
     "orders.notification_no_recipient": "لا يوجد بريد إلكتروني صالح لهذا الطلب.",
     "orders.notification_failed": "فشل وضع البريد في قائمة الانتظار",
-    "orders.notification_email_subject": "رسالة جديدة على طلبك رقم #:number",
+    "orders.notification_email_subject": "رسالة جديدة على طلبك رقم :number",
     "orders.notification_email_greeting": "مرحباً :name،",
     "orders.notification_email_dear_customer": "عزيزنا العميل",
-    "orders.notification_email_intro": "يوجد تعليق جديد على طلبك رقم #:number.",
+    "orders.notification_email_intro": "يوجد تعليق جديد على طلبك رقم :number.",
     "orders.notification_email_message": "الرسالة",
     "orders.notification_email_footer": "يمكنك متابعة طلبك والرد في أي وقت من خلال الموقع.",
     "orders.timeline_notification_sent": "تم إرسال بريد إشعار التعليق إلى :email",
@@ -1147,7 +1156,8 @@
     "orders.invoice_custom_amount": "مبلغ مخصص (ر.س)",
     "orders.invoice_date": "التاريخ",
     "orders.invoice_detailed": "تفصيلية (مع تفاصيل المنتجات)",
-    "orders.invoice_for": "فاتورة الطلب رقم #:number",
+    "orders.invoice_for": "فاتورة الطلب رقم :number",
+    "orders.order_confirmation_email_subject": "تأكيد الطلب :number — وسيط زون",
     "orders.invoice_generated": "تم إنشاء الفاتورة ونشرها كتعليق",
     "orders.invoice_items": "تفاصيل المنتجات",
     "orders.invoice_line": "المنتج %d: %s × %.2f %s = %.2f ر.س",
@@ -1221,8 +1231,8 @@
     "orders.timeline_address_changed": "تم تغيير عنوان الشحن إلى: :address",
     "orders.timeline_comment_added": "تمت إضافة تعليق",
     "orders.timeline_internal_note": "تمت إضافة ملاحظة داخلية",
-    "orders.timeline_merged_from": "تم دمج منتجات من الطلب رقم #:number",
-    "orders.timeline_merged_into": "تم دمج الطلب في #:number",
+    "orders.timeline_merged_from": "تم دمج منتجات من الطلب رقم :number",
+    "orders.timeline_merged_into": "تم دمج الطلب في :number",
     "orders.timeline_prices_updated": "تم تحديث الأسعار من قبل الفريق",
     "orders.to": "إلى",
     "orders.to_date": "إلى تاريخ",
@@ -1384,8 +1394,8 @@
     "orders.confirm_cancel_btn": "نعم، إلغاء الطلب",
     "orders.keep_order": "إبقاء الطلب",
 
-    "orders.customer_merge_request_comment": "🔀 طلب دمج مع الطلب رقم #:number",
-    "orders.timeline_customer_merge_request": "العميل طلب دمج الطلب مع #:number",
+    "orders.customer_merge_request_comment": "🔀 طلب دمج مع الطلب رقم :number",
+    "orders.timeline_customer_merge_request": "العميل طلب دمج الطلب مع :number",
     "orders.customer_merge_sent": "تم إرسال طلب الدمج بنجاح",
     "orders.modal_customer_merge_title": "طلب دمج الطلبات",
     "orders.customer_merge_desc": "اختر الطلب الذي تريد دمجه مع هذا الطلب:",

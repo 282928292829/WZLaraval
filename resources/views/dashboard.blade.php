@@ -134,7 +134,7 @@
                                                 @endif"></span>
                                             <div class="min-w-0">
                                                 <p class="text-sm font-medium text-gray-800 truncate">
-                                                    #{{ $order->order_number }}
+                                                    {{ $order->order_number }}
                                                 </p>
                                                 <p class="text-xs text-gray-400 mt-0.5">
                                                     {{ $order->created_at->diffForHumans() }}
@@ -328,7 +328,7 @@
                                             —
                                             {{ $item->typeLabel() }}
                                             @if (!empty($item->data['order_number']))
-                                                <span class="text-gray-500">#{{ $item->data['order_number'] }}</span>
+                                                <span class="text-gray-500">{{ $item->data['order_number'] }}</span>
                                             @endif
                                         </p>
                                         <p class="text-xs text-gray-400 mt-0.5">

@@ -16,11 +16,22 @@ class DevController extends Controller
 
         $role = $request->input('role', 'customer');
 
-        $allowedRoles = ['customer', 'editor', 'admin', 'superadmin'];
+        $testEmails = [
+            'customer' => 'customer@wasetzon.test',
+            'editor' => 'editor@wasetzon.test',
+            'admin' => 'admin@wasetzon.test',
+            'superadmin' => 'superadmin@wasetzon.test',
+        ];
 
-        abort_unless(in_array($role, $allowedRoles, true), 422);
+        abort_unless(isset($testEmails[$role]), 422);
 
-        $user = User::whereHas('roles', fn ($q) => $q->where('name', $role))->firstOrFail();
+        $user = User::where('email', $testEmails[$role])->first();
+
+        if (! $user) {
+            return redirect()->back()->with('error', __('Test user :email not found. Run: php artisan db:seed --class=RoleAndPermissionSeeder', [
+                'email' => $testEmails[$role],
+            ]));
+        }
 
         Auth::login($user);
 

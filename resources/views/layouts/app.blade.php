@@ -31,6 +31,15 @@
 
         @include('layouts.navigation')
 
+        {{-- Global error flash (e.g. dev login: test user not found) --}}
+        @if (session('error'))
+            <div class="bg-red-50 border-b border-red-100">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                    <p class="text-sm font-medium text-red-700">{{ session('error') }}</p>
+                </div>
+            </div>
+        @endif
+
         {{-- Optional page heading slot --}}
         @isset($header)
             <div class="bg-white border-b border-gray-100">

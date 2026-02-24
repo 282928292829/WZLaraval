@@ -61,6 +61,9 @@ class NewOrder extends Component
     // Guest login modal
     public bool $showLoginModal = false;
 
+    /** 'submit' | 'attach' — controls modal copy and post-login action */
+    public string $loginModalReason = 'submit';
+
     public string $modalStep = 'email';
 
     public string $modalEmail = '';
@@ -163,6 +166,7 @@ class NewOrder extends Component
     public function submitOrder(): void
     {
         if (! Auth::check()) {
+            $this->loginModalReason = 'submit';
             $this->showLoginModal = true;
 
             return;
@@ -445,6 +449,10 @@ class NewOrder extends Component
         if (Auth::attempt(['email' => $this->modalEmail, 'password' => $this->modalPassword], true)) {
             $this->showLoginModal = false;
             $this->modalPassword = '';
+            if ($this->loginModalReason === 'attach') {
+                $this->loginModalReason = 'submit';
+                return;
+            }
             $this->submitOrder();
         } else {
             $this->modalError = __('auth.failed');
@@ -456,19 +464,20 @@ class NewOrder extends Component
         $this->modalError = '';
 
         $this->validate([
-            'modalName' => 'required|string|max:255',
             'modalEmail' => 'required|email|unique:users,email',
             'modalPassword' => 'required|min:4',
         ], [], [
-            'modalName' => __('Name'),
             'modalEmail' => __('Email'),
             'modalPassword' => __('Password'),
         ]);
 
+        $name = strstr($this->modalEmail, '@', true) ?: 'Customer';
+        $name = trim($name) !== '' ? $name : 'Customer';
+
         $user = User::create([
-            'name' => $this->modalName,
+            'name' => $name,
             'email' => $this->modalEmail,
-            'phone' => $this->modalPhone ?: null,
+            'phone' => null,
             'password' => bcrypt($this->modalPassword),
         ]);
 
@@ -477,6 +486,10 @@ class NewOrder extends Component
 
         $this->showLoginModal = false;
         $this->modalPassword = '';
+        if ($this->loginModalReason === 'attach') {
+            $this->loginModalReason = 'submit';
+            return;
+        }
         $this->submitOrder();
     }
 
@@ -503,14 +516,22 @@ class NewOrder extends Component
         $this->modalSuccess = '';
     }
 
+    public function openLoginModalForAttach(): void
+    {
+        $this->loginModalReason = 'attach';
+        $this->showLoginModal = true;
+        $this->modalStep = 'email';
+        $this->modalError = '';
+        $this->modalSuccess = '';
+    }
+
     public function closeModal(): void
     {
         $this->showLoginModal = false;
+        $this->loginModalReason = 'submit';
         $this->modalStep = 'email';
         $this->modalEmail = '';
         $this->modalPassword = '';
-        $this->modalName = '';
-        $this->modalPhone = '';
         $this->modalError = '';
         $this->modalSuccess = '';
     }

@@ -1240,7 +1240,7 @@
                                             <input type="radio" name="merge_with" value="{{ $ro->id }}" required
                                                 class="text-primary-500 focus:ring-primary-400">
                                             <div>
-                                                <span class="text-sm font-medium text-gray-800">#{{ $ro->order_number }}</span>
+                                                <span class="text-sm font-medium text-gray-800">{{ $ro->order_number }}</span>
                                                 <span class="ms-2 text-xs text-gray-400">{{ $ro->created_at->format('Y/m/d') }}</span>
                                                 <span class="ms-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ $ro->statusLabel() }}</span>
                                             </div>
@@ -2132,7 +2132,7 @@ window.addEventListener('open-address-selector', () => {
                             <input type="radio" name="merge_with_order" value="{{ $ro->id }}" required
                                 class="text-primary-500 focus:ring-primary-400 shrink-0">
                             <div class="flex-1">
-                                <span class="text-sm font-medium text-gray-800">#{{ $ro->order_number }}</span>
+                                <span class="text-sm font-medium text-gray-800">{{ $ro->order_number }}</span>
                                 <span class="ms-2 text-xs text-gray-400">{{ $ro->created_at->format('Y/m/d') }}</span>
                                 <span class="ms-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ $ro->statusLabel() }}</span>
                             </div>
