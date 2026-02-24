@@ -45,11 +45,7 @@
 
 ## MEDIUM PRIORITY (Documentation & Process)
 
-### 7. LARAVEL_PLAN.md — Missing Current Task Section
-- **Problem:** No `## Current Task` section exists for session handoff. (wasetzon.mdc does NOT instruct this; correction from prior review.)
-- **Fix:** Add `## Current Task` at top of `LARAVEL_PLAN.md`. Format: "**Completed:** [last done]. **Next:** [what to do next]."
-
-### 8. Plan vs Implementation Drift
+### 7. Plan vs Implementation Drift
 - **lang paths:** Plan line 98 says `lang/ar/`, `lang/en/`; actual: `lang/ar.json`, `lang/en.json` + `lang/ar/`, `lang/en/` dirs. Both exist; plan is inconsistent.
 - **Language toggle:** LARAVEL_PLAN line 247 (Design System) says "header"; lines 16 and 91 say "footer". Actual: footer (`layouts/app.blade.php` line 222).
 - **Fix:** Update LARAVEL_PLAN.md line 247 to say "footer" not "header".
@@ -95,13 +91,12 @@
 
 1. Add `view-staff-dashboard` permission + re-seed
 2. Fix `.env.example` (APP_LOCALE=ar)
-3. Add `## Current Task` to LARAVEL_PLAN.md
-4. Fix LARAVEL_PLAN.md line 247 (header → footer)
-5. Run Phase 5 migration dry-run + validate
-6. Create Form Requests for OrderController
-7. Split OrderController
-8. Apply `role.throttle` to `/new-order` or remove middleware
-9. Fix bilingual violations (tracking companies, banks)
+3. Fix LARAVEL_PLAN.md line 247 (header → footer)
+4. Run Phase 5 migration dry-run + validate
+5. Create Form Requests for OrderController
+6. Split OrderController
+7. Apply `role.throttle` to `/new-order` or remove middleware
+8. Fix bilingual violations (tracking companies, banks)
 
 ---
 
@@ -132,7 +127,6 @@
 
 | Claim | Was | Corrected To |
 |-------|-----|--------------|
-| #7 Current Task | "wasetzon.mdc instructs..." | wasetzon.mdc does NOT contain that instruction. Problem: no Current Task section exists. |
 | #9 wasetzon.mdc duplicate | "Lines 49–94 duplicate lines 5–47" | **REMOVED.** wasetzon.mdc is 48 lines; no duplicate. Prior read showed merged context from other files. |
 | #8 Language toggle | "lines 16 and 92" | Line 92 is RTL config. Correct: lines 16 and 91 say "footer". Line 247 says "header". |
 | #3 Form Request | "plan require" | LARAVEL_PLAN does not explicitly require Form Requests. AGENTS.md does. |

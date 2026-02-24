@@ -54,17 +54,12 @@ AI-readable checklist. Fix in order of tiers. Be direct; no fluff.
 
 ## Tier 3 — Process and docs
 
-### 3.1 LARAVEL_PLAN Current Task section
-- **File:** `LARAVEL_PLAN.md`
-- **Issue:** No "Current Task" (or session handoff) section in LARAVEL_PLAN.md. (No project rule requires it; wasetzon.mdc and AGENTS.md do not mention it.)
-- **Fix:** Add `## Current Task` (or “Session handoff”) at top of LARAVEL_PLAN.md. Update each session: “Last completed: …”; “Next: …”.
-
-### 3.2 README not Wasetzon-specific
+### 3.1 README not Wasetzon-specific
 - **File:** `README.md`
 - **Issue:** Stock Laravel README. No local/production setup for this project.
 - **Fix:** Add short Wasetzon section: stack, required env (APP_LOCALE=ar, DB, Redis), install (composer, npm, migrate, seed), link to LARAVEL_PLAN.md and MIGRATION.md.
 
-### 3.3 New-order rate limit (optional)
+### 3.2 New-order rate limit (optional)
 - **Files:** `routes/web.php`, `app/Http/Middleware/RoleBasedThrottle.php`
 - **Issue:** Hourly limit enforced inside `NewOrder::submitOrder()`; route has no `role.throttle` middleware.
 - **Fix:** Optional. Add `->middleware('role.throttle:new-order')` to new-order route for defense in depth. Not required if in-component limit is sufficient.
@@ -102,9 +97,8 @@ AI-readable checklist. Fix in order of tiers. Be direct; no fluff.
 | 2.2 | OrderPolicy | OrderController.php, app/Policies/ |
 | 2.3 | env() in command | MigrateOrderFiles.php, config/ |
 | 2.4 | Email layout locale | emails/layout.blade.php, components/emails/layout.blade.php |
-| 3.1 | Current Task | LARAVEL_PLAN.md |
-| 3.2 | README | README.md |
-| 3.3 | Rate limit (opt) | routes/web.php |
+| 3.1 | README | README.md |
+| 3.2 | Rate limit (opt) | routes/web.php |
 | 4.1 | Auth tests | tests/Feature/ |
 | 4.2 | Status mapping | MIGRATION.md |
 | 4.3 | N+1 | OrderController, InboxController |
