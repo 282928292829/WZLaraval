@@ -172,23 +172,32 @@ class PostCommentResource extends Resource
                     }),
 
                 Action::make('spam')
-                    ->label(__('Spam'))
+                    ->label(__('Mark as spam'))
                     ->icon(Heroicon::OutlinedExclamationTriangle)
                     ->color('warning')
                     ->visible(fn (PostComment $record): bool => $record->status !== 'spam')
                     ->requiresConfirmation()
                     ->action(function (PostComment $record): void {
-                        $record->update(['status' => 'spam']);
+                        $record->update([
+                            'status_before_spam' => $record->status,
+                            'status' => 'spam',
+                        ]);
                         Notification::make()->title(__('Marked as spam'))->warning()->send();
                     }),
 
                 Action::make('unspam')
-                    ->label(__('Restore to Pending'))
+                    ->label(__('Not spam'))
                     ->icon(Heroicon::OutlinedArrowUturnLeft)
                     ->visible(fn (PostComment $record): bool => $record->status === 'spam')
                     ->action(function (PostComment $record): void {
-                        $record->update(['status' => 'pending']);
-                        Notification::make()->title(__('Restored to pending'))->success()->send();
+                        $restoreStatus = in_array($record->status_before_spam, ['pending', 'approved'], true)
+                            ? $record->status_before_spam
+                            : 'pending';
+                        $record->update([
+                            'status' => $restoreStatus,
+                            'status_before_spam' => null,
+                        ]);
+                        Notification::make()->title(__('Marked as not spam'))->success()->send();
                     }),
 
                 DeleteAction::make(),

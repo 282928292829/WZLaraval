@@ -20,6 +20,7 @@ class PostComment extends Model
         'guest_email',
         'body',
         'status',
+        'status_before_spam',
         'is_edited',
         'edited_at',
     ];
