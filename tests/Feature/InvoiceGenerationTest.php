@@ -176,6 +176,56 @@ test('editor can generate general invoice publish', function (): void {
     expect($order->files()->where('type', 'invoice')->count())->toBe(1);
 });
 
+test('editor can generate invoice with both languages (ar + en)', function (): void {
+    $editor = User::where('email', 'editor@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $editor->id]);
+
+    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+        'invoice_type' => InvoiceType::General->value,
+        'custom_amount' => 250,
+        'invoice_language' => 'both',
+        'action' => 'preview',
+    ]);
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+    $content = $response->streamedContent();
+    expect(strlen($content))->toBeGreaterThan(1000);
+});
+
+test('editor can generate second_final invoice with show_order_items and custom_lines', function (): void {
+    $editor = User::where('email', 'editor@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $editor->id]);
+    OrderItem::create([
+        'order_id' => $order->id,
+        'url' => 'https://example.com/product-a',
+        'unit_price' => 80,
+        'final_price' => 85,
+        'qty' => 2,
+        'currency' => 'SAR',
+    ]);
+
+    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+        'invoice_type' => InvoiceType::SecondFinal->value,
+        'second_product_value' => 170,
+        'second_agent_fee' => 25,
+        'second_shipping_cost' => 40,
+        'second_first_payment' => 100,
+        'second_remaining' => 135,
+        'show_order_items' => true,
+        'custom_lines' => [
+            ['label' => 'Custom Service', 'amount' => 15, 'visible' => true],
+            ['label' => 'Hidden Line', 'amount' => 10, 'visible' => false],
+        ],
+        'action' => 'preview',
+    ]);
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+    $content = $response->streamedContent();
+    expect(strlen($content))->toBeGreaterThan(500);
+});
+
 test('custom filename override is applied', function (): void {
     $editor = User::where('email', 'editor@wasetzon.test')->first();
     $order = Order::factory()->create(['user_id' => $editor->id, 'order_number' => 'ORD-12345']);

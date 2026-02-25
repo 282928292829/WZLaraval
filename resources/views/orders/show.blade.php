@@ -171,6 +171,10 @@
                             </template>
                         </button>
                     </div>
+                    <a href="#page-bottom" role="button"
+                        class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-colors no-underline">
+                        {{ __('Bottom') }}
+                    </a>
                     <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
                     <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_date') }}</strong> {{ $order->created_at->format('Y/m/d') }}</span>
                     @if ($isStaff)
@@ -1209,15 +1213,38 @@
 
                 {{-- ── Invoice Panel ───────────────────────────────────────── --}}
                 @can('generate-pdf-invoice')
+                    @php
+                        $invDef = $invoiceDefaults ?? [];
+                        $invDefLines = $invDef['custom_lines'] ?? [];
+                        $invDefLines = is_array($invDefLines) ? array_values($invDefLines) : [];
+                        if (empty($invDefLines)) { $invDefLines = [['label' => '', 'amount' => 0, 'visible' => true]]; }
+                    @endphp
                     <div x-show="openPanel === 'invoice'" x-collapse class="mt-4">
-                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-4" x-data="{
+                            invoiceType: 'first_payment',
+                            productValue: {{ json_encode((float)($invDef['second_product_value'] ?? 0)) }},
+                            agentFee: {{ json_encode((float)($invDef['second_agent_fee'] ?? 0)) }},
+                            shippingCost: {{ json_encode((float)($invDef['second_shipping_cost'] ?? 0)) }},
+                            firstPayment: {{ json_encode((float)($invDef['second_first_payment'] ?? 0)) }},
+                            remaining: {{ json_encode((float)($invDef['second_remaining'] ?? 0)) }},
+                            weight: {{ json_encode($invDef['second_weight'] ?? '') }},
+                            shippingCompany: {{ json_encode($invDef['second_shipping_company'] ?? '') }},
+                            showOrderItems: {{ ($invDef['show_order_items'] ?? false) ? 'true' : 'false' }},
+                            lines: {{ json_encode(array_map(fn($l) => ['label' => $l['label'] ?? '', 'amount' => (float)($l['amount'] ?? 0), 'visible' => (bool)($l['visible'] ?? true)], $invDefLines)) }},
+                            addLine() { this.lines.push({ label: '', amount: 0, visible: true }); },
+                            removeLine(i) { this.lines.splice(i, 1); },
+                            recalcRemaining() {
+                                const total = (parseFloat(this.productValue) || 0) + (parseFloat(this.agentFee) || 0) + (parseFloat(this.shippingCost) || 0);
+                                this.remaining = Math.max(0, total - (parseFloat(this.firstPayment) || 0));
+                            }
+                        }">
                             <h4 class="text-xs font-semibold text-gray-700 mb-3">📄 {{ __('orders.generate_invoice') }}</h4>
                             <form action="{{ route('orders.invoice.generate', $order->id) }}" method="POST" class="space-y-3">
                                 @csrf
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_type') }}</label>
-                                        <select name="invoice_type" required
+                                        <select name="invoice_type" required x-model="invoiceType"
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                             @foreach (\App\Enums\InvoiceType::options() as $value => $label)
                                                 <option value="{{ $value }}">{{ $label }}</option>
@@ -1225,36 +1252,107 @@
                                         </select>
                                     </div>
                                     <div>
+                                        <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_language') }}</label>
+                                        <select name="invoice_language"
+                                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                            <option value="">{{ __('orders.invoice_language_customer') }}</option>
+                                            <option value="ar">{{ __('orders.invoice_language_ar') }}</option>
+                                            <option value="en">{{ __('orders.invoice_language_en') }}</option>
+                                            <option value="both">{{ __('orders.invoice_language_both') }}</option>
+                                        </select>
+                                    </div>
+                                    <div x-show="invoiceType !== 'second_final'">
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_amount') }}</label>
                                         <input type="number" step="0.01" min="0" name="custom_amount" placeholder="{{ __('placeholder.amount') }}"
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2">
+                                <div x-show="invoiceType !== 'second_final'" class="flex items-center gap-2">
                                     <input type="hidden" name="show_original_currency" value="0">
                                     <input type="checkbox" name="show_original_currency" id="show_original_currency" value="1"
                                         class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
                                     <label for="show_original_currency" class="text-xs text-gray-600">{{ __('orders.invoice_show_original_currency') }}</label>
                                 </div>
-                                <div x-data="{ expanded: false }" class="border border-gray-200 rounded-xl p-3 bg-white/50">
-                                    <button type="button" @click="expanded = !expanded" class="text-xs font-medium text-gray-600 flex items-center gap-1">
-                                        <span x-text="expanded ? '▼' : '▶'">▶</span> {{ __('orders.invoice_fee_lines') }}
-                                    </button>
-                                    <div x-show="expanded" class="mt-3 space-y-2" x-cloak>
-                                        @foreach (['agent_fee' => 'fee_agent_fee', 'local_shipping' => 'fee_local_shipping', 'international_shipping' => 'fee_international_shipping', 'photo_fee' => 'fee_photo_fee', 'extra_packing' => 'fee_extra_packing'] as $field => $labelKey)
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <input type="hidden" name="include_{{ $field }}" value="0">
-                                            <input type="checkbox" name="include_{{ $field }}" id="include_{{ $field }}" value="1"
-                                                @if($order->{$field} > 0) checked @endif
-                                                class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
-                                            <label for="include_{{ $field }}" class="text-xs text-gray-600 w-36">{{ __('orders.'.$labelKey) }}</label>
-                                            <input type="number" step="0.01" min="0" name="fee_{{ $field }}" placeholder="0"
-                                                value="{{ $order->{$field} > 0 ? $order->{$field} : '' }}"
-                                                class="w-24 border border-gray-200 rounded-lg px-2 py-1 text-xs">
+
+                                {{-- Second/Final: compact number grid, auto-populated — minimal clicks —}}
+                                <div x-show="invoiceType === 'second_final'" x-cloak class="space-y-3">
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_product_value') }}</label>
+                                            <input type="number" step="0.01" min="0" name="second_product_value" x-model.number="productValue" @input="recalcRemaining()"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
-                                        @endforeach
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.fee_agent_fee') }}</label>
+                                            <input type="number" step="0.01" min="0" name="second_agent_fee" x-model.number="agentFee" @input="recalcRemaining()"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_shipping_cost') }}</label>
+                                            <input type="number" step="0.01" min="0" name="second_shipping_cost" x-model.number="shippingCost" @input="recalcRemaining()"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_first_payment') }}</label>
+                                            <input type="number" step="0.01" min="0" name="second_first_payment" x-model.number="firstPayment" @input="recalcRemaining()"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_remaining') }}</label>
+                                            <input type="number" step="0.01" min="0" name="second_remaining" x-model.number="remaining"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_weight') }}</label>
+                                            <input type="text" name="second_weight" x-model="weight" placeholder="e.g. 1.5 kg"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_shipping_company') }}</label>
+                                            <select name="second_shipping_company" x-model="shippingCompany"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                                <option value="">{{ __('orders.select_carrier') }}</option>
+                                                <option value="aramex">{{ __('carriers.aramex') }}</option>
+                                                <option value="smsa">{{ __('carriers.smsa') }}</option>
+                                                <option value="dhl">{{ __('carriers.dhl') }}</option>
+                                                <option value="fedex">{{ __('carriers.fedex') }}</option>
+                                                <option value="ups">{{ __('carriers.ups') }}</option>
+                                                <option value="other">{{ __('orders.carrier_other') }}</option>
+                                            </select>
+                                        </div>
                                     </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="hidden" name="show_order_items" value="0">
+                                        <input type="checkbox" name="show_order_items" id="show_order_items" value="1" x-model="showOrderItems"
+                                            class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
+                                        <label for="show_order_items" class="text-xs text-gray-600">{{ __('orders.invoice_show_order_items') }}</label>
+                                    </div>
+                                    <div class="border border-gray-200 rounded-lg p-2 bg-white/50">
+                                        <p class="text-xs font-medium text-gray-600 mb-1.5">{{ __('orders.invoice_custom_lines') }}</p>
+                                        <template x-for="(line, i) in lines" :key="i">
+                                            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                                                <input type="text" :name="'custom_lines[' + i + '][label]'" x-model="line.label" placeholder="{{ __('orders.invoice_line_label') }}"
+                                                    class="flex-1 min-w-20 border border-gray-200 rounded px-2 py-1 text-xs">
+                                                <input type="number" step="0.01" min="0" :name="'custom_lines[' + i + '][amount]'" x-model="line.amount" placeholder="0"
+                                                    class="w-16 border border-gray-200 rounded px-2 py-1 text-xs">
+                                                <input type="hidden" :name="'custom_lines[' + i + '][visible]'" :value="line.visible ? 1 : 0">
+                                                <label class="flex items-center gap-1 text-xs shrink-0">
+                                                    <input type="checkbox" :checked="line.visible" @change="line.visible = $event.target.checked"
+                                                        class="rounded border-gray-300 text-primary-500 focus:ring-primary-400" title="{{ __('Show') }}">
+                                                    {{ __('Show') }}
+                                                </label>
+                                                <button type="button" @click="removeLine(i)" class="text-red-500 hover:text-red-700 text-xs px-1">×</button>
+                                            </div>
+                                        </template>
+                                        <button type="button" @click="addLine()" class="text-xs text-primary-600 hover:text-primary-700 font-medium mt-1">
+                                            + {{ __('orders.invoice_add_line') }}
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="show_original_currency" value="0">
                                 </div>
+
+                                {{-- Fee lines --}}
+                                @include('orders.partials.invoice-fee-lines')
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_filename') }}</label>
                                     <input type="text" name="custom_filename" placeholder="{{ __('orders.invoice_custom_filename_placeholder') }}"
@@ -1865,6 +1963,12 @@
                     <button type="submit"
                         class="ms-auto bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 px-5 rounded-xl transition-colors">
                         {{ __('orders.send') }}
+                    </button>
+                    {{-- Top — same UI as send button --}}
+                    <button type="button"
+                        @click="const h = document.querySelector('nav')?.offsetHeight ?? 56; window.scrollTo({ top: h, behavior: 'smooth' })"
+                        class="bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 px-5 rounded-xl transition-colors">
+                        {{ __('Top') }}
                     </button>
                 </div>
             </form>
@@ -2526,33 +2630,5 @@ window.addEventListener('open-address-selector', () => {
 })();
 </script>
 @endpush
-
-{{-- Scroll to bottom FAB --}}
-<button type="button"
-    x-data="{
-        visible: true,
-        checkVisibility() {
-            const scrollBottom = document.documentElement.scrollHeight - window.innerHeight - 200;
-            this.visible = scrollBottom > 0 && window.scrollY < scrollBottom;
-        }
-    }"
-    x-init="
-        checkVisibility();
-        window.addEventListener('scroll', () => checkVisibility(), { passive: true });
-    "
-    x-show="visible"
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="opacity-0 scale-90"
-    x-transition:enter-end="opacity-100 scale-100"
-    x-transition:leave="transition ease-in duration-150"
-    x-transition:leave-start="opacity-100 scale-100"
-    x-transition:leave-end="opacity-0 scale-90"
-    @click="window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })"
-    class="fixed z-40 bottom-4 end-4 sm:bottom-6 sm:end-6 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
-    aria-label="{{ __('orders.scroll_to_bottom') }}">
-    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-    </svg>
-</button>
 
 </x-app-layout>

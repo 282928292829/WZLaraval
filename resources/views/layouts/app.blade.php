@@ -111,7 +111,7 @@
 
         {{-- Footer --}}
         @if ($minimalFooter ?? false)
-        <footer class="bg-gray-50 border-t border-gray-100 mt-auto py-4">
+        <footer id="page-bottom" class="bg-gray-50 border-t border-gray-100 mt-auto py-4 scroll-mt-14">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-gray-500">
                 <span>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</span>
                 <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">

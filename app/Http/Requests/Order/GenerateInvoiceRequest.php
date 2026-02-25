@@ -20,6 +20,7 @@ class GenerateInvoiceRequest extends FormRequest
         return [
             'action' => ['sometimes', 'in:preview,publish'],
             'invoice_type' => ['required', Rule::in($types)],
+            'invoice_language' => ['nullable', 'string', Rule::in(['ar', 'en', 'both'])],
             'custom_filename' => ['nullable', 'string', 'max:120', 'regex:/^[a-zA-Z0-9_\-\s\.\(\)\{\}\:]+$/'],
             'custom_notes' => ['nullable', 'string', 'max:1000'],
             'comment_message' => ['nullable', 'string', 'max:2000'],
@@ -33,6 +34,11 @@ class GenerateInvoiceRequest extends FormRequest
             'first_extras.*.amount' => ['nullable', 'numeric', 'min:0'],
 
             // Second/final
+            'show_order_items' => ['sometimes', 'boolean'],
+            'custom_lines' => ['nullable', 'array'],
+            'custom_lines.*.label' => ['nullable', 'string', 'max:200'],
+            'custom_lines.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'custom_lines.*.visible' => ['nullable', 'boolean'],
             'second_weight' => ['nullable', 'string', 'max:50'],
             'second_shipping_company' => ['nullable', 'string', 'max:100'],
             'second_product_value' => ['nullable', 'numeric', 'min:0'],

@@ -229,6 +229,12 @@ class SettingsPage extends Page
             // Invoice defaults
             'invoice_filename_pattern' => 'Invoice-{order_number}.pdf',
             'invoice_comment_default' => '',
+            'invoice_greeting' => '',
+            'invoice_confirmation' => '',
+            'invoice_payment_instructions' => '',
+            'invoice_footer_text' => '',
+            'invoice_show_order_items' => false,
+            'invoice_custom_lines' => [],
 
             // Hero section (homepage)
             'hero_title' => '',
@@ -1009,7 +1015,7 @@ class SettingsPage extends Page
                 // ── Invoice ───────────────────────────────────────────────────
                 Section::make(__('Invoice'))
                     ->icon(Heroicon::OutlinedDocumentText)
-                    ->description(__('Default filename pattern and comment text for generated invoices.'))
+                    ->description(__('Default filename pattern, comment text, and final invoice copy for generated invoices.'))
                     ->schema([
                         TextInput::make('invoice_filename_pattern')
                             ->label(__('Filename Pattern'))
@@ -1023,6 +1029,52 @@ class SettingsPage extends Page
                             ->rows(3)
                             ->placeholder(__('orders.invoice_attached'))
                             ->maxLength(500),
+
+                        TextInput::make('invoice_greeting')
+                            ->label(__('orders.invoice_greeting'))
+                            ->placeholder(__('orders.invoice_greeting_placeholder'))
+                            ->maxLength(120),
+
+                        TextInput::make('invoice_confirmation')
+                            ->label(__('orders.invoice_confirmation'))
+                            ->placeholder(__('orders.invoice_confirmation_placeholder'))
+                            ->maxLength(200),
+
+                        Textarea::make('invoice_payment_instructions')
+                            ->label(__('orders.invoice_payment_instructions'))
+                            ->placeholder(__('orders.invoice_payment_instructions_placeholder'))
+                            ->rows(3)
+                            ->maxLength(500),
+
+                        TextInput::make('invoice_footer_text')
+                            ->label(__('orders.invoice_footer_text'))
+                            ->placeholder(__('orders.invoice_footer_text_placeholder'))
+                            ->maxLength(200),
+
+                        Toggle::make('invoice_show_order_items')
+                            ->label(__('orders.invoice_show_order_items'))
+                            ->helperText(__('orders.invoice_show_order_items_help')),
+
+                        Repeater::make('invoice_custom_lines')
+                            ->label(__('orders.invoice_custom_lines'))
+                            ->helperText(__('orders.invoice_custom_lines_help'))
+                            ->schema([
+                                TextInput::make('label')
+                                    ->label(__('orders.invoice_line_label'))
+                                    ->required()
+                                    ->maxLength(200),
+                                TextInput::make('amount')
+                                    ->label(__('orders.amount'))
+                                    ->numeric()
+                                    ->default(0)
+                                    ->required(),
+                                Toggle::make('visible')
+                                    ->label(__('Show'))
+                                    ->default(true),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(0)
+                            ->addActionLabel(__('orders.invoice_add_line')),
                     ])
                     ->columns(1)
                     ->collapsible(),
@@ -1215,6 +1267,12 @@ class SettingsPage extends Page
             'carrier_url_ups' => 'shipping',
             'invoice_filename_pattern' => 'invoice',
             'invoice_comment_default' => 'invoice',
+            'invoice_greeting' => 'invoice',
+            'invoice_confirmation' => 'invoice',
+            'invoice_payment_instructions' => 'invoice',
+            'invoice_footer_text' => 'invoice',
+            'invoice_show_order_items' => 'invoice',
+            'invoice_custom_lines' => 'invoice',
             'whatsapp' => 'contact',
             'contact_email' => 'contact',
             'commercial_registration' => 'contact',
@@ -1223,6 +1281,7 @@ class SettingsPage extends Page
         $booleanKeys = [
             'email_enabled', 'email_registration', 'email_welcome',
             'email_password_reset', 'email_comment_notification',
+            'invoice_show_order_items',
             'google_login_enabled',
             'exchange_rates_auto_fetch',
             'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
@@ -1254,7 +1313,7 @@ class SettingsPage extends Page
             'commission_threshold_sar', 'commission_rate_above', 'commission_flat_below',
         ];
 
-        $jsonKeys = ['order_form_fields'];
+        $jsonKeys = ['order_form_fields', 'invoice_custom_lines'];
 
         // Keys not saved to settings table (handled separately or read-only)
         $skipKeys = ['exchange_rates', 'currencies'];
