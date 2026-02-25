@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     <x-slot name="title">{{ __('blog.blog') }}</x-slot>
     <x-slot name="description">{{ __('blog.blog_description') }}</x-slot>
 

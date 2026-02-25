@@ -20,6 +20,7 @@ class GenerateInvoiceRequest extends FormRequest
         return [
             'action' => ['sometimes', 'in:preview,publish'],
             'invoice_type' => ['required', Rule::in($types)],
+            'custom_filename' => ['nullable', 'string', 'max:120', 'regex:/^[a-zA-Z0-9_\-\s\.\(\)\{\}\:]+$/'],
             'custom_notes' => ['nullable', 'string', 'max:1000'],
             'comment_message' => ['nullable', 'string', 'max:2000'],
             'show_original_currency' => ['sometimes', 'boolean'],

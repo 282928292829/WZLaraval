@@ -1146,7 +1146,7 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100">
                 <h2 class="text-sm font-semibold text-gray-900">{{ __('account.notifications_heading') }}</h2>
-                <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notifications_hint') }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ __('account.notifications_hint', ['site_name' => $site_name ?? config('app.name')]) }}</p>
             </div>
 
             <form method="POST" action="{{ route('account.notifications.update') }}" class="px-5 py-5 space-y-5">

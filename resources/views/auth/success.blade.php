@@ -12,7 +12,7 @@
             {{ __('Account Created Successfully!') }}
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-            {{ __('Welcome to Wasetzon. You will be redirected to your orders in') }}
+            {{ __('Welcome to Wasetzon. You will be redirected to your orders in', ['site_name' => $site_name ?? config('app.name')]) }}
             <span id="countdown" class="font-semibold text-primary-600">5</span>
             {{ __('seconds.') }}
         </p>

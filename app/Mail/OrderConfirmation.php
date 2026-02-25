@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Models\Setting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,8 +19,13 @@ class OrderConfirmation extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $siteName = Setting::get('site_name') ?: config('app.name');
+
         return new Envelope(
-            subject: __('orders.order_confirmation_email_subject', ['number' => $this->order->order_number]),
+            subject: __('orders.order_confirmation_email_subject', [
+                'number' => $this->order->order_number,
+                'site_name' => $siteName,
+            ]),
         );
     }
 

@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     <x-slot name="header">
         <div class="flex items-center justify-between gap-3">
             <div>

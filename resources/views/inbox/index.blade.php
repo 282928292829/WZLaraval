@@ -17,7 +17,7 @@
     ];
 @endphp
 
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
 
 {{-- ── Page header ──────────────────────────────────────────────────────────── --}}
 <div class="bg-white border-b border-gray-100">

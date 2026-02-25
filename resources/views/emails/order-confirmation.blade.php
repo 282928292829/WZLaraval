@@ -1,9 +1,12 @@
-<x-emails.layout :subject="__('orders.order_confirmation_email_subject', ['number' => $order->order_number])">
+@php
+    $siteName = $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name');
+@endphp
+<x-emails.layout :subject="__('orders.order_confirmation_email_subject', ['number' => $order->order_number, 'site_name' => $siteName])">
 
     <p class="greeting">{{ __('email.order_greeting') }} {{ $order->user->name ?? __('email.greeting_fallback') }}{{ __('email.comma') }}</p>
 
     <p class="intro">
-        {{ __('email.order_intro') }}
+        {{ __('email.order_intro', ['site_name' => $siteName]) }}
     </p>
 
     {{-- Order summary card --}}

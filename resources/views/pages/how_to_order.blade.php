@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     @include('components.page-seo-slots', ['page' => $page])
     @php
         $body = app()->getLocale() === 'ar'

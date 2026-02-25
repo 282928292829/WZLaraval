@@ -1,9 +1,12 @@
-<x-emails.layout :subject="__('email.welcome.subject')">
+@php
+    $siteName = $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name');
+@endphp
+<x-emails.layout :subject="__('email.welcome.subject', ['site_name' => $siteName])">
 
     <p class="greeting">{{ __('email.welcome.greeting') }} {{ $user->name }} 🎉</p>
 
     <p class="intro">
-        {{ __('email.welcome.intro') }}
+        {{ __('email.welcome.intro', ['site_name' => $siteName]) }}
     </p>
 
     {{-- What you can do --}}

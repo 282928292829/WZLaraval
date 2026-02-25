@@ -271,9 +271,12 @@ class OrderController extends Controller
         }
 
         $invoiceCount = $order->files()->where('type', 'invoice')->count() + 1;
-        $filename = $invoiceCount > 1
-            ? 'Invoice-'.$order->order_number.'-'.$invoiceCount.'.pdf'
-            : 'Invoice-'.$order->order_number.'.pdf';
+        $filename = $this->resolveInvoiceFilename(
+            $order,
+            $invoiceType,
+            $invoiceCount,
+            $validated['custom_filename'] ?? null
+        );
 
         $settings = $this->invoiceSettings();
 
@@ -418,8 +421,10 @@ class OrderController extends Controller
                 ],
             ],
             'default_font' => $isRtl ? 'ibmplexarabic' : 'dejavusans',
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
+            // Disable auto font selection — we explicitly use ibmplexarabic for RTL.
+            // autoLangToFont would map Arabic to xbriyaz (not installed), causing weird fallback.
+            'autoScriptToLang' => false,
+            'autoLangToFont' => false,
         ]);
         $mpdf->SetTitle($isRtl ? 'فاتورة رقم '.$order->order_number : 'Invoice '.$order->order_number);
         if ($isRtl) {
@@ -428,6 +433,46 @@ class OrderController extends Controller
         $mpdf->WriteHTML($html);
 
         return $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+    }
+
+    private function resolveInvoiceFilename(Order $order, string $invoiceType, int $invoiceCount, ?string $customOverride): string
+    {
+        $replacements = [
+            '{order_number}' => $order->order_number,
+            '{date}' => now()->format('Y-m-d'),
+            '{type}' => $invoiceType,
+            '{site_name}' => $this->sanitizeFilenamePart(Setting::get('site_name') ?: config('app.name')),
+            '{count}' => (string) $invoiceCount,
+        ];
+
+        $pattern = $customOverride;
+        if (trim((string) $pattern) === '') {
+            $pattern = trim((string) Setting::get('invoice_filename_pattern', ''));
+        }
+        if (trim($pattern) === '') {
+            $pattern = $invoiceCount > 1
+                ? 'Invoice-{order_number}-{count}.pdf'
+                : 'Invoice-{order_number}.pdf';
+        }
+
+        $filename = str_replace(array_keys($replacements), array_values($replacements), $pattern);
+        $filename = $this->sanitizeFilename($filename);
+
+        return $filename !== '' ? $filename : 'Invoice-'.$order->order_number.'.pdf';
+    }
+
+    private function sanitizeFilename(string $filename): string
+    {
+        $filename = preg_replace('/[^\p{L}\p{N}\s_\-\.\(\)]/u', '', $filename) ?? $filename;
+        $filename = preg_replace('/\.\.+/', '.', $filename) ?? $filename;
+        $filename = trim($filename, " \t\n\r\0\x0B/\\");
+
+        return str_ends_with(strtolower($filename), '.pdf') ? $filename : $filename.'.pdf';
+    }
+
+    private function sanitizeFilenamePart(string $value): string
+    {
+        return preg_replace('/[^\p{L}\p{N}\s_\-]/u', '', $value) ?? $value;
     }
 
     private function resolveInvoiceCommentMessage(string $message, float $total, Order $order): string
@@ -701,7 +746,7 @@ class OrderController extends Controller
             'recipient_email' => $order->user->email,
             'recipient_name' => $order->user->name,
             'type' => 'order_confirmation',
-            'subject' => __('orders.order_confirmation_email_subject', ['number' => $order->order_number]),
+            'subject' => __('orders.order_confirmation_email_subject', ['number' => $order->order_number, 'site_name' => Setting::get('site_name') ?: config('app.name')]),
             'queued' => true,
             'status' => 'queued',
         ]);

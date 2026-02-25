@@ -129,15 +129,15 @@
 <body>
 <div class="wrapper">
     <div class="header">
-        <h1>{{ config('app.name') }}</h1>
-        <p>{{ __('emails.layout.tagline') }}</p>
+        <h1>{{ $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name') }}</h1>
+        <p>{{ __('emails.layout.tagline', ['site_name' => $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name')]) }}</p>
     </div>
     <div class="body">
         {{ $slot }}
     </div>
     <div class="footer">
         <p>
-            {{ __('emails.layout.footer') }}
+            {{ __('emails.layout.footer', ['site_name' => $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name')]) }}
         </p>
         <p style="margin-top:8px;">
             <a href="{{ config('app.url') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) ?? 'wasetzon.com' }}</a>

@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     @include('components.page-seo-slots', ['page' => $page])
 
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -7,10 +7,10 @@
         <div class="bg-white rounded-xl shadow-sm border-t-4 border-primary-500 p-6 mb-8 text-center">
             <div class="text-5xl mb-3">⭐</div>
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                {{ __('membership.wasetzon_membership') }}
+                {{ __('membership.wasetzon_membership', ['site_name' => $site_name ?? config('app.name')]) }}
             </h1>
             <p class="text-gray-500 text-sm sm:text-base">
-                {{ __('membership.enjoy_exclusive_benefits_and_faster') }}
+                {{ __('membership.enjoy_exclusive_benefits_and_faster', ['site_name' => $site_name ?? config('app.name')]) }}
             </p>
         </div>
 

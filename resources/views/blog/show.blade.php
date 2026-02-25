@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     <x-slot name="title">{{ $post->getTitle() }}</x-slot>
     <x-slot name="description">{{ $post->getExcerpt() ?: (app()->getLocale() === 'ar' ? ($post->seo_description_ar ?? '') : ($post->seo_description_en ?? '')) }}</x-slot>
     @if($post->featured_image)

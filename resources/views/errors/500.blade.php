@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('errors.page_title_500') }}</title>
+    <title>{{ __('errors.page_title_500', ['site_name' => $site_name ?? \App\Models\Setting::get('site_name') ?? config('app.name')]) }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600|ibm-plex-sans-arabic:400,500,600&display=swap" rel="stylesheet">
     <style>

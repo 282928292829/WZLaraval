@@ -226,6 +226,10 @@ class SettingsPage extends Page
             'carrier_url_fedex' => 'https://www.fedextrack/?trknbr={tracking}',
             'carrier_url_ups' => 'https://www.ups.com/track?tracknum={tracking}',
 
+            // Invoice defaults
+            'invoice_filename_pattern' => 'Invoice-{order_number}.pdf',
+            'invoice_comment_default' => '',
+
             // Hero section (homepage)
             'hero_title' => '',
             'hero_subtitle' => '',
@@ -1002,6 +1006,27 @@ class SettingsPage extends Page
                     ])
                     ->collapsible(),
 
+                // ── Invoice ───────────────────────────────────────────────────
+                Section::make(__('Invoice'))
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->description(__('Default filename pattern and comment text for generated invoices.'))
+                    ->schema([
+                        TextInput::make('invoice_filename_pattern')
+                            ->label(__('Filename Pattern'))
+                            ->helperText(__('Placeholders: {order_number}, {date}, {type}, {site_name}, {count}. Leave empty for default.'))
+                            ->placeholder('Invoice-{order_number}.pdf')
+                            ->maxLength(120),
+
+                        Textarea::make('invoice_comment_default')
+                            ->label(__('Default Comment Message'))
+                            ->helperText(__('Default text when posting invoice as comment. Placeholders: {amount}, {order_number}, {date}, {currency}'))
+                            ->rows(3)
+                            ->placeholder(__('orders.invoice_attached'))
+                            ->maxLength(500),
+                    ])
+                    ->columns(1)
+                    ->collapsible(),
+
                 // ── Contact ───────────────────────────────────────────────────
                 Section::make(__('Contact'))
                     ->icon(Heroicon::OutlinedPhone)
@@ -1188,6 +1213,8 @@ class SettingsPage extends Page
             'carrier_url_dhl' => 'shipping',
             'carrier_url_fedex' => 'shipping',
             'carrier_url_ups' => 'shipping',
+            'invoice_filename_pattern' => 'invoice',
+            'invoice_comment_default' => 'invoice',
             'whatsapp' => 'contact',
             'contact_email' => 'contact',
             'commercial_registration' => 'contact',

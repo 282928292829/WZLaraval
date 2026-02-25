@@ -73,7 +73,7 @@
     );
 @endphp
 
-<x-app-layout :hide-footer="true">
+<x-app-layout :minimal-footer="true">
 
 {{-- ── Page header ──────────────────────────────────────────────────────────── --}}
 <div class="max-w-4xl mx-auto px-4 py-4 space-y-5">
@@ -1002,7 +1002,21 @@
                                 : 'bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200'">
                             📋 {{ __('orders.btn_update_status') }}
                         </button>
-                        {{-- Mark Paid / Mark Shipped / Request Info quick buttons --}}
+                    @endcan
+
+                    {{-- 📄 إنشاء فاتورة (second) --}}
+                    @if ($showCreateInvoice)
+                        <button type="button" @click="togglePanel('invoice')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                            :class="openPanel === 'invoice'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'">
+                            📄 {{ __('orders.btn_create_invoice') }}
+                        </button>
+                    @endif
+
+                    {{-- Mark Paid / Mark Shipped / Request Info quick buttons --}}
+                    @can('update-order-status')
                         @php
                             $showMarkPaid    = (bool) \App\Models\Setting::get('qa_mark_paid', true);
                             $showMarkShipped = (bool) \App\Models\Setting::get('qa_mark_shipped', true);
@@ -1063,17 +1077,6 @@
                             </form>
                         @endif
                     @endcan
-
-                    {{-- 📄 إنشاء فاتورة (second most used) --}}
-                    @if ($showCreateInvoice)
-                        <button type="button" @click="togglePanel('invoice')"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-                            :class="openPanel === 'invoice'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'">
-                            📄 {{ __('orders.btn_create_invoice') }}
-                        </button>
-                    @endif
 
                     {{-- 💰 تتبع الدفع --}}
                     @if ($showPaymentTracking)
@@ -1214,10 +1217,11 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_type') }}</label>
-                                        <select name="invoice_type"
+                                        <select name="invoice_type" required
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                            <option value="detailed">{{ __('orders.invoice_detailed') }}</option>
-                                            <option value="simple">{{ __('orders.invoice_simple') }}</option>
+                                            @foreach (\App\Enums\InvoiceType::options() as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
                                         </select>
                                     </div>
                                     <div>
@@ -1250,6 +1254,12 @@
                                         </div>
                                         @endforeach
                                     </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_filename') }}</label>
+                                    <input type="text" name="custom_filename" placeholder="{{ __('orders.invoice_custom_filename_placeholder') }}"
+                                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                    <p class="text-xs text-gray-400 mt-1">{{ __('orders.invoice_custom_filename_hint') }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_notes') }}</label>
@@ -2516,5 +2526,33 @@ window.addEventListener('open-address-selector', () => {
 })();
 </script>
 @endpush
+
+{{-- Scroll to bottom FAB --}}
+<button type="button"
+    x-data="{
+        visible: true,
+        checkVisibility() {
+            const scrollBottom = document.documentElement.scrollHeight - window.innerHeight - 200;
+            this.visible = scrollBottom > 0 && window.scrollY < scrollBottom;
+        }
+    }"
+    x-init="
+        checkVisibility();
+        window.addEventListener('scroll', () => checkVisibility(), { passive: true });
+    "
+    x-show="visible"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 scale-90"
+    x-transition:enter-end="opacity-100 scale-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100 scale-100"
+    x-transition:leave-end="opacity-0 scale-90"
+    @click="window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })"
+    class="fixed z-40 bottom-4 end-4 sm:bottom-6 sm:end-6 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+    aria-label="{{ __('orders.scroll_to_bottom') }}">
+    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+    </svg>
+</button>
 
 </x-app-layout>

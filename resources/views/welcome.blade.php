@@ -14,7 +14,7 @@
     $heroShowNameNotice = (bool) \App\Models\Setting::get('hero_show_name_change_notice', true);
     $heroInputRequired = (bool) \App\Models\Setting::get('hero_input_required', false);
 @endphp
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
     {{-- Hero --}}
     <section class="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-amber-50">
         <div class="absolute inset-0 pointer-events-none opacity-40"
@@ -155,7 +155,7 @@
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-                    {{ __('Why Wasetzon?') }}
+                    {{ __('Why Wasetzon?', ['site_name' => $site_name ?? config('app.name')]) }}
                 </h2>
             </div>
 
