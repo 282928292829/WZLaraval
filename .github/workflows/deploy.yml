@@ -21,6 +21,12 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Ensure deploy directory exists
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "mkdir -p ${{ secrets.DEPLOY_PATH }} && chown www-data:www-data ${{ secrets.DEPLOY_PATH }}"
+
       - name: Deploy via rsync
         run: |
           rsync -avz --delete \
@@ -44,6 +50,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd $DEPLOY_PATH && \
+            [ -f .env ] || (cp .env.example .env && php artisan key:generate --force) && \
             composer install --no-dev --optimize-autoloader --no-interaction && \
             npm ci && npm run build && \
             php artisan migrate --force && \
@@ -51,6 +58,8 @@ jobs:
             php artisan route:cache && \
             php artisan view:cache && \
             (php artisan storage:link 2>/dev/null || true) && \
+            chown -R www-data:www-data storage bootstrap/cache database 2>/dev/null || true && \
+            chmod -R 775 storage bootstrap/cache database 2>/dev/null || true && \
             echo '✅ Deployment complete'"
 
       - name: Configure Nginx
