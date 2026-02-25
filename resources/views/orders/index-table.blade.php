@@ -102,10 +102,10 @@
                     <table class="w-full text-sm min-w-[320px]">
                         <thead class="bg-gray-50 border-b border-gray-100">
                             <tr>
-                                <th class="px-3 py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Order #') }}</th>
-                                <th class="px-3 py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Date') }}</th>
-                                <th class="px-3 py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Status') }}</th>
-                                <th class="px-3 py-2 text-start text-[10px] font-semibold text-gray-600 uppercase w-16">{{ __('Open') }}</th>
+                                <th class="px-3 py-3 sm:py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Order #') }}</th>
+                                <th class="px-3 py-3 sm:py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Date') }}</th>
+                                <th class="px-3 py-3 sm:py-2 text-start text-[10px] font-semibold text-gray-600 uppercase">{{ __('Status') }}</th>
+                                <th class="px-3 py-3 sm:py-2 text-start text-[10px] font-semibold text-gray-600 uppercase w-16">{{ __('Open') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -128,7 +128,7 @@
                                     <td class="px-3 py-2 font-bold text-primary-600 text-xs">{{ $order->order_number }}</td>
                                     <td class="px-3 py-2 text-gray-600 text-xs">{{ $order->created_at->format('Y-m-d') }}</td>
                                     <td class="px-3 py-2">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ring-1 ring-inset {{ $statusClasses }}">{{ $order->statusLabel() }}</span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ring-1 ring-inset max-w-[100px] sm:max-w-none truncate sm:whitespace-normal sm:overflow-visible {{ $statusClasses }}" title="{{ $order->statusLabel() }}">{{ $order->statusLabel() }}</span>
                                     </td>
                                     <td class="px-3 py-2" onclick="event.stopPropagation()">
                                         <a href="{{ route('orders.show', $order->id) }}" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded">{{ __('Open') }}</a>
