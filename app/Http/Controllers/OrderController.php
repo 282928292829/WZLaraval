@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceType;
 use App\Exports\OrderExport;
 use App\Http\Requests\Order\BulkUpdateOrdersRequest;
 use App\Http\Requests\Order\CustomerMergeRequestRequest;
@@ -152,74 +153,131 @@ class OrderController extends Controller
         $validated = $request->validated();
         $action = $validated['action'] ?? 'publish';
 
-        $invoiceType = $validated['invoice_type'] ?? 'detailed';
+        $invoiceType = $validated['invoice_type'] ?? InvoiceType::FirstPayment->value;
         $notes = $validated['custom_notes'] ?? '';
         $showOriginalCurrency = filter_var($validated['show_original_currency'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $lines = [];
-        $itemsSubtotal = 0;
+        $total = 0;
+        $extra = [];
 
-        if ($invoiceType === 'detailed') {
-            foreach ($order->items as $item) {
-                $priceSar = (float) ($item->final_price ?? $item->unit_price ?? 0);
-                $lineTotalSar = $priceSar * ($item->qty ?? 1);
-                if ($lineTotalSar > 0) {
-                    $desc = $item->url
-                        ? (strlen($item->url) > 60 ? substr($item->url, 0, 57).'...' : $item->url)
-                        : ($item->notes ?: __('orders.item').' #'.(count($lines) + 1));
-                    $currency = $item->currency ?: 'SAR';
-                    $unitOriginal = (float) ($item->unit_price ?? 0);
-                    $lines[] = [
-                        'description' => $desc,
-                        'qty' => $item->qty,
-                        'unit_price' => number_format($priceSar, 2),
-                        'unit_price_original' => $unitOriginal,
-                        'currency' => $currency,
-                        'line_total' => $lineTotalSar,
-                        'show_original' => $showOriginalCurrency && $currency !== 'SAR' && $unitOriginal > 0,
-                    ];
-                    $itemsSubtotal += $lineTotalSar;
+        switch ($invoiceType) {
+            case InvoiceType::FirstPayment->value:
+                $itemsTotal = (float) ($validated['first_items_total'] ?? 0);
+                $agentFee = (float) ($validated['first_agent_fee'] ?? 0);
+                $lines[] = ['description' => __('orders.invoice_items_total'), 'qty' => 1, 'unit_price' => number_format($itemsTotal, 2), 'line_total' => $itemsTotal, 'is_fee' => false];
+                if ($agentFee > 0) {
+                    $lines[] = ['description' => __('orders.fee_agent_fee'), 'qty' => 1, 'unit_price' => number_format($agentFee, 2), 'line_total' => $agentFee, 'is_fee' => true];
                 }
-            }
+                $extras = $validated['first_extras'] ?? [];
+                foreach (is_array($extras) ? $extras : [] as $e) {
+                    $label = trim($e['label'] ?? '');
+                    $amt = (float) ($e['amount'] ?? 0);
+                    if ($label !== '' && $amt > 0) {
+                        $lines[] = ['description' => $label, 'qty' => 1, 'unit_price' => number_format($amt, 2), 'line_total' => $amt, 'is_fee' => true];
+                    }
+                }
+                $total = array_sum(array_column($lines, 'line_total'));
+                break;
 
-            $feeConfig = [
-                'agent_fee' => ['key' => 'include_agent_fee', 'override' => 'fee_agent_fee', 'label' => 'orders.fee_agent_fee'],
-                'local_shipping' => ['key' => 'include_local_shipping', 'override' => 'fee_local_shipping', 'label' => 'orders.fee_local_shipping'],
-                'international_shipping' => ['key' => 'include_international_shipping', 'override' => 'fee_international_shipping', 'label' => 'orders.fee_international_shipping'],
-                'photo_fee' => ['key' => 'include_photo_fee', 'override' => 'fee_photo_fee', 'label' => 'orders.fee_photo_fee'],
-                'extra_packing' => ['key' => 'include_extra_packing', 'override' => 'fee_extra_packing', 'label' => 'orders.fee_extra_packing'],
-            ];
-            foreach ($feeConfig as $field => $cfg) {
-                if (empty($validated[$cfg['key']])) {
-                    continue;
+            case InvoiceType::SecondFinal->value:
+                $productValue = (float) ($validated['second_product_value'] ?? 0);
+                $agentFee = (float) ($validated['second_agent_fee'] ?? 0);
+                $shippingCost = (float) ($validated['second_shipping_cost'] ?? 0);
+                $firstPayment = (float) ($validated['second_first_payment'] ?? 0);
+                $remaining = (float) ($validated['second_remaining'] ?? 0);
+                $extra['weight'] = $validated['second_weight'] ?? '';
+                $extra['shipping_company'] = $validated['second_shipping_company'] ?? '';
+                if ($productValue > 0) {
+                    $lines[] = ['description' => __('orders.invoice_product_value'), 'qty' => 1, 'unit_price' => number_format($productValue, 2), 'line_total' => $productValue, 'is_fee' => false];
                 }
-                $amount = isset($validated[$cfg['override']]) && $validated[$cfg['override']] !== ''
-                    ? (float) $validated[$cfg['override']]
-                    : (float) ($order->{$field} ?? 0);
-                if ($amount > 0) {
-                    $lines[] = [
-                        'description' => __($cfg['label']),
-                        'qty' => 1,
-                        'unit_price' => number_format($amount, 2),
-                        'unit_price_original' => 0,
-                        'currency' => 'SAR',
-                        'line_total' => $amount,
-                        'show_original' => false,
-                        'is_fee' => true,
-                    ];
-                    $itemsSubtotal += $amount;
+                if ($agentFee > 0) {
+                    $lines[] = ['description' => __('orders.fee_agent_fee'), 'qty' => 1, 'unit_price' => number_format($agentFee, 2), 'line_total' => $agentFee, 'is_fee' => true];
                 }
-            }
+                if ($shippingCost > 0) {
+                    $lines[] = ['description' => __('orders.invoice_shipping_cost'), 'qty' => 1, 'unit_price' => number_format($shippingCost, 2), 'line_total' => $shippingCost, 'is_fee' => true];
+                }
+                $total = $productValue + $agentFee + $shippingCost;
+                $extra['first_payment'] = $firstPayment;
+                $extra['remaining'] = $remaining > 0 ? $remaining : max(0, $total - $firstPayment);
+                break;
+
+            case InvoiceType::ItemsCost->value:
+                $formItems = $validated['items'] ?? [];
+                if (! empty($formItems)) {
+                    foreach ($formItems as $it) {
+                        $desc = trim($it['description'] ?? '');
+                        $qty = (int) ($it['qty'] ?? 1) ?: 1;
+                        $unitPrice = (float) ($it['unit_price'] ?? 0);
+                        $currency = trim($it['currency'] ?? 'SAR') ?: 'SAR';
+                        $lineTotal = $unitPrice * $qty;
+                        if ($lineTotal > 0 || $desc !== '') {
+                            $unitOriginal = $unitPrice;
+                            $lines[] = [
+                                'description' => $desc ?: __('orders.item').' #'.(count($lines) + 1),
+                                'qty' => $qty,
+                                'unit_price' => number_format($unitPrice, 2),
+                                'unit_price_original' => $unitOriginal,
+                                'currency' => $currency,
+                                'line_total' => $lineTotal,
+                                'show_original' => $showOriginalCurrency && $currency !== 'SAR' && $unitOriginal > 0,
+                                'is_fee' => false,
+                            ];
+                        }
+                    }
+                } else {
+                    foreach ($order->items as $item) {
+                        $priceSar = (float) ($item->final_price ?? $item->unit_price ?? 0);
+                        $lineTotalSar = $priceSar * ($item->qty ?? 1);
+                        if ($lineTotalSar > 0) {
+                            $desc = $item->url
+                                ? (strlen($item->url) > 60 ? substr($item->url, 0, 57).'...' : $item->url)
+                                : ($item->notes ?: __('orders.item').' #'.(count($lines) + 1));
+                            $currency = $item->currency ?: 'SAR';
+                            $unitOriginal = (float) ($item->unit_price ?? 0);
+                            $lines[] = [
+                                'description' => $desc,
+                                'qty' => $item->qty,
+                                'unit_price' => number_format($priceSar, 2),
+                                'unit_price_original' => $unitOriginal,
+                                'currency' => $currency,
+                                'line_total' => $lineTotalSar,
+                                'show_original' => $showOriginalCurrency && $currency !== 'SAR' && $unitOriginal > 0,
+                                'is_fee' => false,
+                            ];
+                        }
+                    }
+                }
+                $total = array_sum(array_column($lines, 'line_total'));
+                break;
+
+            case InvoiceType::General->value:
+                $generalLines = $validated['general_lines'] ?? [];
+                foreach (is_array($generalLines) ? $generalLines : [] as $gl) {
+                    $label = trim($gl['label'] ?? '');
+                    $amt = (float) ($gl['amount'] ?? 0);
+                    if ($label !== '' || $amt > 0) {
+                        $lines[] = ['description' => $label ?: __('orders.invoice_line_item'), 'qty' => 1, 'unit_price' => number_format($amt, 2), 'line_total' => $amt, 'is_fee' => false];
+                    }
+                }
+                $total = array_sum(array_column($lines, 'line_total'));
+                break;
+
+            default:
+                $total = (float) ($validated['custom_amount'] ?? 0);
+                if ($total > 0) {
+                    $lines[] = ['description' => __('orders.invoice_total'), 'qty' => 1, 'unit_price' => number_format($total, 2), 'line_total' => $total, 'is_fee' => false];
+                }
         }
-
-        $total = ! empty($validated['custom_amount']) ? (float) $validated['custom_amount'] : $itemsSubtotal;
 
         $invoiceCount = $order->files()->where('type', 'invoice')->count() + 1;
         $filename = $invoiceCount > 1
             ? 'Invoice-'.$order->order_number.'-'.$invoiceCount.'.pdf'
             : 'Invoice-'.$order->order_number.'.pdf';
 
-        $pdfContent = $this->buildInvoicePdf($order, $lines, $total, $invoiceType, $notes, $filename);
+        $settings = $this->invoiceSettings();
+
+        $pdfContent = $this->buildInvoicePdf($order, $lines, $total, $invoiceType, $notes, $filename, $extra, $settings);
 
         if ($action === 'preview') {
             return response()->streamDownload(
@@ -261,15 +319,26 @@ class OrderController extends Controller
             'type' => 'invoice',
         ]);
 
-        if ($invoiceType === 'detailed') {
-            $feeFields = ['agent_fee', 'local_shipping', 'international_shipping', 'photo_fee', 'extra_packing'];
+        if (in_array($invoiceType, [InvoiceType::FirstPayment->value, InvoiceType::SecondFinal->value], true)) {
             $updates = [];
-            foreach ($feeFields as $field) {
-                if (! empty($validated['include_'.$field])) {
-                    $val = isset($validated['fee_'.$field]) && $validated['fee_'.$field] !== ''
-                        ? (float) $validated['fee_'.$field]
-                        : (float) ($order->{$field} ?? 0);
-                    $updates[$field] = $val;
+            if ($invoiceType === InvoiceType::FirstPayment->value && isset($validated['first_agent_fee'])) {
+                $v = (float) $validated['first_agent_fee'];
+                if ($v > 0) {
+                    $updates['agent_fee'] = $v;
+                }
+            }
+            if ($invoiceType === InvoiceType::SecondFinal->value) {
+                if (isset($validated['second_agent_fee'])) {
+                    $v = (float) $validated['second_agent_fee'];
+                    if ($v > 0) {
+                        $updates['agent_fee'] = $v;
+                    }
+                }
+                if (isset($validated['second_shipping_cost'])) {
+                    $v = (float) $validated['second_shipping_cost'];
+                    if ($v > 0) {
+                        $updates['international_shipping'] = $v;
+                    }
                 }
             }
             if (! empty($updates)) {
@@ -280,7 +349,34 @@ class OrderController extends Controller
         return redirect()->route('orders.show', $id)->with('success', __('orders.invoice_generated'));
     }
 
-    private function buildInvoicePdf(Order $order, array $lines, float $total, string $invoiceType, string $notes, string $filename): string
+    /** @return array<string, mixed> */
+    private function invoiceSettings(): array
+    {
+        $siteName = Setting::get('site_name') ?: config('app.name');
+        $invoiceSiteName = trim((string) Setting::get('invoice_site_name', ''));
+        $invoiceLogo = Setting::get('invoice_logo', '');
+        $logoImage = Setting::get('logo_image', '');
+        $rawLogo = $invoiceLogo ?: $logoImage;
+        $logoPath = is_array($rawLogo) ? ($rawLogo[0] ?? '') : (string) $rawLogo;
+
+        $fullLogoPath = null;
+        if ($logoPath && Storage::disk('public')->exists($logoPath)) {
+            $fullLogoPath = Storage::disk('public')->path($logoPath);
+        }
+
+        return [
+            'site_name' => $invoiceSiteName !== '' ? $invoiceSiteName : $siteName,
+            'logo_path' => $fullLogoPath,
+            'logo_url' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
+            'show_order_number' => (bool) Setting::get('invoice_show_order_number', true),
+            'show_customer_name' => (bool) Setting::get('invoice_show_customer_name', true),
+            'show_email' => (bool) Setting::get('invoice_show_email', true),
+            'show_phone' => (bool) Setting::get('invoice_show_phone', true),
+        ];
+    }
+
+    /** @param array<string, mixed> $extra */
+    private function buildInvoicePdf(Order $order, array $lines, float $total, string $invoiceType, string $notes, string $filename, array $extra = [], array $settings = []): string
     {
         $invoiceLocale = $order->user?->locale ?? config('app.locale', 'ar');
         $isRtl = $invoiceLocale === 'ar';
@@ -296,6 +392,8 @@ class OrderController extends Controller
             'notes' => $notes,
             'isRtl' => $isRtl,
             'invoiceLocale' => $invoiceLocale,
+            'extra' => $extra,
+            'settings' => $settings,
         ])->render();
 
         app()->setLocale($originalLocale);
@@ -433,7 +531,26 @@ class OrderController extends Controller
         $orders = $query->paginate($perPage)->withQueryString();
         $statuses = Order::getStatuses();
 
-        return view('orders.index', compact('orders', 'statuses', 'sort', 'perPage'));
+        // Last order: most recent, unfiltered (for quick-access section)
+        $lastOrder = Order::where('user_id', $user->id)
+            ->withCount('items')
+            ->latest()
+            ->first();
+
+        $orderStats = [
+            'total' => Order::where('user_id', $user->id)->count(),
+            'active' => Order::where('user_id', $user->id)
+                ->whereNotIn('status', ['cancelled', 'delivered', 'completed'])
+                ->count(),
+            'shipped' => Order::where('user_id', $user->id)
+                ->where('status', 'shipped')
+                ->count(),
+            'cancelled' => Order::where('user_id', $user->id)
+                ->where('status', 'cancelled')
+                ->count(),
+        ];
+
+        return view('orders.index', compact('orders', 'statuses', 'sort', 'perPage', 'lastOrder', 'orderStats'));
     }
 
     private function staffIndex(Request $request)

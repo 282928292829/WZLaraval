@@ -5,6 +5,8 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\SettingsPage;
 use App\Filament\Pages\TranslationsPage;
 use App\Http\Middleware\SetLocale;
+use App\Models\Setting;
+use App\Support\LogoHelper;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -33,7 +35,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->font('IBM Plex Sans Arabic')
+            ->favicon(fn () => Setting::faviconUrl('admin'))
+            ->brandName(fn () => LogoHelper::getLogoText())
+            ->brandLogo(fn () => LogoHelper::getLogoUrl())
+            ->font(config('app.locale') === 'ar' ? 'IBM Plex Sans Arabic' : 'Inter')
             ->colors([
                 'primary' => Color::Amber,
             ])

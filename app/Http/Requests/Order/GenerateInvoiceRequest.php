@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Order;
 
+use App\Enums\InvoiceType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class GenerateInvoiceRequest extends FormRequest
 {
@@ -13,13 +15,45 @@ class GenerateInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $types = array_map(fn ($c) => $c->value, InvoiceType::cases());
+
         return [
             'action' => ['sometimes', 'in:preview,publish'],
-            'custom_amount' => ['nullable', 'numeric', 'min:0'],
+            'invoice_type' => ['required', Rule::in($types)],
             'custom_notes' => ['nullable', 'string', 'max:1000'],
             'comment_message' => ['nullable', 'string', 'max:2000'],
-            'invoice_type' => ['sometimes', 'in:detailed,simple'],
             'show_original_currency' => ['sometimes', 'boolean'],
+
+            // First payment
+            'first_items_total' => ['nullable', 'numeric', 'min:0'],
+            'first_agent_fee' => ['nullable', 'numeric', 'min:0'],
+            'first_extras' => ['nullable', 'array'],
+            'first_extras.*.label' => ['nullable', 'string', 'max:100'],
+            'first_extras.*.amount' => ['nullable', 'numeric', 'min:0'],
+
+            // Second/final
+            'second_weight' => ['nullable', 'string', 'max:50'],
+            'second_shipping_company' => ['nullable', 'string', 'max:100'],
+            'second_product_value' => ['nullable', 'numeric', 'min:0'],
+            'second_agent_fee' => ['nullable', 'numeric', 'min:0'],
+            'second_shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'second_first_payment' => ['nullable', 'numeric', 'min:0'],
+            'second_remaining' => ['nullable', 'numeric', 'min:0'],
+
+            // Items cost
+            'items' => ['nullable', 'array'],
+            'items.*.description' => ['nullable', 'string', 'max:500'],
+            'items.*.qty' => ['nullable', 'integer', 'min:1'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.currency' => ['nullable', 'string', 'max:10'],
+
+            // General
+            'general_lines' => ['nullable', 'array'],
+            'general_lines.*.label' => ['nullable', 'string', 'max:200'],
+            'general_lines.*.amount' => ['nullable', 'numeric', 'min:0'],
+
+            // Legacy / shared
+            'custom_amount' => ['nullable', 'numeric', 'min:0'],
             'include_agent_fee' => ['sometimes', 'boolean'],
             'include_local_shipping' => ['sometimes', 'boolean'],
             'include_international_shipping' => ['sometimes', 'boolean'],

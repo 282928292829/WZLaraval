@@ -140,7 +140,7 @@ class CreateSampleOrders extends Command
         }
 
         $subtotal = $order->items()->get()->sum(fn ($i) => (float) ($i->unit_price ?? 0) * $i->qty);
-        $commission = $subtotal >= 500 ? $subtotal * 0.08 : 50;
+        $commission = \App\Services\CommissionCalculator::calculate($subtotal);
         $order->update([
             'subtotal' => round($subtotal, 2),
             'total_amount' => round($subtotal + $commission, 2),

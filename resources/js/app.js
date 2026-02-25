@@ -6,6 +6,39 @@ import Collapse from '@alpinejs/collapse';
 // We only need to register plugins BEFORE Alpine starts.
 document.addEventListener('alpine:init', () => {
     window.Alpine.plugin(Collapse);
+
+    window.Alpine.data('invoiceForm', (config = {}) => ({
+        type: config.type || 'first_payment',
+        firstItemsTotal: config.firstItemsTotal ?? 0,
+        firstExtras: config.firstExtras || [],
+        secondProductValue: config.secondProductValue ?? 0,
+        items: (config.items || []).map((it, i) => ({ ...it, id: it.id ?? `item-${i}-${Date.now()}` })),
+        generalLines: (config.generalLines || []).map((it, i) => ({ ...it, id: it.id ?? `g-${i}-${Date.now()}` })),
+        _nextId: 0,
+        init() {
+            if (this.items.length === 0) this.addItem();
+            if (this.generalLines.length === 0 && this.type === 'general') this.addGeneralLine();
+        },
+        addFirstExtra() {
+            this.firstExtras.push({ id: `fe-${Date.now()}-${Math.random().toString(36).slice(2)}`, label: '', amount: 0 });
+        },
+        addItem() {
+            this.items.push({
+                id: `item-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                description: '',
+                qty: 1,
+                unit_price: 0,
+                currency: 'SAR',
+            });
+        },
+        addGeneralLine() {
+            this.generalLines.push({
+                id: `gl-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                label: '',
+                amount: 0,
+            });
+        },
+    }));
 });
 
 /**

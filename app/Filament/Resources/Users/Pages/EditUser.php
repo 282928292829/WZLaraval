@@ -17,6 +17,8 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->getSaveFormAction()
+                ->formId('form'),
             Impersonate::make()
                 ->record($this->getRecord())
                 ->label(__('Impersonate user')),

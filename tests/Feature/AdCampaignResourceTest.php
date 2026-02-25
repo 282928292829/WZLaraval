@@ -32,6 +32,16 @@ test('admin can access ad campaigns create page', function (): void {
     $response->assertOk();
 });
 
+test('admin can see import button on ad campaigns list page', function (): void {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $response = $this->actingAs($user)->get('/admin/orders/ad-campaigns');
+
+    $response->assertOk();
+    $response->assertSee(__('Import'), false);
+});
+
 test('go route records click and redirects to register', function (): void {
     $campaign = \App\Models\AdCampaign::create([
         'title' => 'Test Banner',

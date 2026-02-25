@@ -5,7 +5,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" content="#f97316">
+        @php $primaryColor = \App\Models\Setting::get('primary_color', '#f97316'); @endphp
+        <meta name="theme-color" content="{{ $primaryColor }}">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -69,17 +70,19 @@
         {{-- PWA manifest + icons --}}
         <link rel="manifest" href="/manifest.json">
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png">
-        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
 
         {{-- Fonts: Inter (Latin) + IBM Plex Sans Arabic --}}
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|ibm-plex-sans-arabic:300,400,500,600,700&display=swap" rel="stylesheet" />
 
+        <style>
+            :root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }
+        </style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
-    <body class="antialiased bg-white text-gray-900 min-h-screen flex flex-col">
+    <body class="antialiased bg-white text-gray-900 min-h-screen flex flex-col" style="font-family: {{ \App\Support\FontHelper::cssFontFamily() }};">
 
         @include('layouts.navigation')
 
@@ -107,7 +110,21 @@
         </main>
 
         {{-- Footer --}}
-        @unless($hideFooter ?? false)
+        @if ($minimalFooter ?? false)
+        <footer class="bg-gray-50 border-t border-gray-100 mt-auto py-4">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-gray-500">
+                <span>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</span>
+                <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">
+                    @csrf
+                    <button type="submit"
+                            class="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-400 rounded-lg transition-colors"
+                            style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
+                        {{ __('Switch language text') }}
+                    </button>
+                </form>
+            </div>
+        </footer>
+        @elseif(!($hideFooter ?? false))
         @php
             $footerWhatsapp = \App\Models\Setting::get('whatsapp', '');
             $footerEmail    = \App\Models\Setting::get('contact_email', '');
@@ -246,17 +263,30 @@
                             <span>{{ __('footer.commercial_reg') }}: {{ $commercialReg }}</span>
                         </div>
                     @endif
-                    <div>
-                        <a href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000020424"
-                           target="_blank" rel="noopener noreferrer"
-                           class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-600 transition-colors text-xs text-gray-500">
-                            <img src="https://wasetzon.com/wp-content/uploads/2024/04/شعار-المركز-السعودي-للأعمال-–-Saudi-Business-Center-Logo-–-PNG-–-SVG-svg-1.png"
-                                 alt="{{ __('footer.sbc_alt') }}"
-                                 class="w-6 h-6 object-contain"
-                                 loading="lazy">
-                            {{ __('footer.certified_by') }}
-                        </a>
-                    </div>
+                    @php
+                        $certLogo = \App\Models\Setting::get('certification_logo', '');
+                        $certUrl = \App\Models\Setting::get('certification_url', '');
+                    @endphp
+                    @if ($certLogo || $certUrl)
+                        <div>
+                            @php
+                                $logoUrl = $certLogo && \Illuminate\Support\Facades\Storage::disk('public')->exists($certLogo)
+                                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($certLogo)
+                                    : null;
+                            @endphp
+                            <a href="{{ $certUrl ?: '#' }}"
+                               @if($certUrl) target="_blank" rel="noopener noreferrer" @endif
+                               class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-600 transition-colors text-xs text-gray-500">
+                                @if ($logoUrl)
+                                    <img src="{{ $logoUrl }}"
+                                         alt="{{ __('footer.certified_by') }}"
+                                         class="w-6 h-6 object-contain"
+                                         loading="lazy">
+                                @endif
+                                {{ __('footer.certified_by') }}
+                            </a>
+                        </div>
+                    @endif
 
                     {{-- Last updated --}}
                     @php

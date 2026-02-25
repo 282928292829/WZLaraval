@@ -51,6 +51,7 @@ class RoleAndPermissionSeeder extends Seeder
             'manage-posts',            // create / edit / delete blog posts
             'manage-pages',            // create / edit / delete static pages
             'manage-settings',         // change site settings in Filament
+            'manage-shipping-companies', // add/edit/delete shipping companies & rates
             'manage-users',            // view / edit / search users
             'ban-users',               // ban / unban user accounts
             'assign-user-roles',       // assign roles to users from Filament

@@ -18,8 +18,7 @@
 
         <link rel="manifest" href="/manifest.json">
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png">
-        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|ibm-plex-sans-arabic:300,400,500,600,700&display=swap" rel="stylesheet" />

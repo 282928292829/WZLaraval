@@ -406,8 +406,8 @@
                                                             <p class="text-xs text-blue-700 leading-relaxed">
                                                                 <span class="font-medium">١.</span>
                                                                 {{ __('account.national_address_tip_whatsapp') }}
-                                                                &nbsp;<a href="https://wa.me/966112898888" target="_blank" rel="noopener"
-                                                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">0112898888</a>
+                                                                &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
+                                                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
                                                                 ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
                                                             </p>
                                                             <p class="text-xs text-blue-700 leading-relaxed">
@@ -990,51 +990,10 @@
                 </button>
                 <div x-show="open" x-collapse>
                 <div class="px-4 pb-4 pt-0">
-                {{-- Button row --}}
+                {{-- Button row — order: Update Status, Create Invoice first; rest by typical usage --}}
                 <div class="flex flex-wrap gap-2 mb-0">
 
-                    {{-- 🔄 تحويل ملكية الطلب --}}
-                    @if ($showTransferOrder)
-                        <button type="button" @click="$dispatch('open-transfer-order')"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition-colors">
-                            🔄 {{ __('orders.btn_transfer_order') }}
-                        </button>
-                    @endif
-
-                    {{-- 💰 تتبع الدفع --}}
-                    @if ($showPaymentTracking)
-                        <button type="button" @click="togglePanel('payment')"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-                            :class="openPanel === 'payment'
-                                ? 'bg-green-100 text-green-800 border border-green-300'
-                                : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'">
-                            💰 {{ __('orders.btn_payment_tracking') }}
-                        </button>
-                    @endif
-
-                    {{-- 📄 إنشاء فاتورة --}}
-                    @if ($showCreateInvoice)
-                        <button type="button" @click="togglePanel('invoice')"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-                            :class="openPanel === 'invoice'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'">
-                            📄 {{ __('orders.btn_create_invoice') }}
-                        </button>
-                    @endif
-
-                    {{-- 📦 تحديث معلومات الشحن --}}
-                    @if ($showShippingTracking)
-                        <button type="button" @click="togglePanel('tracking')"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-                            :class="openPanel === 'tracking'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'">
-                            📦 {{ __('orders.btn_shipping_tracking') }}
-                        </button>
-                    @endif
-
-                    {{-- 📋 تحديث حالة الطلب --}}
+                    {{-- 📋 تحديث حالة الطلب (most used) --}}
                     @can('update-order-status')
                         <button type="button" @click="togglePanel('status')"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
@@ -1104,6 +1063,47 @@
                             </form>
                         @endif
                     @endcan
+
+                    {{-- 📄 إنشاء فاتورة (second most used) --}}
+                    @if ($showCreateInvoice)
+                        <button type="button" @click="togglePanel('invoice')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                            :class="openPanel === 'invoice'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'">
+                            📄 {{ __('orders.btn_create_invoice') }}
+                        </button>
+                    @endif
+
+                    {{-- 💰 تتبع الدفع --}}
+                    @if ($showPaymentTracking)
+                        <button type="button" @click="togglePanel('payment')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                            :class="openPanel === 'payment'
+                                ? 'bg-green-100 text-green-800 border border-green-300'
+                                : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'">
+                            💰 {{ __('orders.btn_payment_tracking') }}
+                        </button>
+                    @endif
+
+                    {{-- 📦 تحديث معلومات الشحن --}}
+                    @if ($showShippingTracking)
+                        <button type="button" @click="togglePanel('tracking')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                            :class="openPanel === 'tracking'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'">
+                            📦 {{ __('orders.btn_shipping_tracking') }}
+                        </button>
+                    @endif
+
+                    {{-- 🔄 تحويل ملكية الطلب --}}
+                    @if ($showTransferOrder)
+                        <button type="button" @click="$dispatch('open-transfer-order')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition-colors">
+                            🔄 {{ __('orders.btn_transfer_order') }}
+                        </button>
+                    @endif
 
                     {{-- 🔗 دمج الطلبات --}}
                     @if ($showTeamMerge && $recentOrders->isNotEmpty())

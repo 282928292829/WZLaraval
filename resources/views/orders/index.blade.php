@@ -1,30 +1,63 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <h1 class="text-xl font-semibold text-gray-900">{{ __('My Orders') }}</h1>
-                <p class="mt-0.5 text-sm text-gray-500">
-                    {{ $orders->total() }}
-                    {{ $orders->total() === 1 ? __('Order') : __('Orders') }}
-                    @if (request()->hasAny(['search', 'status']))
-                        — <a href="{{ route('orders.index') }}"
-                             class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
-                            {{ __('Clear filters') }}
-                        </a>
-                    @endif
-                </p>
+<x-app-layout :minimal-footer="true">
+    <div class="max-w-3xl mx-auto px-4 py-4 sm:py-6 space-y-3">
+
+        {{-- Order stats (compact, one row on mobile) --}}
+        @if ($orderStats['total'] > 0)
+        <div class="flex sm:grid sm:grid-cols-4 gap-1.5 sm:gap-2">
+            <div class="flex-1 min-w-0 sm:flex-none bg-white rounded-lg border border-gray-100 shadow-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center">
+                <div class="text-sm sm:text-xl font-bold text-gray-800 leading-none">{{ $orderStats['total'] }}</div>
+                <div class="text-[9px] sm:text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{{ __('account.orders_total') }}</div>
             </div>
+            <div class="flex-1 min-w-0 sm:flex-none bg-white rounded-lg border border-gray-100 shadow-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center">
+                <div class="text-sm sm:text-xl font-bold text-primary-600 leading-none">{{ $orderStats['active'] }}</div>
+                <div class="text-[9px] sm:text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{{ __('account.orders_active') }}</div>
+            </div>
+            <div class="flex-1 min-w-0 sm:flex-none bg-white rounded-lg border border-gray-100 shadow-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center">
+                <div class="text-sm sm:text-xl font-bold text-blue-600 leading-none">{{ $orderStats['shipped'] }}</div>
+                <div class="text-[9px] sm:text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{{ __('account.orders_shipped') }}</div>
+            </div>
+            <div class="flex-1 min-w-0 sm:flex-none bg-white rounded-lg border border-gray-100 shadow-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center">
+                <div class="text-sm sm:text-xl font-bold text-gray-400 leading-none">{{ $orderStats['cancelled'] }}</div>
+                <div class="text-[9px] sm:text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{{ __('account.orders_cancelled') }}</div>
+            </div>
+        </div>
+        @endif
+
+        {{-- Quick actions: New Order + (Last order OR My Orders) --}}
+        <div class="flex gap-2">
             <a href="{{ route('new-order') }}"
-               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors shadow-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+               class="flex-1 flex items-center justify-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2.5 sm:py-3 rounded-xl transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                 </svg>
-                {{ __('New Order') }}
+                {{ __('account.quick_new_order') }}
             </a>
+            @if ($lastOrder)
+            <a href="{{ route('orders.show', $lastOrder->id) }}"
+               class="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-2.5 sm:py-3 rounded-xl border border-gray-200 transition-colors">
+                <span>{{ __('orders.last_order_label') }}</span>
+                <svg class="w-4 h-4 text-gray-400 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+            @else
+            <a href="{{ route('orders.index') }}"
+               class="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-2.5 sm:py-3 rounded-xl border border-gray-200 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                {{ __('account.quick_my_orders') }}
+            </a>
+            @endif
         </div>
-    </x-slot>
 
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        {{-- ── All orders ─────────────────────────────────────────────────── --}}
+        <h2 class="text-sm font-semibold text-gray-700">
+            {{ __('All Orders') }}
+            @if (request()->hasAny(['search', 'status']))
+                <span class="font-normal text-gray-500">· <a href="{{ route('orders.index') }}" class="text-primary-500 hover:text-primary-600">{{ __('Clear filters') }}</a></span>
+            @endif
+        </h2>
 
         {{-- ── Filters card ──────────────────────────────────────────────── --}}
         <div x-data="{ open: {{ request()->hasAny(['search','status','sort','per_page']) ? 'true' : 'false' }} }"

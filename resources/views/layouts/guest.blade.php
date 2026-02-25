@@ -10,6 +10,11 @@
 
         <title>{{ $title ?? __('app.name') }}</title>
 
+        <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
+
+        @php $primaryColor = \App\Models\Setting::get('primary_color', '#f97316'); @endphp
+        <style>:root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }</style>
+
         {{-- Fonts: Inter (Latin) + IBM Plex Sans Arabic --}}
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|ibm-plex-sans-arabic:300,400,500,600,700&display=swap" rel="stylesheet" />
@@ -17,7 +22,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
-    <body class="antialiased bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <body class="antialiased bg-gray-50 text-gray-900 min-h-screen flex flex-col" style="font-family: {{ \App\Support\FontHelper::cssFontFamily() }};">
 
         @include('layouts.navigation')
 

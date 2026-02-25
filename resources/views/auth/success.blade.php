@@ -12,7 +12,7 @@
             {{ __('Account Created Successfully!') }}
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-            {{ __('Welcome to Wasetzon. You will be redirected to your dashboard in') }}
+            {{ __('Welcome to Wasetzon. You will be redirected to your orders in') }}
             <span id="countdown" class="font-semibold text-primary-600">5</span>
             {{ __('seconds.') }}
         </p>
@@ -28,7 +28,7 @@
         {{-- Manual link --}}
         <p class="mt-4 text-sm text-gray-500">
             {{ __('Or') }}
-            <a href="{{ route('dashboard') }}" class="font-medium text-primary-600 hover:text-primary-700 transition-colors">
+            <a href="{{ route('orders.index') }}" class="font-medium text-primary-600 hover:text-primary-700 transition-colors">
                 {{ __('go now') }}
             </a>
         </p>
@@ -48,7 +48,7 @@
 
                 if (remaining <= 0) {
                     clearInterval(interval);
-                    window.location.href = '{{ route('dashboard') }}';
+                    window.location.href = '{{ route('orders.index') }}';
                 }
             }, 1000);
         })();

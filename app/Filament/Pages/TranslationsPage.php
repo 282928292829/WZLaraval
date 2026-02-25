@@ -6,14 +6,30 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\EmbeddedTable;
+use Filament\Schemas\Components\RenderHook;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\File;
 
-class TranslationsPage extends Page
+class TranslationsPage extends Page implements HasTable
 {
-    protected string $view = 'filament.pages.translations-page';
+    use \Filament\Tables\Concerns\InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLanguage;
+
+    /** @return array<string> */
+    protected static function getSupportedLocales(): array
+    {
+        return config('app.available_locales', ['ar', 'en']);
+    }
 
     public static function getNavigationLabel(): string
     {
@@ -27,22 +43,10 @@ class TranslationsPage extends Page
 
     protected static ?int $navigationSort = 11;
 
-    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('Translations Editor');
     }
-
-    /** @var array<int, array{key: string, ar: string, en: string}> */
-    public array $rows = [];
-
-    /** New key/value inputs for adding a translation */
-    public string $newKey = '';
-
-    public string $newAr = '';
-
-    public string $newEn = '';
-
-    public string $search = '';
 
     public static function canAccess(): bool
     {
@@ -54,114 +58,277 @@ class TranslationsPage extends Page
 
     public function mount(): void
     {
-        $this->loadRows();
+        $this->mountInteractsWithTable();
     }
 
-    protected function loadRows(): void
+    protected function makeTable(): Table
     {
-        $arPath = lang_path('ar.json');
-        $enPath = lang_path('en.json');
+        $locales = static::getSupportedLocales();
 
-        $ar = File::exists($arPath) ? json_decode(File::get($arPath), true) : [];
-        $en = File::exists($enPath) ? json_decode(File::get($enPath), true) : [];
+        $table = Table::make($this)
+            ->records(function (?string $search, ?string $sortColumn, ?string $sortDirection, int $page, int $recordsPerPage): LengthAwarePaginator {
+                $rows = $this->loadRows();
+                $collection = collect($rows)->keyBy('key');
 
-        $keys = array_unique(array_merge(array_keys($ar), array_keys($en)));
-        sort($keys);
+                if (filled($search)) {
+                    $term = mb_strtolower($search);
+                    $collection = $collection->filter(function (array $row) use ($term): bool {
+                        foreach ($row as $value) {
+                            if (is_string($value) && str_contains(mb_strtolower($value), $term)) {
+                                return true;
+                            }
+                        }
 
-        $this->rows = array_map(fn ($key) => [
-            'key' => $key,
-            'ar'  => $ar[$key] ?? '',
-            'en'  => $en[$key] ?? '',
-        ], $keys);
+                        return false;
+                    });
+                }
+
+                if (filled($sortColumn) && in_array($sortColumn, array_merge(['key'], $this->getLocaleColumns()))) {
+                    $asc = $sortDirection !== 'desc';
+                    $collection = $collection->sortBy($sortColumn, SORT_REGULAR, ! $asc);
+                }
+
+                $total = $collection->count();
+                $items = $collection->forPage($page, $recordsPerPage);
+
+                return new LengthAwarePaginator(
+                    $items->all(),
+                    $total,
+                    $recordsPerPage,
+                    $page,
+                    ['path' => request()->url(), 'query' => request()->query()],
+                );
+            })
+            ->columns($this->buildColumns($locales))
+            ->headerActions([
+                Action::make('add')
+                    ->label(__('translations.add_key'))
+                    ->icon(Heroicon::OutlinedPlus)
+                    ->form($this->buildAddForm($locales))
+                    ->action(function (array $data): void {
+                        $this->addTranslation($data);
+                    }),
+            ])
+            ->recordActions([
+                Action::make('delete')
+                    ->icon(Heroicon::OutlinedTrash)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(__('translations.delete_heading'))
+                    ->modalDescription(fn (array $record): string => __('translations.delete_confirm', ['key' => $record['key']]))
+                    ->action(function (array $record): void {
+                        $this->deleteTranslation($record['key']);
+                    }),
+            ])
+            ->paginated([10, 25, 50, 100, 250, 500])
+            ->defaultSort('key', 'asc')
+            ->searchable()
+            ->striped();
+
+        return $table;
     }
 
-    /** @return array<int, array{key: string, ar: string, en: string}> */
-    public function filteredRows(): array
+    /** @param array<string> $locales */
+    protected function buildColumns(array $locales): array
     {
-        if (empty($this->search)) {
-            return $this->rows;
+        $columns = [
+            TextColumn::make('key')
+                ->label(__('translations.key'))
+                ->searchable(false)
+                ->sortable()
+                ->tooltip(fn (string $state): string => $state)
+                ->html()
+                ->formatStateUsing(fn (string $state): string => '<code class="text-xs text-gray-500 dark:text-gray-400">'.e(\Illuminate\Support\Str::limit($state, 40)).'</code>'),
+        ];
+
+        $labels = config('app.locale_labels', []);
+        foreach ($locales as $locale) {
+            $label = $labels[$locale] ?? $locale;
+            $columns[] = TextInputColumn::make($locale)
+                ->label("{$label} ({$locale})")
+                ->placeholder(__('translations.placeholder', ['locale' => $label]))
+                ->extraInputAttributes(['dir' => in_array($locale, ['ar', 'ar_SA', 'ar_EG']) ? 'rtl' : 'ltr'])
+                ->updateStateUsing(function (array $record, $state) use ($locale): mixed {
+                    $this->updateTranslation($record['key'], $locale, $state);
+
+                    return $state;
+                });
         }
 
-        $term = mb_strtolower($this->search);
-
-        return array_values(array_filter($this->rows, function ($row) use ($term) {
-            return str_contains(mb_strtolower($row['key']), $term)
-                || str_contains(mb_strtolower($row['ar']), $term)
-                || str_contains(mb_strtolower($row['en']), $term);
-        }));
+        return $columns;
     }
 
-    public function save(): void
+    /** @param array<string> $locales */
+    protected function buildAddForm(array $locales): array
     {
-        $this->writeFiles($this->rows);
+        $fields = [
+            \Filament\Forms\Components\TextInput::make('key')
+                ->label(__('translations.key'))
+                ->required()
+                ->rules(['regex:/^[a-zA-Z0-9_.\-]+$/'])
+                ->placeholder(__('e.g. Order Submitted')),
+        ];
 
-        Notification::make()
-            ->title(__('Translations saved'))
-            ->success()
-            ->send();
+        $labels = config('app.locale_labels', []);
+        foreach ($locales as $locale) {
+            $label = $labels[$locale] ?? $locale;
+            $fields[] = \Filament\Forms\Components\TextInput::make($locale)
+                ->label("{$label} ({$locale})")
+                ->placeholder(__('translations.placeholder', ['locale' => $label]))
+                ->extraInputAttributes(['dir' => in_array($locale, ['ar', 'ar_SA', 'ar_EG']) ? 'rtl' : 'ltr']);
+        }
+
+        return $fields;
     }
 
-    public function addRow(): void
+    /** @return array<string> */
+    protected function getLocaleColumns(): array
     {
-        $key = trim($this->newKey);
+        return static::getSupportedLocales();
+    }
 
-        if (empty($key)) {
+    public function table(Table $table): Table
+    {
+        return $table;
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                RenderHook::make(PanelsRenderHook::CONTENT_BEFORE),
+                EmbeddedTable::make(),
+                RenderHook::make(PanelsRenderHook::CONTENT_AFTER),
+            ]);
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    protected function loadRows(): array
+    {
+        $locales = static::getSupportedLocales();
+        $merged = [];
+
+        foreach ($locales as $locale) {
+            $path = lang_path($locale.'.json');
+            if (! File::exists($path)) {
+                continue;
+            }
+            $content = File::get($path);
+            $data = json_decode($content, true);
+            if (! is_array($data)) {
+                continue;
+            }
+            foreach (array_keys($data) as $key) {
+                $merged[$key] = $merged[$key] ?? ['key' => $key];
+                $merged[$key][$locale] = $data[$key] ?? '';
+            }
+        }
+
+        foreach ($merged as $key => $row) {
+            foreach ($locales as $locale) {
+                $merged[$key][$locale] = $merged[$key][$locale] ?? '';
+            }
+        }
+
+        $keys = array_keys($merged);
+        sort($keys);
+
+        return array_values(array_map(fn (string $key) => $merged[$key], $keys));
+    }
+
+    protected function updateTranslation(string $key, string $locale, string $value): void
+    {
+        $path = lang_path($locale.'.json');
+
+        $data = File::exists($path)
+            ? json_decode(File::get($path), true)
+            : [];
+
+        if (! is_array($data)) {
+            Notification::make()
+                ->title(__('translations.error_invalid_json'))
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $data[$key] = $value;
+
+        try {
+            File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title(__('translations.error_write_failed'))
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $this->flushCachedTableRecords();
+    }
+
+    /** @param array<string, mixed> $data */
+    protected function addTranslation(array $data): void
+    {
+        $key = trim((string) ($data['key'] ?? ''));
+        if ($key === '') {
             Notification::make()->title(__('Key is required'))->warning()->send();
 
             return;
         }
 
-        // Check for duplicate key
-        foreach ($this->rows as $row) {
-            if ($row['key'] === $key) {
+        if (! preg_match('/^[a-zA-Z0-9_.\-]+$/', $key)) {
+            Notification::make()
+                ->title(__('translations.error_invalid_key'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $rows = $this->loadRows();
+        foreach ($rows as $row) {
+            if (($row['key'] ?? '') === $key) {
                 Notification::make()->title(__('Key already exists'))->warning()->send();
 
                 return;
             }
         }
 
-        $this->rows[] = [
-            'key' => $key,
-            'ar'  => trim($this->newAr),
-            'en'  => trim($this->newEn),
-        ];
+        $locales = static::getSupportedLocales();
+        foreach ($locales as $locale) {
+            $this->updateTranslation($key, $locale, trim((string) ($data[$locale] ?? '')));
+        }
 
-        // Sort rows alphabetically by key
-        usort($this->rows, fn ($a, $b) => strcmp($a['key'], $b['key']));
-
-        $this->newKey = '';
-        $this->newAr  = '';
-        $this->newEn  = '';
-
-        $this->writeFiles($this->rows);
+        $this->flushCachedTableRecords();
 
         Notification::make()->title(__('Translation added'))->success()->send();
     }
 
-    public function deleteRow(string $key): void
+    protected function deleteTranslation(string $key): void
     {
-        $this->rows = array_values(array_filter(
-            $this->rows,
-            fn ($row) => $row['key'] !== $key
-        ));
+        $locales = static::getSupportedLocales();
 
-        $this->writeFiles($this->rows);
-
-        Notification::make()->title(__('Translation deleted'))->success()->send();
-    }
-
-    /** @param array<int, array{key: string, ar: string, en: string}> $rows */
-    protected function writeFiles(array $rows): void
-    {
-        $ar = [];
-        $en = [];
-
-        foreach ($rows as $row) {
-            $ar[$row['key']] = $row['ar'];
-            $en[$row['key']] = $row['en'];
+        foreach ($locales as $locale) {
+            $path = lang_path($locale.'.json');
+            if (! File::exists($path)) {
+                continue;
+            }
+            $data = json_decode(File::get($path), true);
+            if (! is_array($data)) {
+                continue;
+            }
+            unset($data[$key]);
+            File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
         }
 
-        File::put(lang_path('ar.json'), json_encode($ar, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-        File::put(lang_path('en.json'), json_encode($en, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        $this->flushCachedTableRecords();
+
+        Notification::make()->title(__('Translation deleted'))->success()->send();
     }
 }

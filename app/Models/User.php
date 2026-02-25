@@ -40,6 +40,7 @@ class User extends Authenticatable implements FilamentUser
         'is_banned',
         'banned_at',
         'banned_reason',
+        'staff_notes',
         'notify_orders',
         'notify_promotions',
         'notify_whatsapp',
@@ -107,6 +108,11 @@ class User extends Authenticatable implements FilamentUser
     public function balances(): HasMany
     {
         return $this->hasMany(UserBalance::class);
+    }
+
+    public function staffFiles(): HasMany
+    {
+        return $this->hasMany(UserFile::class);
     }
 
     public function canImpersonate(): bool

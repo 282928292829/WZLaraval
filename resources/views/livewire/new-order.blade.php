@@ -88,9 +88,7 @@
         {{ $maxProducts }},
         @js($defaultCurrency),
         {{ $isLoggedIn ? 'true' : 'false' }},
-        {{ $commissionThreshold }},
-        {{ $commissionPct }},
-        {{ $commissionFlat }},
+        @js($commissionSettings),
         @js(($editingOrderId || $productUrl || $duplicateFrom) ? $items : null),
         @js($editingOrderId ? $orderNotes : null)
     )"
@@ -316,6 +314,14 @@
                     style="width:100%;margin-top:15px;padding:12px;">
                 + {{ __('opus46.add_product') }}
             </button>
+
+            @if (config('app.env') === 'local')
+            {{-- Temp: Add 4 test items for packing order testing --}}
+            <button type="button" @click="addFourTestItems()" class="btn btn-outline-secondary"
+                    style="width:100%;margin-top:8px;padding:10px;font-size:0.9rem;border-style:dashed;">
+                🧪 {{ __('order.dev_add_4_test_items') }}
+            </button>
+            @endif
         </section>
 
         {{-- General Notes --}}
@@ -479,8 +485,6 @@
 @push('scripts')
 <style>
 :root {
-  --primary: #f97316;
-  --primary-hover: #ea580c;
   --accent-amber: #b45309;
   --accent-amber-light: #d97706;
   --secondary: #1e293b;
@@ -1077,7 +1081,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 </style>
 
 <script>
-function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, threshold, pct, flat, initialItems, initialOrderNotes) {
+function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes) {
     return {
         items: [],
         orderNotes: '',
@@ -1087,9 +1091,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
         maxProducts,
         defaultCurrency,
         isLoggedIn,
-        threshold,
-        pct,
-        flat,
+        commissionSettings: commissionSettings || { threshold: 500, below_type: 'flat', below_value: 50, above_type: 'percent', above_value: 8 },
         tipsOpen: false,
         tipsHidden: false,
         totalSar: 0,
@@ -1175,6 +1177,37 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
                     }
                 }, 150);
             });
+        },
+
+        addFourTestItems() {
+            const urls = [
+                'https://www.amazon.com/dp/B0BSHF7LLL',
+                'https://www.ebay.com/itm/' + Math.floor(100000000 + Math.random() * 900000000),
+                'https://www.walmart.com/ip/' + Math.floor(100000 + Math.random() * 900000),
+                'https://www.target.com/p/product-' + Math.floor(100 + Math.random() * 900),
+            ];
+            const colors = ['Red', 'Blue', 'Black', 'White', 'Navy', 'Gray', 'Green'];
+            const sizes = ['S', 'M', 'L', 'XL', 'US 8', 'US 10', 'One Size'];
+            const currencies = ['USD', 'EUR', 'GBP'];
+            const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
+            for (let i = 0; i < 4; i++) {
+                if (this.items.length >= this.maxProducts) break;
+                const cur = currencies[i % currencies.length] || lastCur;
+                this.items.push({
+                    url: urls[i],
+                    qty: String(Math.floor(Math.random() * 2) + 1),
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: sizes[Math.floor(Math.random() * sizes.length)],
+                    price: String((Math.random() * 80 + 15).toFixed(2)),
+                    currency: cur,
+                    notes: 'Test item ' + (i + 1),
+                    _expanded: true, _focused: false, _showOptional: false,
+                    _file: null, _preview: null, _fileType: null, _fileName: null, _uploadProgress: null
+                });
+            }
+            this.calcTotals();
+            this.saveDraft();
+            this.showNotify('success', '{{ __('order.dev_4_items_added') }}');
         },
 
         removeItem(idx) {

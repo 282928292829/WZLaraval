@@ -11,19 +11,23 @@ class InboxController extends Controller
     public function index(Request $request)
     {
         $validTypes = ['new_order', 'comment', 'payment', 'contact_form', 'status_change'];
-        $filter     = $request->query('type', 'all');
-        if (!in_array($filter, $validTypes)) {
+        $filter = $request->query('type', 'all');
+        if (! in_array($filter, $validTypes)) {
             $filter = 'all';
         }
 
         $query = Activity::with('causer')->orderByDesc('created_at');
 
         if ($filter !== 'all') {
-            $query->where('type', $filter);
+            if ($filter === 'payment') {
+                $query->whereIn('type', ['payment', 'payment_notification']);
+            } else {
+                $query->where('type', $filter);
+            }
         }
 
-        $activities   = $query->paginate(30)->withQueryString();
-        $unreadCount  = Activity::whereNull('read_at')->count();
+        $activities = $query->paginate(30)->withQueryString();
+        $unreadCount = Activity::whereNull('read_at')->count();
 
         return view('inbox.index', compact('activities', 'filter', 'unreadCount'));
     }
@@ -37,7 +41,7 @@ class InboxController extends Controller
 
     public function markRead(Request $request, Activity $activity): RedirectResponse
     {
-        if (!$activity->read_at) {
+        if (! $activity->read_at) {
             $activity->update(['read_at' => now()]);
         }
 

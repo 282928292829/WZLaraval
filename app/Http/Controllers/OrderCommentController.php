@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Order\StoreOrderCommentRequest;
 use App\Http\Requests\Order\UpdateOrderCommentRequest;
+use App\Models\Activity;
 use App\Models\CommentTemplate;
 use App\Models\Order;
 use App\Models\OrderComment;
@@ -59,6 +60,20 @@ class OrderCommentController extends Controller
             'type' => $isInternal ? 'note' : 'comment',
             'body' => $isInternal ? __('orders.timeline_internal_note') : __('orders.timeline_comment_added'),
         ]);
+
+        if (! $isInternal) {
+            Activity::create([
+                'type' => 'comment',
+                'subject_type' => Order::class,
+                'subject_id' => $order->id,
+                'causer_id' => $user->id,
+                'data' => [
+                    'order_number' => $order->order_number,
+                    'note' => \Illuminate\Support\Str::limit($validated['body'], 100),
+                ],
+                'created_at' => now(),
+            ]);
+        }
 
         return redirect()->route('orders.show', $order->id)->with('success', __('orders.comment_added'));
     }

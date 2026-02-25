@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevController;
 use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
@@ -41,7 +40,7 @@ Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
 
 Route::get('/', function () {
     if (auth()->check()) {
-        return redirect()->route('dashboard');
+        return redirect()->route('orders.index');
     }
 
     return view('welcome');
@@ -101,10 +100,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/orders/{orderId}/product-image', [OrderController::class, 'deleteProductImage'])->name('orders.product-image.delete');
     Route::get('/orders/{id}/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export-excel');
 });
-
-Route::get('/dashboard', DashboardController::class)
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account.index');

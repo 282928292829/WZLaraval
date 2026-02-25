@@ -2,10 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AdCampaign;
+use App\Models\CommentTemplate;
 use App\Models\Order;
 use App\Models\OrderComment;
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Services\ImportCommentTemplatesFromWordPress;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +23,8 @@ class ImportFromWordPress extends Command
         {--items : Import order items only}
         {--comments : Import order comments only}
         {--timeline : Import order timeline only}
+        {--ad-campaigns : Import ad campaigns (myads) only}
+        {--comment-templates : Import comment templates only}
         {--all : Import everything (default)}
     ';
 
@@ -52,8 +57,15 @@ class ImportFromWordPress extends Command
         }
 
         $all = $this->option('all') || ! ($this->option('users') || $this->option('addresses') || $this->option('orders')
-            || $this->option('items') || $this->option('comments') || $this->option('timeline'));
+            || $this->option('items') || $this->option('comments') || $this->option('timeline') || $this->option('ad-campaigns')
+            || $this->option('comment-templates'));
 
+        if ($all || $this->option('ad-campaigns')) {
+            $this->importAdCampaigns();
+        }
+        if ($all || $this->option('comment-templates')) {
+            $this->importCommentTemplates();
+        }
         if ($all || $this->option('users')) {
             $this->importUsers();
         }
@@ -508,6 +520,107 @@ class ImportFromWordPress extends Command
         $bar->finish();
         $this->newLine();
         $this->info('Timeline entries: '.$total);
+    }
+
+    /**
+     * Import ad campaigns from WordPress myads post type (edit.php?post_type=myads).
+     * Maps: post_title→title, unique_url→slug, website→destination_url, clicks→click_count,
+     * register→(users), orders→order_count, purchase→orders_delivered.
+     */
+    private function importAdCampaigns(): void
+    {
+        $this->info('Importing ad campaigns (myads)...');
+
+        $legacy = DB::connection('legacy');
+        if (! $legacy->getSchemaBuilder()->hasTable('wp_posts')) {
+            $this->error('Legacy wp_posts table not found.');
+
+            return;
+        }
+
+        $posts = $legacy->table('wp_posts')
+            ->where('post_type', 'myads')
+            ->where('post_status', 'publish')
+            ->orderBy('ID')
+            ->get();
+
+        if ($posts->isEmpty()) {
+            $this->warn('No myads posts found in legacy DB.');
+
+            return;
+        }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::table('users')->update(['ad_campaign_id' => null]);
+        DB::table('ad_campaigns')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        $postIds = $posts->pluck('ID')->all();
+        $metaRows = $legacy->table('wp_postmeta')
+            ->whereIn('post_id', $postIds)
+            ->whereIn('meta_key', ['unique_url', 'website', 'clicks', 'register', 'orders', 'purchase'])
+            ->get();
+
+        $metaByPost = $metaRows->groupBy('post_id')->map(fn ($rows) => $rows->keyBy('meta_key'));
+
+        $bar = $this->output->createProgressBar($posts->count());
+        $bar->start();
+
+        foreach ($posts as $post) {
+            $meta = $metaByPost->get($post->ID, collect());
+            $getMeta = fn ($key, $default = null) => $meta->get($key)?->meta_value ?? $default;
+
+            $uniqueUrl = $getMeta('unique_url', (string) $post->ID);
+            $slug = 'myad-'.$post->ID;
+            $website = trim((string) $getMeta('website', ''));
+            $clicks = (int) $getMeta('clicks', 0);
+            $orders = (int) $getMeta('orders', 0);
+            $purchase = (int) $getMeta('purchase', 0);
+
+            $destinationUrl = $website !== '' && (str_starts_with($website, 'http') || str_starts_with($website, '/')) ? $website : null;
+            if ($destinationUrl !== null && strlen($destinationUrl) > 255) {
+                $destinationUrl = substr($destinationUrl, 0, 255);
+            }
+
+            AdCampaign::create([
+                'title' => $post->post_title ?: 'Campaign '.$post->ID,
+                'slug' => $slug,
+                'destination_url' => $destinationUrl,
+                'tracking_code' => $uniqueUrl !== (string) $post->ID ? $uniqueUrl : null,
+                'platform' => null,
+                'notes' => $post->post_excerpt ?: null,
+                'is_active' => true,
+                'click_count' => $clicks,
+                'order_count' => $orders,
+                'orders_cancelled' => 0,
+                'orders_shipped' => 0,
+                'orders_delivered' => $purchase,
+            ]);
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+        $this->info('Ad campaigns: '.AdCampaign::count());
+    }
+
+    /**
+     * Import comment templates from WordPress comments_template post type.
+     */
+    private function importCommentTemplates(): void
+    {
+        $this->info('Importing comment templates...');
+
+        $result = app(ImportCommentTemplatesFromWordPress::class)->import(replaceExisting: true);
+
+        if (! $result['success']) {
+            $this->error($result['message']);
+
+            return;
+        }
+
+        $this->info('Comment templates: '.CommentTemplate::count());
     }
 
     private function mapActivityType(string $action): string

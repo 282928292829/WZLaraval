@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Activity;
 use App\Models\AdCampaign;
 use App\Models\Order;
 use App\Models\OrderComment;
@@ -11,9 +12,11 @@ use App\Models\OrderTimeline;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserActivityLog;
+use App\Services\CommissionCalculator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -32,12 +35,6 @@ class NewOrder extends Component
     public int $maxProducts = 30;
 
     public string $defaultCurrency = 'USD';
-
-    public float $commissionThreshold = 500.0;
-
-    public float $commissionPct = 0.08;
-
-    public float $commissionFlat = 50.0;
 
     public array $currencies = [];
 
@@ -86,9 +83,6 @@ class NewOrder extends Component
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
-        $this->commissionThreshold = (float) Setting::get('commission_threshold_sar', 500);
-        $this->commissionPct = (float) Setting::get('commission_rate_above', 8) / 100;
-        $this->commissionFlat = (float) Setting::get('commission_flat_below', 50);
         $this->currencies = $this->buildCurrencies();
         $this->exchangeRates = $this->buildExchangeRates();
 
@@ -319,9 +313,6 @@ class NewOrder extends Component
 
         DB::transaction(function () use ($itemsWithOriginalIndex, &$createdOrder) {
             $rates = $this->exchangeRates;
-            $threshold = $this->commissionThreshold;
-            $pct = $this->commissionPct;
-            $flat = $this->commissionFlat;
 
             $defaultAddress = Auth::user()
                 ->addresses()
@@ -398,12 +389,7 @@ class NewOrder extends Component
                 }
             }
 
-            $commission = 0;
-            if ($rawSubtotal > 0) {
-                $commission = $rawSubtotal >= $threshold
-                    ? $rawSubtotal * $pct
-                    : $flat;
-            }
+            $commission = CommissionCalculator::calculate($rawSubtotal);
 
             $order->update([
                 'subtotal' => round($rawSubtotal, 2),
@@ -422,6 +408,22 @@ class NewOrder extends Component
 
         if ($createdOrder) {
             $this->insertSystemComment($createdOrder);
+
+            if (app()->environment('local')) {
+                $this->insertDevComments($createdOrder);
+            }
+
+            Activity::create([
+                'type' => 'new_order',
+                'subject_type' => Order::class,
+                'subject_id' => $createdOrder->id,
+                'causer_id' => Auth::id(),
+                'data' => [
+                    'order_number' => $createdOrder->order_number,
+                    'note' => null,
+                ],
+                'created_at' => now(),
+            ]);
 
             // Increment campaign order count if the user was attributed to a campaign
             $campaignId = Auth::user()?->ad_campaign_id;
@@ -491,11 +493,8 @@ class NewOrder extends Component
         }
 
         $rates = $this->exchangeRates;
-        $threshold = $this->commissionThreshold;
-        $pct = $this->commissionPct;
-        $flat = $this->commissionFlat;
 
-        DB::transaction(function () use ($order, $itemsWithOriginalIndex, $rates, $threshold, $pct, $flat) {
+        DB::transaction(function () use ($order, $itemsWithOriginalIndex, $rates) {
             $order->items()->delete();
 
             $rawSubtotal = 0;
@@ -547,12 +546,7 @@ class NewOrder extends Component
                 }
             }
 
-            $commission = 0;
-            if ($rawSubtotal > 0) {
-                $commission = $rawSubtotal >= $threshold
-                    ? $rawSubtotal * $pct
-                    : $flat;
-            }
+            $commission = CommissionCalculator::calculate($rawSubtotal);
 
             $order->update([
                 'notes' => trim($this->orderNotes) ?: null,
@@ -589,6 +583,10 @@ class NewOrder extends Component
     {
         $hasPrices = $order->subtotal > 0;
 
+        $siteName = Setting::get('site_name') ?: config('app.name');
+        $whatsapp = Setting::get('whatsapp', '');
+        $whatsappDisplay = $whatsapp ?: '-';
+
         if ($hasPrices) {
             $commission = $order->total_amount - $order->subtotal;
 
@@ -596,9 +594,13 @@ class NewOrder extends Component
                 'subtotal' => number_format($order->subtotal, 0, '.', ','),
                 'commission' => number_format($commission, 0, '.', ','),
                 'total' => number_format($order->total_amount, 0, '.', ','),
+                'site_name' => $siteName,
+                'whatsapp' => $whatsappDisplay,
             ]);
         } else {
-            $body = __('orders.auto_comment_no_price');
+            $body = __('orders.auto_comment_no_price', [
+                'whatsapp' => $whatsappDisplay,
+            ]);
         }
 
         OrderComment::create([
@@ -607,6 +609,74 @@ class NewOrder extends Component
             'body' => $body,
             'is_system' => true,
         ]);
+    }
+
+    /**
+     * Dev only: add 20 back-and-forth comments with images on some (every 4th).
+     * Used for packing-order testing.
+     */
+    private function insertDevComments(Order $order): void
+    {
+        $customer = $order->user;
+        $staff = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['editor', 'admin', 'superadmin']))
+            ->first() ?? $customer;
+
+        $messages = [
+            'Hi, I just placed this order. Please confirm you received it.',
+            'Order received! We will start processing within 24 hours.',
+            'Can you check if these items are in stock?',
+            'All items are in stock. We will proceed with the purchase.',
+            'I need this by next week if possible.',
+            'We will do our best to meet your deadline.',
+            'Please use the exact colors I specified.',
+            'Noted on the colors. We will match exactly.',
+            'Is there any discount available for bulk order?',
+            'Let me check with the team and get back to you.',
+            'I added one more item - the blue one. Thanks!',
+            'Got it! The blue item has been added.',
+            'When will you start processing?',
+            'Processing has started. You will get updates soon.',
+            'I sent the payment via bank transfer. Reference: TXN123.',
+            'Payment received. Thank you! Order is now confirmed.',
+            'Can you combine shipping with my previous order?',
+            'We can combine shipping. I will merge the orders.',
+            'Please pack carefully - these are fragile.',
+            'We use premium packaging for fragile items.',
+        ];
+
+        $withImage = [4, 8, 12, 16, 20];
+        $png = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            true
+        );
+
+        for ($i = 0; $i < 20; $i++) {
+            $isCustomer = ($i % 2) === 0;
+            $author = $isCustomer ? $customer : $staff;
+            $body = $messages[$i % count($messages)];
+
+            $comment = OrderComment::create([
+                'order_id' => $order->id,
+                'user_id' => $author->id,
+                'body' => $body,
+                'is_internal' => false,
+            ]);
+
+            if (in_array($i + 1, $withImage, true) && $png !== false) {
+                $path = "orders/{$order->id}/comment-{$comment->id}-".uniqid().'.png';
+                Storage::disk('public')->put($path, $png);
+                OrderFile::create([
+                    'order_id' => $order->id,
+                    'user_id' => $author->id,
+                    'comment_id' => $comment->id,
+                    'path' => $path,
+                    'original_name' => 'attachment.png',
+                    'mime_type' => 'image/png',
+                    'size' => 100,
+                    'type' => 'comment',
+                ]);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -831,7 +901,8 @@ class NewOrder extends Component
 
     public function render()
     {
-        $view = view('livewire.new-order');
+        $view = view('livewire.new-order')
+            ->with('commissionSettings', CommissionCalculator::getSettings());
 
         if ($this->editingOrderId) {
             return $view->title(__('orders.edit_order_title', ['number' => $this->editingOrderNumber]));

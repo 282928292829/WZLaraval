@@ -84,6 +84,11 @@ return [
 
     'available_locales' => ['ar', 'en'],
 
+    'locale_labels' => [
+        'ar' => 'Arabic',
+        'en' => 'English',
+    ],
+
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
     /*

@@ -1,5 +1,6 @@
 @php
     use App\Models\Setting;
+    use App\Services\CommissionCalculator;
 
     // Load exchange rates JSON from settings; fall back to WP-parity defaults
     $erJson = Setting::get('exchange_rates', []) ?: [];
@@ -24,15 +25,16 @@
             : $fallback;
     }
 
-    // Commission settings
-    $commissionThreshold = (float) Setting::get('commission_threshold_sar', 500);
-    $commissionRateAbove = (float) Setting::get('commission_rate_above', 8);   // percent
-    $commissionFlatBelow = (float) Setting::get('commission_flat_below', 50);
+    // Commission settings (flexible below/above threshold)
+    $commissionSettings = CommissionCalculator::getSettings();
+    $commissionThreshold = $commissionSettings['threshold'];
+    $belowType = $commissionSettings['below_type'];
+    $belowValue = $commissionSettings['below_value'];
+    $aboveType = $commissionSettings['above_type'];
+    $aboveValue = $commissionSettings['above_value'];
 
     // For the info card — localise numbers for display
-    $displayThreshold    = number_format($commissionThreshold, 0);
-    $displayRateAbove    = number_format($commissionRateAbove, 0);
-    $displayFlatBelow    = number_format($commissionFlatBelow, 0);
+    $displayThreshold = number_format($commissionThreshold, 0);
     $displayUsdRate      = number_format($rates['USD'], 2);
 @endphp
 
@@ -179,8 +181,12 @@
                     <div class="flex-1">
                         <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ __('calc.commission') }}</h3>
                         <p class="text-xs text-gray-600 leading-relaxed">
-                            <strong>{{ __('calc.commission_above', ['rate' => $displayRateAbove, 'threshold' => $displayThreshold]) }}</strong><br>
-                            <strong>{{ __('calc.commission_below', ['flat' => $displayFlatBelow, 'threshold' => $displayThreshold]) }}</strong>
+                            <strong>{{ $belowType === 'flat'
+                                ? __('calc.commission_below_flat', ['value' => number_format($belowValue, 0), 'threshold' => $displayThreshold])
+                                : __('calc.commission_below_percent', ['value' => number_format($belowValue, 0), 'threshold' => $displayThreshold]) }}</strong><br>
+                            <strong>{{ $aboveType === 'flat'
+                                ? __('calc.commission_above_flat', ['value' => number_format($aboveValue, 0), 'threshold' => $displayThreshold])
+                                : __('calc.commission_above_percent', ['value' => number_format($aboveValue, 0), 'threshold' => $displayThreshold]) }}</strong>
                         </p>
                     </div>
                 </div>
@@ -235,10 +241,8 @@
             // Rates pulled from settings (SAR per 1 unit of each currency)
             rates: @json($rates),
 
-            // Commission settings pulled from admin settings
-            commissionThreshold: {{ $commissionThreshold }},
-            commissionRateAbove: {{ $commissionRateAbove / 100 }},  // convert % to decimal
-            commissionFlatBelow: {{ $commissionFlatBelow }},
+            // Commission settings (flexible below/above)
+            commissionSettings: @json($commissionSettings),
 
             symbols: {
                 USD: '$', EUR: '€', GBP: '£', CNY: '¥',
@@ -279,11 +283,18 @@
 
                 const rate      = this.rates[this.currency] || 1;
                 this.convertSAR = price * rate;
-                this.commission = this.convertSAR >= this.commissionThreshold
-                    ? this.convertSAR * this.commissionRateAbove
-                    : this.commissionFlatBelow;
+                this.commission = this.calcCommission(this.convertSAR);
                 this.total    = this.convertSAR + this.commission;
                 this.hasValue = true;
+            },
+
+            calcCommission(subtotalSAR) {
+                const s = this.commissionSettings;
+                const isAbove = subtotalSAR >= s.threshold;
+                if (isAbove) {
+                    return s.above_type === 'percent' ? subtotalSAR * (s.above_value / 100) : s.above_value;
+                }
+                return s.below_type === 'percent' ? subtotalSAR * (s.below_value / 100) : s.below_value;
             },
 
             formatNum(num) {

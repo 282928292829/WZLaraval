@@ -1,25 +1,33 @@
 @php
-    use App\Models\Setting;
+    use App\Models\ShippingCompany;
 
     $isAr        = app()->getLocale() === 'ar';
     $gramLabel   = $isAr ? 'جرام' : 'gram';
     $billedLabel = $isAr ? 'يُحسب كـ' : 'billed as';
     $kgLabel     = __('shipping.kg');
 
-    // Load carrier rates from admin settings (fall back to WP-parity defaults)
-    $aramexFirst   = (int) Setting::get('aramex_first_half_kg',   119);
-    $aramexRest    = (int) Setting::get('aramex_rest_half_kg',    39);
-    $aramexOver21  = (int) Setting::get('aramex_over21_per_kg',   59);
-    $aramexDays    = Setting::get('aramex_delivery_days', '7-10');
-
-    $dhlFirst      = (int) Setting::get('dhl_first_half_kg',      169);
-    $dhlRest       = (int) Setting::get('dhl_rest_half_kg',       43);
-    $dhlOver21     = (int) Setting::get('dhl_over21_per_kg',      63);
-    $dhlDays       = Setting::get('dhl_delivery_days', '7-10');
-
-    $domFirst      = (int) Setting::get('domestic_first_half_kg', 69);
-    $domRest       = (int) Setting::get('domestic_rest_half_kg',  19);
-    $domDays       = Setting::get('domestic_delivery_days', '4-7');
+    $calculatorCarriers = ShippingCompany::forCalculator()->get();
+    $carriersJson = $calculatorCarriers->mapWithKeys(function ($c) {
+        $base = [
+            'name' => $c->display_name,
+            'icon' => $c->icon ?? '📦',
+            'note' => $c->display_note ?? '',
+            'delivery' => $c->delivery_days ?? '',
+        ];
+        if ($c->usesPriceBands()) {
+            $bands = collect($c->price_bands)->sortBy('max_weight')->values()->map(fn ($b) => [
+                'max_weight' => (float) ($b['max_weight'] ?? 0),
+                'price' => (int) ($b['price'] ?? 0),
+            ])->filter(fn ($b) => $b['max_weight'] > 0)->values()->all();
+            $base['bands'] = $bands;
+        } else {
+            $base['firstHalfKg'] = (int) $c->first_half_kg;
+            $base['restHalfKg'] = (int) $c->rest_half_kg;
+            $base['over21PerKg'] = $c->over21_per_kg !== null ? (int) $c->over21_per_kg : null;
+        }
+        return [$c->slug => $base];
+    })->toJson();
+    $firstCarrierSlug = $calculatorCarriers->first()?->slug ?? 'aramex';
 @endphp
 <x-app-layout>
     @include('components.page-seo-slots', ['page' => $page])
@@ -151,73 +159,17 @@
                 </h2>
             </div>
 
-            {{-- Aramex --}}
-            <div class="px-5 py-4 border-b border-gray-100">
+            @foreach ($calculatorCarriers as $index => $carrier)
+            <div class="px-5 py-4 {{ $index < $calculatorCarriers->count() - 1 ? 'border-b border-gray-100' : '' }}">
                 <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span class="text-lg">📦</span>
-                    {{ __('shipping.aramex_—_economy_shipping') }}
+                    <span class="text-lg">{{ $carrier->icon ?? '📦' }}</span>
+                    {{ $carrier->display_name }}
                 </h3>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-gray-500 text-xs font-semibold">
-                            <th class="text-right py-1.5">{{ __('shipping.weight') }}</th>
-                            <th class="text-left py-1.5">{{ __('shipping.price') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach([
-                            [__('shipping.first_half_kg'),        (string) $aramexFirst],
-                            [__('shipping.additional_half_kg'),   '+' . $aramexRest],
-                            [__('shipping.over_21_kg'),           $aramexOver21 . '/kg'],
-                        ] as [$label, $price])
-                        <tr>
-                            <td class="py-2 text-gray-700">{{ $label }}</td>
-                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $price }} SAR</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                <p class="mt-2 text-xs text-gray-400">{{ __('shipping.weight_rounded') }}</p>
-            </div>
-
-            {{-- DHL --}}
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span class="text-lg">🚀</span>
-                    {{ __('shipping.dhl_—_express_shipping') }}
-                </h3>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-gray-500 text-xs font-semibold">
-                            <th class="text-right py-1.5">{{ __('shipping.weight') }}</th>
-                            <th class="text-left py-1.5">{{ __('shipping.price') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach([
-                            [__('shipping.first_half_kg'),        (string) $dhlFirst],
-                            [__('shipping.additional_half_kg'),   '+' . $dhlRest],
-                            [__('shipping.over_21_kg'),           $dhlOver21 . '/kg'],
-                        ] as [$label, $price])
-                        <tr>
-                            <td class="py-2 text-gray-700">{{ $label }}</td>
-                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $price }} SAR</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                <p class="mt-2 text-xs text-gray-400">{{ __('shipping.weight_rounded') }}</p>
-            </div>
-
-            {{-- US Domestic --}}
-            <div class="px-5 py-4">
-                <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span class="text-lg">🏠</span>
-                    {{ __('shipping.us_domestic_shipping') }}
-                </h3>
+                @if ($carrier->slug === 'domestic')
                 <p class="text-sm text-gray-600 mb-3">
                     {{ __('shipping.for_orders_requiring_domestic_us') }}
                 </p>
+                @endif
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-gray-500 text-xs font-semibold">
@@ -226,19 +178,34 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        @foreach([
-                            [__('shipping.first_half_kg'),        (string) $domFirst],
-                            [__('shipping.additional_half_kg'),   '+' . $domRest],
-                        ] as [$label, $price])
+                        @if ($carrier->usesPriceBands())
+                            @foreach (collect($carrier->price_bands)->sortBy('max_weight') as $band)
+                            <tr>
+                                <td class="py-2 text-gray-700">{{ __('shipping.up_to') }} {{ $band['max_weight'] ?? 0 }} {{ __('shipping.kg') }}</td>
+                                <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $band['price'] ?? 0 }} SAR</td>
+                            </tr>
+                            @endforeach
+                        @else
                         <tr>
-                            <td class="py-2 text-gray-700">{{ $label }}</td>
-                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $price }} SAR</td>
+                            <td class="py-2 text-gray-700">{{ __('shipping.first_half_kg') }}</td>
+                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $carrier->first_half_kg }} SAR</td>
                         </tr>
-                        @endforeach
+                        <tr>
+                            <td class="py-2 text-gray-700">{{ __('shipping.additional_half_kg') }}</td>
+                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">+{{ $carrier->rest_half_kg }} SAR</td>
+                        </tr>
+                        @if ($carrier->over21_per_kg !== null)
+                        <tr>
+                            <td class="py-2 text-gray-700">{{ __('shipping.over_21_kg') }}</td>
+                            <td class="py-2 font-semibold text-gray-900 text-left ltr:text-left rtl:text-right" dir="ltr">{{ $carrier->over21_per_kg }}/kg SAR</td>
+                        </tr>
+                        @endif
+                        @endif
                     </tbody>
                 </table>
                 <p class="mt-2 text-xs text-gray-400">{{ __('shipping.weight_rounded') }}</p>
             </div>
+            @endforeach
         </div>
 
         {{-- Notes --}}
@@ -273,13 +240,16 @@
                 {{ __('shipping.contact_us_and_our_team') }}
             </p>
             <div class="flex gap-3 justify-center flex-wrap">
+                @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '')); @endphp
+                @if ($waNum)
                 <a
-                    href="https://wa.me/00966556063500"
+                    href="https://wa.me/{{ $waNum }}"
                     class="bg-green-500 text-white font-bold px-6 py-2.5 rounded-lg hover:bg-green-600 transition"
                     target="_blank" rel="noopener"
                 >
                     {{ __('shipping.whatsapp') }}
                 </a>
+                @endif
                 <a
                     href="{{ route('new-order') }}"
                     class="bg-white text-primary-600 font-bold px-6 py-2.5 rounded-lg hover:bg-gray-50 transition"
@@ -297,40 +267,12 @@
         return {
             weightRaw: '',
             unit: 'kg',
-            selectedCarrier: 'aramex',
+            selectedCarrier: '{{ $firstCarrierSlug }}',
             shippingCost: 0,
             roundedWeight: 0,
             inputError: false,
 
-            carriers: {
-                aramex: {
-                    name: 'Aramex',
-                    icon: '📦',
-                    note: '{{ __('shipping.economy') }}',
-                    delivery: '{{ $aramexDays }}',
-                    firstHalfKg: {{ $aramexFirst }},
-                    restHalfKg: {{ $aramexRest }},
-                    over21PerKg: {{ $aramexOver21 }},
-                },
-                dhl: {
-                    name: 'DHL',
-                    icon: '🚀',
-                    note: '{{ __('shipping.express') }}',
-                    delivery: '{{ $dhlDays }}',
-                    firstHalfKg: {{ $dhlFirst }},
-                    restHalfKg: {{ $dhlRest }},
-                    over21PerKg: {{ $dhlOver21 }},
-                },
-                domestic: {
-                    name: '{{ __('shipping.us_domestic') }}',
-                    icon: '🏠',
-                    note: '{{ __('shipping.within_usa') }}',
-                    delivery: '{{ $domDays }}',
-                    firstHalfKg: {{ $domFirst }},
-                    restHalfKg: {{ $domRest }},
-                    over21PerKg: null,
-                },
-            },
+            carriers: {!! $carriersJson !!},
 
             toEnglishDigits(str) {
                 let result = window.toEnglishDigits(str || '');
@@ -376,7 +318,10 @@
                 const rounded = this.roundWeight(w);
                 this.roundedWeight = rounded;
 
-                if (rounded >= 21 && carrier.over21PerKg !== null) {
+                if (carrier.bands && carrier.bands.length > 0) {
+                    const band = carrier.bands.find(b => b.max_weight >= rounded) || carrier.bands[carrier.bands.length - 1];
+                    this.shippingCost = band ? band.price : 0;
+                } else if (rounded >= 21 && carrier.over21PerKg !== null) {
                     this.shippingCost = Math.round(carrier.over21PerKg * Math.ceil(rounded));
                 } else {
                     const additionalHalves = 2 * (rounded - 0.5);

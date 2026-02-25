@@ -267,3 +267,9 @@ Manual SSH deployment (no Forge/Ploi):
 - **Legacy site DB dump:** `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/wasetzonjan302026.sql`
 - **Legacy site uploads:** `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/old-wp-content/uploads/`
 - **New WordPress site (features reference):** `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/app/public/`
+
+## Current Task
+
+**Completed:** Dashboard removed, orders as hub — Removed `/dashboard` route, controller, and view. All auth redirects (login, register, email verification, social auth, password confirm) now go to `/orders`. Customer orders index redesigned: Order count + New Order + Account in header; Last order quick-access card; All orders list. Bilingual translations added (`orders.last_order_label`, `Welcome to Wasetzon. You will be redirected to your orders in`). Tests updated to assert redirect to `orders.index`.
+
+**Next session:** Start next session with: `Read LARAVEL_PLAN.md then continue from the Current Task section.`

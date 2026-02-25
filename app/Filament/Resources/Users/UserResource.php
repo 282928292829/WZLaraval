@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -54,7 +55,14 @@ class UserResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        $allPermissions = Permission::orderBy('name')->pluck('name', 'name')->toArray();
+        $labels = config('permissions.labels', []);
+        $permissionNames = Permission::orderBy('name')->pluck('name');
+        $allPermissions = $permissionNames->mapWithKeys(function (string $name) use ($labels) {
+            $key = 'permissions.'.$name;
+            $label = __($key);
+
+            return [$name => $label !== $key ? $label : ($labels[$name] ?? str_replace('-', ' ', ucfirst($name)))];
+        })->toArray();
         $allRoles = Role::orderBy('name')->pluck('name', 'name')->toArray();
 
         return $schema
@@ -184,6 +192,18 @@ class UserResource extends Resource
                             ->nullable(),
                     ])
                     ->columns(2),
+
+                Section::make(__('Staff Notes'))
+                    ->description(__('Internal notes and attachments about this user. Not visible to the customer.'))
+                    ->schema([
+                        Textarea::make('staff_notes')
+                            ->label(__('Notes'))
+                            ->placeholder(__('e.g. VIP customer, prefers WhatsApp, special delivery instructions...'))
+                            ->rows(4)
+                            ->maxLength(5000)
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(),
 
                 Section::make(__('Status'))
                     ->schema([
@@ -316,6 +336,7 @@ class UserResource extends Resource
         return [
             \App\Filament\Resources\Users\RelationManagers\ActivityLogsRelationManager::class,
             \App\Filament\Resources\Users\RelationManagers\BalancesRelationManager::class,
+            \App\Filament\Resources\Users\RelationManagers\UserFilesRelationManager::class,
         ];
     }
 

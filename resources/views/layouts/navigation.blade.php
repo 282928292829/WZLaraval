@@ -8,8 +8,13 @@
 
             {{-- Left: Logo --}}
             <a href="{{ url('/') }}"
-               class="text-lg font-bold text-primary-600 tracking-tight shrink-0 z-10">
-                {{ __('app.name') }}
+               class="flex items-center shrink-0 z-10">
+                @php $logoUrl = \App\Support\LogoHelper::getLogoUrl(); @endphp
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="{{ \App\Support\LogoHelper::getLogoAlt() }}" class="h-8 w-auto object-contain max-w-[140px]">
+                @else
+                    <span class="text-lg font-bold text-primary-600 tracking-tight">{{ \App\Support\LogoHelper::getLogoText() }}</span>
+                @endif
             </a>
 
             {{-- Center: Desktop nav links --}}

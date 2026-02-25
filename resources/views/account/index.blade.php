@@ -12,7 +12,7 @@
     $validTabs      = ['profile', 'addresses', 'activity', 'notifications', 'balance'];
 @endphp
 
-<x-app-layout>
+<x-app-layout :minimal-footer="true">
 
 
 {{-- ── Tabs + content ──────────────────────────────────────────────────────── --}}
@@ -812,8 +812,8 @@
                                     <p class="text-xs text-blue-700 leading-relaxed">
                                         <span class="font-medium">١.</span>
                                         {{ __('account.national_address_tip_whatsapp') }}
-                                        &nbsp;<a href="https://wa.me/966112898888" target="_blank" rel="noopener"
-                                            class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">0112898888</a>
+                                        &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
+                                            class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
                                         ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
                                     </p>
                                     <p class="text-xs text-blue-700 leading-relaxed">
@@ -1012,8 +1012,8 @@
                             <p class="text-xs text-blue-700 leading-relaxed">
                                 <span class="font-medium">١.</span>
                                 {{ __('account.national_address_tip_whatsapp') }}
-                                &nbsp;<a href="https://wa.me/966112898888" target="_blank" rel="noopener"
-                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">0112898888</a>
+                                &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
+                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
                                 ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
                             </p>
                             <p class="text-xs text-blue-700 leading-relaxed">

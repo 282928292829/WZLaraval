@@ -40,6 +40,8 @@ Write generic, reusable migration scripts:
 
 | Entity | WP Source | Laravel Target |
 |--------|-----------|----------------|
+| Ad campaigns | `wp_posts` (post_type=myads) + post_meta | `ad_campaigns` |
+| Comment templates | `wp_posts` (post_type=comments_template) + post_meta usage_count | `comment_templates` |
 | Users | `wp_users` | `users` |
 | Addresses | `wp_usermeta` (saved_addresses) | `user_addresses` |
 | Orders | Order posts + post_meta | `orders` |
@@ -51,14 +53,16 @@ Write generic, reusable migration scripts:
 
 ## Import Order
 
-1. Users
-2. User addresses
-3. Orders (with status map, merge IDs resolved in second pass)
-4. Order items
-5. Order comments
-6. Order timeline
-7. Order files (copy to Laravel storage)
-8. Fix merge references (merged_into, merged_at, merged_by)
+1. Ad campaigns (myads → ad_campaigns)
+2. Comment templates (comments_template → comment_templates)
+3. Users
+4. User addresses
+5. Orders (with status map, merge IDs resolved in second pass)
+6. Order items
+7. Order comments
+8. Order timeline
+9. Order files (copy to Laravel storage)
+10. Fix merge references (merged_into, merged_at, merged_by)
 
 ## Status Mapping (WP 0–7 → Laravel slugs)
 
@@ -81,7 +85,7 @@ Write generic, reusable migration scripts:
 php -d memory_limit=512M artisan wp:import --all
 ```
 
-Or run step-by-step: `--users`, `--addresses`, `--orders`, `--items`, `--comments`, `--timeline`.
+Or run step-by-step: `--ad-campaigns`, `--comment-templates`, `--users`, `--addresses`, `--orders`, `--items`, `--comments`, `--timeline`.
 
 ## Validation
 
