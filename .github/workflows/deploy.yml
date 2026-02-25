@@ -14,6 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then echo "::error::SSH_HOST secret is missing or empty"; exit 1; fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then echo "::error::SSH_USER secret is missing or empty"; exit 1; fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "::error::SSH_PRIVATE_KEY secret is missing or empty"; exit 1; fi
+          if [ -z "${{ secrets.DEPLOY_PATH }}" ]; then echo "::error::DEPLOY_PATH secret is missing or empty"; exit 1; fi
+          echo "All secrets present"
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
