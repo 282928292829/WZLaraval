@@ -62,6 +62,8 @@ jobs:
             composer install --no-dev --optimize-autoloader --no-interaction && \
             npm ci && npm run build && \
             php artisan migrate --force && \
+            php artisan db:seed --class=RoleAndPermissionSeeder --force && \
+            php artisan db:seed --class=SettingsSeeder --force && \
             php artisan config:cache && \
             php artisan route:cache && \
             php artisan view:cache && \
