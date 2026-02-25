@@ -1,5 +1,5 @@
 {{-- Recursive comment partial. $depth: 0 = top-level, 1 = reply --}}
-<div class="flex gap-3 {{ $depth > 0 ? 'ps-6 pt-4 border-s-2 border-gray-100' : '' }}">
+<div id="comment-{{ $comment->id }}" class="flex gap-3 scroll-mt-24 {{ $depth > 0 ? 'ps-6 pt-4 border-s-2 border-gray-100' : '' }}">
 
     {{-- Avatar --}}
     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full shrink-0 text-xs font-semibold

@@ -40,6 +40,11 @@ class CommentTemplateResource extends Resource
         return __('Comment Templates');
     }
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo('manage-comment-templates') ?? false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -112,9 +117,9 @@ class CommentTemplateResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListCommentTemplates::route('/'),
+            'index' => ListCommentTemplates::route('/'),
             'create' => CreateCommentTemplate::route('/create'),
-            'edit'   => EditCommentTemplate::route('/{record}/edit'),
+            'edit' => EditCommentTemplate::route('/{record}/edit'),
         ];
     }
 }

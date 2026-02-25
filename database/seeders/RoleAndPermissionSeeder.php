@@ -59,12 +59,15 @@ class RoleAndPermissionSeeder extends Seeder
             'manage-currencies',       // enable/disable currencies in settings
             'manage-exchange-rates',   // set exchange rates per currency
             'edit-commission-rules',   // configure commission percentages
+            'manage-ad-campaigns',     // add/edit/delete ad campaigns
+            'manage-comment-templates', // add/edit/delete comment templates
         ],
 
         // ── Superadmin-level (superadmins only) ──────────────────────────
         'superadmin' => [
             'manage-admins',           // view / manage admin accounts
             'demote-admins',           // demote an admin to editor or below
+            'manage-roles',            // edit roles and assign permissions (configurable access)
         ],
     ];
 

@@ -56,9 +56,9 @@ class PostCommentResource extends Resource
                 Select::make('status')
                     ->label(__('Status'))
                     ->options([
-                        'pending'  => __('Pending'),
+                        'pending' => __('Pending'),
                         'approved' => __('Approved'),
-                        'spam'     => __('Spam'),
+                        'spam' => __('Spam'),
                     ])
                     ->required(),
 
@@ -115,9 +115,9 @@ class PostCommentResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'approved' => 'success',
-                        'pending'  => 'warning',
-                        'spam'     => 'danger',
-                        default    => 'gray',
+                        'pending' => 'warning',
+                        'spam' => 'danger',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('parent_id')
@@ -137,12 +137,30 @@ class PostCommentResource extends Resource
                 SelectFilter::make('status')
                     ->label(__('Status'))
                     ->options([
-                        'pending'  => __('Pending'),
+                        'pending' => __('Pending'),
                         'approved' => __('Approved'),
-                        'spam'     => __('Spam'),
+                        'spam' => __('Spam'),
                     ]),
             ])
             ->recordActions([
+                Action::make('editPost')
+                    ->label(__('Edit Post'))
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->url(fn (PostComment $record): string => PostResource::getUrl('edit', ['record' => $record->post]))
+                    ->openUrlInNewTab(),
+
+                Action::make('showPost')
+                    ->label(__('Show Post'))
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->url(fn (PostComment $record): string => route('blog.show', $record->post->slug))
+                    ->openUrlInNewTab(),
+
+                Action::make('viewComment')
+                    ->label(__('View Comment'))
+                    ->icon(Heroicon::OutlinedEye)
+                    ->url(fn (PostComment $record): string => route('blog.show', $record->post->slug).'#comment-'.$record->id)
+                    ->openUrlInNewTab(),
+
                 Action::make('approve')
                     ->label(__('Approve'))
                     ->icon(Heroicon::OutlinedCheckCircle)
@@ -162,6 +180,15 @@ class PostCommentResource extends Resource
                     ->action(function (PostComment $record): void {
                         $record->update(['status' => 'spam']);
                         Notification::make()->title(__('Marked as spam'))->warning()->send();
+                    }),
+
+                Action::make('unspam')
+                    ->label(__('Restore to Pending'))
+                    ->icon(Heroicon::OutlinedArrowUturnLeft)
+                    ->visible(fn (PostComment $record): bool => $record->status === 'spam')
+                    ->action(function (PostComment $record): void {
+                        $record->update(['status' => 'pending']);
+                        Notification::make()->title(__('Restored to pending'))->success()->send();
                     }),
 
                 DeleteAction::make(),

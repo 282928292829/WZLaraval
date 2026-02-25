@@ -41,6 +41,11 @@ class AdCampaignResource extends Resource
         return __('Ad Campaigns');
     }
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo('manage-ad-campaigns') ?? false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([

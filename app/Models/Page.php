@@ -35,6 +35,15 @@ class Page extends Model
         'allow_comments' => 'boolean',
     ];
 
+    protected $attributes = [
+        'menu_order' => 0,
+    ];
+
+    protected function setMenuOrderAttribute(mixed $value): void
+    {
+        $this->attributes['menu_order'] = (is_numeric($value) && $value !== '') ? (int) $value : 0;
+    }
+
     public function getTitle(): string
     {
         $locale = app()->getLocale();

@@ -722,7 +722,29 @@ class OrderController extends Controller
         return $this->customerIndex($user, $request);
     }
 
+    public function indexVariant(Request $request, string $variant)
+    {
+        $user = auth()->user();
+        if ($user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+            return redirect()->route('orders.index');
+        }
+
+        $data = $this->customerIndexData($user, $request);
+        $data['listRoute'] = route('orders.list-variant', ['variant' => $variant]);
+        $data['clearFiltersRoute'] = route('orders.list-variant', ['variant' => $variant]);
+
+        return view("orders.index-{$variant}", $data);
+    }
+
     private function customerIndex($user, Request $request)
+    {
+        $data = $this->customerIndexData($user, $request);
+
+        return view('orders.index', $data);
+    }
+
+    /** @return array{orders: \Illuminate\Contracts\Pagination\LengthAwarePaginator, statuses: array, sort: string, perPage: int, lastOrder: ?Order, orderStats: array} */
+    private function customerIndexData($user, Request $request): array
     {
         $query = Order::where('user_id', $user->id)->withCount('items');
 
@@ -744,7 +766,6 @@ class OrderController extends Controller
         $orders = $query->paginate($perPage)->withQueryString();
         $statuses = Order::getStatuses();
 
-        // Last order: most recent, unfiltered (for quick-access section)
         $lastOrder = Order::where('user_id', $user->id)
             ->withCount('items')
             ->latest()
@@ -763,7 +784,7 @@ class OrderController extends Controller
                 ->count(),
         ];
 
-        return view('orders.index', compact('orders', 'statuses', 'sort', 'perPage', 'lastOrder', 'orderStats'));
+        return compact('orders', 'statuses', 'sort', 'perPage', 'lastOrder', 'orderStats');
     }
 
     private function staffIndex(Request $request)

@@ -53,5 +53,8 @@ return [
         'manage-currencies' => 'Manage currencies',
         'manage-exchange-rates' => 'Manage exchange rates',
         'edit-commission-rules' => 'Edit commission rules',
+        'manage-ad-campaigns' => 'Manage ad campaigns',
+        'manage-comment-templates' => 'Manage comment templates',
+        'manage-roles' => 'Manage roles and permissions',
     ],
 ];

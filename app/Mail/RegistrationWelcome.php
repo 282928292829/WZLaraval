@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,8 +19,10 @@ class RegistrationWelcome extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $siteName = Setting::get('site_name') ?: config('app.name');
+
         return new Envelope(
-            subject: 'مرحباً بك في واسطزون! — Wasetzon',
+            subject: __('email.welcome.subject', ['site_name' => $siteName]),
         );
     }
 

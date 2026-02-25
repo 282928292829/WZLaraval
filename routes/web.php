@@ -68,6 +68,9 @@ Route::get('/new-order', NewOrder::class)
 
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
+        ->where('variant', 'simple|table|minimal')
+        ->name('orders.list-variant');
     Route::post('/orders/bulk', [OrderController::class, 'bulkUpdate'])->name('orders.bulk-update');
 
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
