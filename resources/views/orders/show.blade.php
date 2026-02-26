@@ -102,8 +102,7 @@
     {{-- Comments discovery banner: first 2 visits only (same as WP: top of order, link to comments at bottom) --}}
     @if($showCommentsDiscovery ?? true)
     <div id="comments-discovery-banner"
-         class="rounded-xl mb-4 flex items-center justify-between gap-3 flex-wrap"
-         style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); color: #fff; padding: 12px 16px; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);"
+         class="rounded-xl mb-4 flex items-center justify-between gap-3 flex-wrap bg-gradient-to-br from-primary-500 to-primary-400 text-white py-3 px-4 shadow-[0_2px_8px_rgba(249,115,22,0.2)]"
          x-data="{ hidden: sessionStorage.getItem('commentsDiscoveryBannerDismissed') === '1' }"
          x-show="!hidden"
          x-transition>
@@ -1218,6 +1217,7 @@
                         $invDefLines = $invDef['custom_lines'] ?? [];
                         $invDefLines = is_array($invDefLines) ? array_values($invDefLines) : [];
                         if (empty($invDefLines)) { $invDefLines = [['label' => '', 'amount' => 0, 'visible' => true]]; }
+                        $commissionSettings = $commissionSettings ?? ['threshold' => 500, 'below_type' => 'flat', 'below_value' => 50, 'above_type' => 'percent', 'above_value' => 8];
                     @endphp
                     <div x-show="openPanel === 'invoice'" x-collapse class="mt-4">
                         <div class="bg-gray-50 rounded-xl border border-gray-200 p-4" x-data="{
@@ -1231,11 +1231,31 @@
                             shippingCompany: {{ json_encode($invDef['second_shipping_company'] ?? '') }},
                             showOrderItems: {{ ($invDef['show_order_items'] ?? false) ? 'true' : 'false' }},
                             lines: {{ json_encode(array_map(fn($l) => ['label' => $l['label'] ?? '', 'amount' => (float)($l['amount'] ?? 0), 'visible' => (bool)($l['visible'] ?? true)], $invDefLines)) }},
+                            firstItemsTotal: {{ json_encode((float)($invDef['first_items_total'] ?? 0)) }},
+                            firstAgentFee: {{ json_encode((float)($invDef['first_agent_fee'] ?? 0)) }},
+                            firstCommissionOverridden: false,
+                            commissionSettings: @js($commissionSettings),
                             addLine() { this.lines.push({ label: '', amount: 0, visible: true }); },
                             removeLine(i) { this.lines.splice(i, 1); },
                             recalcRemaining() {
                                 const total = (parseFloat(this.productValue) || 0) + (parseFloat(this.agentFee) || 0) + (parseFloat(this.shippingCost) || 0);
                                 this.remaining = Math.max(0, total - (parseFloat(this.firstPayment) || 0));
+                            },
+                            calcFirstPaymentCommission(subtotal) {
+                                const s = parseFloat(subtotal) || 0;
+                                if (s <= 0) return 0;
+                                const c = this.commissionSettings || {};
+                                const th = parseFloat(c.threshold) || 500;
+                                const isAbove = s >= th;
+                                if (isAbove) {
+                                    return (c.above_type === 'percent') ? s * (parseFloat(c.above_value) || 8) / 100 : (parseFloat(c.above_value) || 0);
+                                }
+                                return (c.below_type === 'percent') ? s * (parseFloat(c.below_value) || 50) / 100 : (parseFloat(c.below_value) || 50);
+                            },
+                            recalcFirstPayment() {
+                                if (!this.firstCommissionOverridden) {
+                                    this.firstAgentFee = Math.round(this.calcFirstPaymentCommission(this.firstItemsTotal) * 100) / 100;
+                                }
                             }
                         }">
                             <h4 class="text-xs font-semibold text-gray-700 mb-3">📄 {{ __('orders.generate_invoice') }}</h4>
@@ -1261,10 +1281,37 @@
                                             <option value="both">{{ __('orders.invoice_language_both') }}</option>
                                         </select>
                                     </div>
-                                    <div x-show="invoiceType !== 'second_final'">
+                                    <div x-show="invoiceType !== 'second_final' && invoiceType !== 'first_payment'">
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_amount') }}</label>
                                         <input type="number" step="0.01" min="0" name="custom_amount" placeholder="{{ __('placeholder.amount') }}"
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                    </div>
+                                </div>
+                                {{-- First Payment: items total, auto-calc commission, override option --}}
+                                <div x-show="invoiceType === 'first_payment'" x-cloak class="space-y-3">
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_items_total') }}</label>
+                                            <input type="number" step="0.01" min="0" name="first_items_total" x-model.number="firstItemsTotal" @input="recalcFirstPayment()"
+                                                class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.fee_agent_fee') }}</label>
+                                            <input type="number" step="0.01" min="0" name="first_agent_fee" x-model.number="firstAgentFee"
+                                                :readonly="!firstCommissionOverridden"
+                                                :class="firstCommissionOverridden ? 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400' : 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-gray-50'">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_total') }}</label>
+                                            <div class="px-2 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg" x-text="((parseFloat(firstItemsTotal) || 0) + (parseFloat(firstAgentFee) || 0)).toFixed(2)"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="hidden" name="first_commission_overridden" :value="firstCommissionOverridden ? 1 : 0">
+                                        <input type="checkbox" id="first_commission_override" x-model="firstCommissionOverridden"
+                                            @change="if (!firstCommissionOverridden) recalcFirstPayment()"
+                                            class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
+                                        <label for="first_commission_override" class="text-xs text-gray-600">{{ __('orders.invoice_override_commission') }}</label>
                                     </div>
                                 </div>
                                 <div x-show="invoiceType !== 'second_final'" class="flex items-center gap-2">
@@ -1351,8 +1398,10 @@
                                     <input type="hidden" name="show_original_currency" value="0">
                                 </div>
 
-                                {{-- Fee lines --}}
-                                @include('orders.partials.invoice-fee-lines')
+                                {{-- Fee lines (hidden for first_payment — use dedicated section above) --}}
+                                <div x-show="invoiceType !== 'second_final' && invoiceType !== 'first_payment'">
+                                    @include('orders.partials.invoice-fee-lines')
+                                </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_filename') }}</label>
                                     <input type="text" name="custom_filename" placeholder="{{ __('orders.invoice_custom_filename_placeholder') }}"
@@ -1654,7 +1703,7 @@
                                 </div>
                                 <span class="text-xs text-gray-400 tabular-nums">{{ $comment->created_at->format('Y/m/d H:i') }}</span>
                             </div>
-                            <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{{ $comment->body }}</div>
+                            <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{!! nl2br(linkify_whatsapp(e($comment->body))) !!}</div>
                         </div>
                     </div>
                 </div>
@@ -1691,25 +1740,28 @@
                             $firstCustomerRead = $customerReads->sortBy('read_at')->first();
                             $staffReadsDeduped = $staffReads->sortByDesc('read_at')->unique('user_id')->values();
                         @endphp
-                        <div style="display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap;">
+                        <div class="flex gap-1.5 items-start flex-wrap">
                             @if ($firstCustomerRead)
-                                <span style="font-size: 0.75rem; padding: 4px 8px; background: #10b981; border-radius: 4px; color: #fff; font-weight: 500;">
+                                <span class="text-xs px-2 py-1 bg-emerald-500 rounded text-white font-medium">
                                     ✓ {{ __('orders.read_by_customer_at', ['date' => $firstCustomerRead->read_at->format('Y/m/d'), 'time' => $firstCustomerRead->read_at->format('H:i')]) }}
                                 </span>
                             @endif
                             @if ($staffReadsDeduped->count() > 0)
-                                <div style="position: relative;" x-data="{ open: false }">
-                                    <button type="button" class="comment-read-toggle" style="font-size: 0.7rem; padding: 3px 6px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; color: #64748b; cursor: pointer;" data-comment-id="{{ $comment->id }}" @click="open = !open">
+                                <div class="relative" x-data="{ open: false }">
+                                    <button type="button" data-comment-id="{{ $comment->id }}" @click="open = !open"
+                                        class="text-[0.7rem] px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-500 cursor-pointer">
                                         {{ __('orders.team_reads_label', ['count' => $staffReadsDeduped->count()]) }}
                                     </button>
-                                    <div class="comment-read-list" id="comment-read-{{ $comment->id }}" x-show="open" x-cloak style="position: absolute; top: 100%; right: 0; margin-top: 4px; padding: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10; min-width: 200px;" @click.outside="open = false">
+                                    <div id="comment-read-{{ $comment->id }}" x-show="open" x-cloak
+                                        class="absolute top-full end-0 mt-1 p-2.5 bg-white border border-slate-300 rounded-md text-xs shadow-lg z-10 min-w-[200px]"
+                                        @click.outside="open = false">
                                         @foreach ($staffReadsDeduped as $read)
-                                            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+                                            <div class="mb-2 pb-2 border-b border-slate-200 last:mb-0 last:pb-0 last:border-b-0">
                                                 <strong>{{ optional($read->user)->name ?? 'user#'.$read->user_id }}</strong>
                                                 @if (optional($read->user)->email)
-                                                    <br><span style="color: #64748b; font-size: 0.9em;">{{ $read->user->email }}</span>
+                                                    <br><span class="text-slate-500 text-[0.9em]">{{ $read->user->email }}</span>
                                                 @endif
-                                                <br><span style="color: #64748b; font-size: 0.9em;">{{ __('orders.read_by_team_at', ['date' => $read->read_at->format('Y/m/d'), 'time' => $read->read_at->format('H:i')]) }}</span>
+                                                <br><span class="text-slate-500 text-[0.9em]">{{ __('orders.read_by_team_at', ['date' => $read->read_at->format('Y/m/d'), 'time' => $read->read_at->format('H:i')]) }}</span>
                                             </div>
                                         @endforeach
                                     </div>
@@ -1722,7 +1774,7 @@
                     @if ($comment->deleted_at)
                         <p class="text-sm text-gray-400 italic">{{ __('orders.comment_deleted_placeholder') }}</p>
                     @else
-                        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{{ $comment->body }}</div>
+                        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{!! nl2br(linkify_whatsapp(e($comment->body))) !!}</div>
 
                         {{-- Attached files --}}
                         @php $commentFiles = $order->files->where('comment_id', $comment->id); @endphp
@@ -2137,8 +2189,7 @@
     x-show="show"
     x-cloak
     @click.self="close()"
-    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
-    style="display: none;">
+    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
 
     {{-- Close --}}
     <button @click.stop="close()"
