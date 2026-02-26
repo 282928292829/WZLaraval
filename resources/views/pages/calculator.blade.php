@@ -104,7 +104,7 @@
                     </div>
                 </div>
 
-                <p class="mt-2 text-xs text-center text-gray-400" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">
+                <p class="mt-2 text-xs text-center text-gray-400 font-arabic">
                     {{ __('calc.enter_price_hint') }}
                 </p>
             </div>
@@ -123,10 +123,9 @@
                 <div class="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
                     <span class="text-sm text-gray-600 font-medium">{{ __('calc.products_value') }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-primary-600 text-base" dir="ltr">
-                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal font-arabic">{{ __('calc.sar_currency') }}</span>
                         <span x-text="hasValue ? formatNum(convertSAR) : '{{ __('calc.enter_amount_to_calc') }}'"
-                              :class="hasValue ? '' : 'text-sm text-gray-400 font-normal'"
-                              :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
+                              :class="hasValue ? '' : 'text-sm text-gray-400 font-normal font-arabic'"></span>
                     </span>
                 </div>
 
@@ -134,22 +133,19 @@
                 <div class="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
                     <span class="text-sm text-gray-600 font-medium">{{ __('calc.wasetzon_commission', ['site_name' => $site_name ?? config('app.name')]) }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-primary-600 text-base" dir="ltr">
-                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-show="hasValue" class="text-xs text-gray-400 font-normal font-arabic">{{ __('calc.sar_currency') }}</span>
                         <span x-text="hasValue ? formatNum(commission) : '{{ __('calc.enter_amount_to_calc') }}'"
-                              :class="hasValue ? '' : 'text-sm text-gray-400 font-normal'"
-                              :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
+                              :class="hasValue ? '' : 'text-sm text-gray-400 font-normal font-arabic'"></span>
                     </span>
                 </div>
 
                 {{-- Total — gradient row --}}
-                <div class="flex items-center justify-between px-4 py-4 rounded-xl"
-                     style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);">
+                <div class="flex items-center justify-between px-4 py-4 rounded-xl bg-gradient-to-br from-primary-500 to-primary-400">
                     <span class="text-base text-white font-semibold">💰 {{ __('calc.total_without_shipping') }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-white text-lg" dir="ltr">
-                        <span x-show="hasValue" class="text-sm text-white/80 font-normal" style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">{{ __('calc.sar_currency') }}</span>
+                        <span x-show="hasValue" class="text-sm text-white/80 font-normal font-arabic">{{ __('calc.sar_currency') }}</span>
                         <span x-text="hasValue ? formatNum(total) : '{{ __('calc.enter_amount_to_calc') }}'"
-                              :class="hasValue ? '' : 'text-sm text-white/70 font-normal'"
-                              :style="hasValue ? '' : 'font-family: \'IBM Plex Sans Arabic\', ui-sans-serif, system-ui, sans-serif;'"></span>
+                              :class="hasValue ? '' : 'text-sm text-white/70 font-normal font-arabic'"></span>
                     </span>
                 </div>
             </div>
@@ -170,7 +166,7 @@
                         <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ __('calc.exchange_rate') }}</h3>
                         <p class="text-xs text-gray-600 leading-relaxed">
                             <strong>{{ __('calc.usd_to_sar', ['rate' => $displayUsdRate]) }}</strong><br>
-                            <span class="text-gray-400">إبراء للذمة: {{ __('calc.exchange_rate') }} يُحدَّد تلقائيًا ليشمل رسوم تحويل العملة ورسوم العمليات الدولية والمعالجة البنكية.</span>
+                            <span class="text-gray-400">{{ __('calc.exchange_rate_disclaimer') }}</span>
                         </p>
                     </div>
                 </div>
@@ -208,8 +204,7 @@
         </div>
 
         {{-- CTA --}}
-        <div class="rounded-xl p-7 sm:p-10 text-center text-white shadow-lg"
-             style="background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); box-shadow: 0 10px 30px rgba(249,115,22,0.3);">
+        <div class="rounded-xl p-7 sm:p-10 text-center text-white bg-gradient-to-br from-primary-500 to-primary-400 shadow-[0_10px_30px_rgba(249,115,22,0.3)]">
             <h2 class="text-2xl font-bold mb-3">{{ __('calc.ready_to_order') }}</h2>
             <p class="text-base mb-6 opacity-95 leading-relaxed">
                 {{ __('calc.start_order_desc') }}

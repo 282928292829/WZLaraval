@@ -28,6 +28,9 @@
 /* Hide x-cloak elements until Alpine.js initialises */
 [x-cloak] { display: none !important; }
 
+/* Arabic font for number/hint text (dir="ltr" contexts) */
+.font-arabic { font-family: var(--font-family-arabic); }
+
 @layer base {
     [dir="ltr"] {
         font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -69,4 +72,119 @@
     [dir="rtl"] [dir="ltr"] span.text-white\/80 {
         font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
     }
+}
+
+/* ============================================================
+   New Order Page — minimal CSS (complex grid, pseudo-elements, toast, modal)
+   Layout, cards, buttons, forms use Tailwind utilities.
+   ============================================================ */
+@keyframes successScale {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+@layer components {
+
+    /* Toast — created dynamically in JS */
+    #toast-container {
+        @apply fixed top-5 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 w-[90%] max-w-[500px] pointer-events-none;
+    }
+    .toast {
+        @apply bg-white/98 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border-e-4 border-primary-500 font-semibold text-sm pointer-events-auto cursor-pointer flex items-center gap-2.5;
+        animation: toastIn 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        opacity: 0;
+    }
+    .toast.success { @apply border-e-green-500; }
+    .toast.error { @apply border-e-red-500; }
+    .toast-close {
+        @apply shrink-0 w-7 h-7 p-0 ms-1 border-none rounded-lg bg-black/5 text-slate-500 text-xl leading-none cursor-pointer flex items-center justify-center;
+    }
+    .toast-close:hover { @apply bg-black/10 text-slate-700; }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastOut {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to { opacity: 0; transform: translateY(-20px) scale(0.8); }
+    }
+
+    /* Item grid — desktop complex columns */
+    .order-item-grid-desktop {
+        grid-template-columns: 0.35fr 2fr 0.5fr 0.6fr 0.6fr 0.7fr 0.8fr 1.2fr 0.8fr;
+    }
+    /* Mobile grid cell spans */
+    .order-item-details .order-cell-url { grid-column: span 6; }
+    .order-item-details .order-cell-qty { grid-column: span 2; }
+    .order-item-details .order-cell-col { grid-column: span 2; }
+    .order-item-details .order-cell-siz { grid-column: span 2; }
+    .order-item-details .order-cell-prc { grid-column: span 3; }
+    .order-item-details .order-cell-cur { grid-column: span 3; }
+    .order-item-details .order-cell-not { grid-column: span 6; }
+    .order-item-details .order-optional-section {
+        grid-column: span 6;
+        @apply flex flex-col gap-2.5 pt-2.5 mt-1.5 border-t border-dashed border-orange-100;
+    }
+    @media (min-width: 1024px) {
+        .order-item-details .order-cell-url,
+        .order-item-details .order-cell-qty,
+        .order-item-details .order-cell-col,
+        .order-item-details .order-cell-siz,
+        .order-item-details .order-cell-prc,
+        .order-item-details .order-cell-cur,
+        .order-item-details .order-cell-not,
+        .order-item-details .order-upload-container,
+        .order-item-details .order-optional-section { grid-column: auto; }
+        .order-item-details .order-optional-section { @apply contents; }
+    }
+    .order-item-card::before {
+        content: '';
+        @apply absolute inset-y-0 start-0 w-1 bg-primary-500 opacity-0 transition-opacity duration-150;
+    }
+    .order-item-card:hover::before { @apply opacity-100; }
+    .order-item-card.is-valid::before { @apply bg-green-500; }
+
+    /* Fixed summary footer */
+    .order-summary-card {
+        @apply fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white/98 to-orange-50/95 backdrop-blur-xl px-5 py-4 flex justify-between items-center gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] border-t border-orange-100/60 z-[100];
+    }
+    @media (min-width: 640px) {
+        .order-summary-card { @apply px-5 py-2.5 gap-5; }
+    }
+    @media (min-width: 1024px) {
+        .order-summary-card { @apply max-w-[1200px] mx-auto; }
+    }
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        .order-summary-card { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+    }
+    #order-form { padding-bottom: 8.75rem; }
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        #order-form { padding-bottom: calc(8.75rem + env(safe-area-inset-bottom)); }
+    }
+    @media (min-width: 1024px) {
+        #order-form { padding-bottom: 7.5rem; }
+    }
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        @media (min-width: 1024px) {
+            #order-form { padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)); }
+        }
+    }
+
+    /* Login modal overlay/display */
+    .order-login-modal-overlay {
+        @apply fixed inset-0 bg-black/70 z-[9999] items-center justify-center p-5 hidden;
+        animation: orderModalFadeIn 0.3s ease;
+    }
+    .order-login-modal-overlay.show { @apply flex; }
+    @keyframes orderModalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .order-login-modal {
+        @apply bg-white rounded-2xl max-w-[500px] w-full max-h-[90vh] overflow-y-auto shadow-2xl;
+        animation: orderModalSlideUp 0.3s ease;
+    }
+    @keyframes orderModalSlideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .order-modal-form { @apply hidden; }
+    .order-modal-form.active { @apply block; }
 }
