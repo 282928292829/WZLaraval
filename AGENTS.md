@@ -267,3 +267,29 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - IMPORTANT: Activate `tailwindcss-development` every time you're working with a Tailwind CSS or styling-related task.
 
 </laravel-boost-guidelines>
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+This is a Laravel 12 TALL-stack application (Tailwind CSS v4, Alpine.js, Livewire 3, Filament 4) — a bilingual (Arabic/English) order management platform. In the cloud VM, it runs on SQLite (not MySQL) with all caching/sessions/queues via the `database` driver (no Redis needed).
+
+### Running the application
+
+- **Dev server:** `php artisan serve --host=0.0.0.0 --port=8000`
+- **Full dev stack (server + queue + logs + vite):** `composer run dev` — but note this uses `concurrently` and is long-lived; prefer starting `php artisan serve` separately.
+- **Frontend build:** `npm run build` (one-shot) or `npm run dev` (HMR). Run `npm run build` after any CSS/JS changes before testing if Vite dev server is not running.
+
+### Testing
+
+- **All tests:** `php artisan test --compact` (87 tests, ~11s, all use SQLite)
+- **Filtered:** `php artisan test --compact --filter=testName`
+- **Lint:** `vendor/bin/pint --dirty --format agent` (auto-fix) or `vendor/bin/pint --test --format agent` (check only)
+
+### Gotchas
+
+- The `.env.example` defaults to `DB_CONNECTION=sqlite`. The SQLite database file must exist at `database/database.sqlite` before running migrations.
+- After `composer install`, Filament's `post-autoload-dump` hook runs `php artisan filament:upgrade` which publishes assets. This is expected.
+- The `RoleAndPermissionSeeder` must be run at least once for role-gated features to work: `php artisan db:seed --class=RoleAndPermissionSeeder --no-interaction`.
+- The Herd rules in AGENTS.md reference `.test` domains — in the cloud VM, use `php artisan serve` instead (Herd is not available).
+- Pre-existing Pint formatting violations exist in migration commands and some models; these are not introduced by cloud agent changes.
