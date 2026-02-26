@@ -18,7 +18,7 @@ class DevController extends Controller
 
         $testEmails = [
             'customer' => 'customer@wasetzon.test',
-            'editor' => 'editor@wasetzon.test',
+            'staff' => 'editor@wasetzon.test',
             'admin' => 'admin@wasetzon.test',
             'superadmin' => 'superadmin@wasetzon.test',
         ];

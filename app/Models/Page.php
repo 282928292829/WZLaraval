@@ -39,6 +39,21 @@ class Page extends Model
         'menu_order' => 0,
     ];
 
+    /** Header menu order matching new WordPress (wasetzon-modern): how-to-order, calculator, shipping-calculator, payment-methods, membership, faq, testimonials */
+    public function scopeHeaderMenuOrder($query)
+    {
+        return $query->orderByRaw("CASE
+            WHEN slug = 'how-to-order' THEN 1
+            WHEN slug = 'calculator' THEN 2
+            WHEN slug = 'shipping-calculator' THEN 3
+            WHEN slug = 'payment-methods' THEN 4
+            WHEN slug = 'membership' THEN 5
+            WHEN slug = 'faq' THEN 6
+            WHEN slug = 'testimonials' THEN 7
+            ELSE 99
+        END ASC");
+    }
+
     protected function setMenuOrderAttribute(mixed $value): void
     {
         $this->attributes['menu_order'] = (is_numeric($value) && $value !== '') ? (int) $value : 0;

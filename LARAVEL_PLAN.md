@@ -47,8 +47,8 @@ isProject: false
 
 1. **Guest** — Browse site, fill order form, must login to submit
 2. **Customer** — Create/view own orders, comment, upload receipts, manage profile
-3. **Editor (5-10 per site)** — View all orders, reply to comments, update status, add internal notes, merge orders
-4. **Admin (2-4 per site)** — Everything editors can do + Filament access (blog, pages, settings, exchange rates, user management)
+3. **Staff (5-10 per site)** — View all orders, reply to comments, update status, add internal notes, merge orders
+4. **Admin (2-4 per site)** — Everything staff can do + Filament access (blog, pages, settings, exchange rates, user management)
 5. **Super Admin (1-2)** — Everything + manage other admins, cannot be demoted
 
 ### Spatie Permission System
@@ -93,7 +93,7 @@ Key design constraints:
 - **PWA setup:** Service worker, app manifest, offline support, performance optimizations
 - MySQL schema: all migrations written upfront
 - Redis configuration (sessions, cache, queues)
-- Role system: 5 roles (guest/customer/editor/admin/superadmin) via Spatie Permission
+- Role system: 5 roles (guest/customer/staff/admin/superadmin) via Spatie Permission
 - Shared layouts: header (role-aware nav, language toggle, cart icon conditional), footer, base Blade templates
 - Files: `resources/views/layouts/`, `app/Models/`, `database/migrations/`, `lang/ar/`, `lang/en/`, `public/sw.js`, `public/manifest.json`
 

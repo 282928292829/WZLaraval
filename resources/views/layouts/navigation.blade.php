@@ -17,6 +17,34 @@
                 @endif
             </a>
 
+            {{-- Mobile: Quick links (New Order, My Orders) — centered in header --}}
+            <div class="sm:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
+                <a href="{{ url('/new-order') }}"
+                   class="flex-shrink-0 px-2.5 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors">
+                    {{ __('New Order') }}
+                </a>
+                @guest
+                    <a href="{{ url('/orders') }}"
+                       class="flex-shrink-0 px-2.5 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors">
+                        {{ __('My Orders') }}
+                    </a>
+                @endguest
+                @auth
+                    @if (auth()->user()->hasAnyRole(['customer']))
+                        <a href="{{ url('/orders') }}"
+                           class="flex-shrink-0 px-2.5 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors">
+                            {{ __('My Orders') }}
+                        </a>
+                    @endif
+                    @if (auth()->user()->hasAnyRole(['staff', 'admin', 'superadmin']))
+                        <a href="{{ url('/orders') }}"
+                           class="flex-shrink-0 px-2.5 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors">
+                            {{ __('All Orders') }}
+                        </a>
+                    @endif
+                @endauth
+            </div>
+
             {{-- Center: Desktop nav links --}}
             <div class="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1">
 
@@ -40,7 +68,7 @@
                             </a>
                         @endif
 
-                        @if (auth()->user()->hasAnyRole(['editor', 'admin', 'superadmin']))
+                        @if (auth()->user()->hasAnyRole(['staff', 'admin', 'superadmin']))
                             <a href="{{ url('/orders') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                                 {{ __('All Orders') }}
@@ -86,10 +114,18 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute start-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
                              style="display: none;">
-                            @foreach(\App\Models\Page::where('show_in_header', true)->where('is_published', true)->orderBy('menu_order')->get() as $headerPage)
-                                <a href="{{ url('/pages/' . $headerPage->slug) }}"
+                            @foreach([
+                                ['slug' => 'how-to-order', 'label' => 'nav.how_to_order'],
+                                ['slug' => 'calculator', 'label' => 'nav.calculator'],
+                                ['slug' => 'shipping-calculator', 'label' => 'nav.shipping_calculator'],
+                                ['slug' => 'payment-methods', 'label' => 'nav.payment_methods'],
+                                ['slug' => 'membership', 'label' => 'nav.membership'],
+                                ['slug' => 'faq', 'label' => 'nav.faq'],
+                                ['slug' => 'testimonials', 'label' => 'nav.testimonials'],
+                            ] as $item)
+                                <a href="{{ url('/pages/' . $item['slug']) }}"
                                    class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                    {{ $headerPage->getTitle() }}
+                                    {{ __($item['label']) }}
                                 </a>
                             @endforeach
                         </div>
@@ -219,7 +255,7 @@
                     </a>
                 @endif
 
-                @if (auth()->user()->hasAnyRole(['editor', 'admin', 'superadmin']))
+                @if (auth()->user()->hasAnyRole(['staff', 'admin', 'superadmin']))
                     <a href="{{ url('/orders') }}" @click="open = false"
                        class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('All Orders') }}
@@ -250,10 +286,18 @@
                      x-transition:enter-end="opacity-100"
                      class="ms-3 mt-1 mb-1 space-y-0 border-s-2 border-gray-100 ps-3"
                      style="display: none;">
-                    @foreach(\App\Models\Page::where('show_in_header', true)->where('is_published', true)->orderBy('menu_order')->get() as $headerPage)
-                        <a href="{{ url('/pages/' . $headerPage->slug) }}" @click="open = false"
+                    @foreach([
+                        ['slug' => 'how-to-order', 'label' => 'nav.how_to_order'],
+                        ['slug' => 'calculator', 'label' => 'nav.calculator'],
+                        ['slug' => 'shipping-calculator', 'label' => 'nav.shipping_calculator'],
+                        ['slug' => 'payment-methods', 'label' => 'nav.payment_methods'],
+                        ['slug' => 'membership', 'label' => 'nav.membership'],
+                        ['slug' => 'faq', 'label' => 'nav.faq'],
+                        ['slug' => 'testimonials', 'label' => 'nav.testimonials'],
+                    ] as $item)
+                        <a href="{{ url('/pages/' . $item['slug']) }}" @click="open = false"
                            class="block py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                            {{ $headerPage->getTitle() }}
+                            {{ __($item['label']) }}
                         </a>
                     @endforeach
                 </div>

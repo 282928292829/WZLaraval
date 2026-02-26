@@ -27,8 +27,8 @@ class RoleAndPermissionSeeder extends Seeder
             'manage-own-profile',      // update name / email / password / address
         ],
 
-        // ── Editor-level (editors + admins + superadmins) ───────────────
-        'editor' => [
+        // ── Staff-level (staff + admins + superadmins) ───────────────────
+        'staff' => [
             'view-staff-dashboard',    // see staff dashboard section
             'view-all-orders',         // see every order in the system
             'update-order-status',     // change order status dropdown
@@ -66,7 +66,7 @@ class RoleAndPermissionSeeder extends Seeder
         // ── Superadmin-level (superadmins only) ──────────────────────────
         'superadmin' => [
             'manage-admins',           // view / manage admin accounts
-            'demote-admins',           // demote an admin to editor or below
+            'demote-admins',           // demote an admin to staff or below
             'manage-roles',            // edit roles and assign permissions (configurable access)
         ],
     ];
@@ -86,7 +86,7 @@ class RoleAndPermissionSeeder extends Seeder
         // ── Create roles ──────────────────────────────────────────────────
         $guest = Role::firstOrCreate(['name' => 'guest',      'guard_name' => 'web']);
         $customer = Role::firstOrCreate(['name' => 'customer',   'guard_name' => 'web']);
-        $editor = Role::firstOrCreate(['name' => 'editor',     'guard_name' => 'web']);
+        $staff = Role::firstOrCreate(['name' => 'staff',       'guard_name' => 'web']);
         $admin = Role::firstOrCreate(['name' => 'admin',      'guard_name' => 'web']);
         $superadmin = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
 
@@ -100,16 +100,16 @@ class RoleAndPermissionSeeder extends Seeder
             $this->permissions['customer']
         );
 
-        // Editor: customer-level + editor-level
-        $editor->syncPermissions(array_merge(
+        // Staff: customer-level + staff-level
+        $staff->syncPermissions(array_merge(
             $this->permissions['customer'],
-            $this->permissions['editor'],
+            $this->permissions['staff'],
         ));
 
-        // Admin: customer-level + editor-level + admin-level
+        // Admin: customer-level + staff-level + admin-level
         $admin->syncPermissions(array_merge(
             $this->permissions['customer'],
-            $this->permissions['editor'],
+            $this->permissions['staff'],
             $this->permissions['admin'],
         ));
 
@@ -117,7 +117,7 @@ class RoleAndPermissionSeeder extends Seeder
         $superadmin->syncPermissions($allPermissions);
 
         // ── Seed one test user per role ───────────────────────────────────
-        $this->seedTestUsers($guest, $customer, $editor, $admin, $superadmin);
+        $this->seedTestUsers($guest, $customer, $staff, $admin, $superadmin);
 
         $this->command->info('✓ Roles and permissions seeded.');
         $this->command->table(
@@ -125,8 +125,8 @@ class RoleAndPermissionSeeder extends Seeder
             [
                 ['guest',      '0 (browse only)'],
                 ['customer',   count($this->permissions['customer'])],
-                ['editor',     count($this->permissions['customer']) + count($this->permissions['editor'])],
-                ['admin',      count($this->permissions['customer']) + count($this->permissions['editor']) + count($this->permissions['admin'])],
+                ['staff',      count($this->permissions['customer']) + count($this->permissions['staff'])],
+                ['admin',      count($this->permissions['customer']) + count($this->permissions['staff']) + count($this->permissions['admin'])],
                 ['superadmin', $allPermissions->count()],
             ]
         );
@@ -135,7 +135,7 @@ class RoleAndPermissionSeeder extends Seeder
     private function seedTestUsers(
         Role $guest,
         Role $customer,
-        Role $editor,
+        Role $staff,
         Role $admin,
         Role $superadmin,
     ): void {
@@ -153,10 +153,10 @@ class RoleAndPermissionSeeder extends Seeder
                 'role' => $customer,
             ],
             [
-                'name' => 'Editor User',
+                'name' => 'Staff User',
                 'email' => 'editor@wasetzon.test',
                 'password' => 'password',
-                'role' => $editor,
+                'role' => $staff,
             ],
             [
                 'name' => 'Admin User',

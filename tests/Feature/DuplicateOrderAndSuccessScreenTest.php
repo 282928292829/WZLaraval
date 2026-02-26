@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
     Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
-    Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web']);
 
     Setting::set('orders_per_hour_customer', '100', 'integer', 'orders');
     Setting::set('orders_per_hour_admin', '100', 'integer', 'orders');
@@ -63,8 +63,8 @@ test('duplicate_from is ignored if user does not own the order', function (): vo
 });
 
 test('staff can duplicate any order', function (): void {
-    $editor = User::factory()->create();
-    $editor->assignRole('editor');
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
 
     $customer = User::factory()->create();
     $order = Order::factory()->create(['user_id' => $customer->id, 'notes' => 'Staff dupe']);
@@ -76,7 +76,7 @@ test('staff can duplicate any order', function (): void {
         'sort_order' => 0,
     ]);
 
-    $component = Livewire::actingAs($editor)
+    $component = Livewire::actingAs($staff)
         ->test(NewOrder::class, ['duplicate_from' => $order->id]);
 
     expect($component->get('orderNotes'))->toBe('Staff dupe');
@@ -117,6 +117,8 @@ test('success screen is shown for user first order', function (): void {
 });
 
 test('success screen is NOT shown for 4th order — redirects instead', function (): void {
+    Setting::set('order_success_screen_threshold', 3, 'integer', 'orders');
+
     $user = User::factory()->create();
     $user->assignRole('customer');
 

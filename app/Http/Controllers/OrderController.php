@@ -23,7 +23,9 @@ use App\Models\OrderTimeline;
 use App\Models\Setting;
 use App\Models\UserActivityLog;
 use App\Models\UserAddress;
+use App\Services\CommissionCalculator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -41,14 +43,14 @@ class OrderController extends Controller
             'timeline' => fn ($q) => $q->with('user')->orderBy('created_at'),
             'comments' => fn ($q) => $q
                 ->with(['user', 'edits.editor', 'reads.user', 'notificationLogs.user'])
-                ->when(auth()->user()?->hasAnyRole(['editor', 'admin', 'superadmin']), fn ($q) => $q->withTrashed())
+                ->when(auth()->user()?->hasAnyRole(['staff', 'admin', 'superadmin']), fn ($q) => $q->withTrashed())
                 ->orderBy('created_at'),
         ])->findOrFail($id);
 
         $this->authorize('view', $order);
 
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
 
         // Read state is recorded by viewport-based tracking (JS), not on page load (matches WordPress).
 
@@ -108,9 +110,10 @@ class OrderController extends Controller
         $clickEditRemaining = $canEditItems ? now()->diffForHumans($clickEditDeadline, true) : null;
 
         $invoiceDefaults = $this->invoiceDefaultsForOrder($order);
+        $commissionSettings = CommissionCalculator::getSettings();
 
         return view('orders.show', compact(
-            'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery', 'invoiceDefaults'
+            'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery', 'invoiceDefaults', 'commissionSettings'
         ));
     }
 
@@ -164,6 +167,16 @@ class OrderController extends Controller
             $invoiceLanguage = 'ar';
         }
 
+        // Auto-fill first_agent_fee when not overridden (First Payment only)
+        if ($invoiceType === InvoiceType::FirstPayment->value) {
+            $firstItemsTotal = (float) ($validated['first_items_total'] ?? 0);
+            $firstAgentFee = (float) ($validated['first_agent_fee'] ?? 0);
+            $overridden = filter_var($validated['first_commission_overridden'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if ($firstItemsTotal > 0 && ! $overridden && $firstAgentFee <= 0) {
+                $validated['first_agent_fee'] = CommissionCalculator::calculate($firstItemsTotal);
+            }
+        }
+
         $extra = $this->buildInvoiceExtra($validated, $invoiceType);
 
         $invoiceCount = $order->files()->where('type', 'invoice')->count() + 1;
@@ -176,17 +189,29 @@ class OrderController extends Controller
 
         $settings = $this->invoiceSettings();
 
-        $pdfContent = $this->buildInvoicePdf(
-            $order,
-            $validated,
-            $invoiceType,
-            $notes,
-            $filename,
-            $extra,
-            $settings,
-            $invoiceLanguage,
-            $showOriginalCurrency
-        );
+        try {
+            $pdfContent = $this->buildInvoicePdf(
+                $order,
+                $validated,
+                $invoiceType,
+                $notes,
+                $filename,
+                $extra,
+                $settings,
+                $invoiceLanguage,
+                $showOriginalCurrency
+            );
+        } catch (\Throwable $e) {
+            Log::error('Invoice PDF generation failed', [
+                'order_id' => $order->id,
+                'invoice_type' => $invoiceType,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('orders.show', $id)
+                ->with('error', __('orders.invoice_generation_failed'));
+        }
 
         if ($action === 'preview') {
             return response()->streamDownload(
@@ -212,7 +237,9 @@ class OrderController extends Controller
         $commentBody = $this->resolveInvoiceCommentMessage(
             $validated['comment_message'] ?? '',
             $total,
-            $order
+            $order,
+            $invoiceType,
+            $validated
         );
 
         $comment = $order->comments()->create([
@@ -314,7 +341,14 @@ class OrderController extends Controller
         $customLines = Setting::get('invoice_custom_lines', []);
         $customLines = is_array($customLines) ? $customLines : [];
 
+        $firstItemsTotal = $productValue;
+        $firstAgentFee = $agentFee > 0 ? $agentFee : CommissionCalculator::calculate($firstItemsTotal);
+
         return [
+            'first_items_total' => $firstItemsTotal,
+            'first_agent_fee' => $firstAgentFee,
+            'first_other_label' => '',
+            'first_other_amount' => 0.0,
             'second_product_value' => $productValue,
             'second_agent_fee' => $agentFee,
             'second_shipping_cost' => $shippingCost,
@@ -391,6 +425,11 @@ class OrderController extends Controller
                     if ($agentFee > 0) {
                         $lines[] = ['description' => __('orders.fee_agent_fee'), 'qty' => 1, 'unit_price' => number_format($agentFee, 2), 'line_total' => $agentFee, 'is_fee' => true];
                     }
+                    $otherLabel = trim((string) ($validated['first_other_label'] ?? ''));
+                    $otherAmount = (float) ($validated['first_other_amount'] ?? 0);
+                    if ($otherAmount > 0) {
+                        $lines[] = ['description' => $otherLabel !== '' ? $otherLabel : __('orders.invoice_other'), 'qty' => 1, 'unit_price' => number_format($otherAmount, 2), 'line_total' => $otherAmount, 'is_fee' => true];
+                    }
                     $extras = $validated['first_extras'] ?? [];
                     foreach (is_array($extras) ? $extras : [] as $e) {
                         $label = trim($e['label'] ?? '');
@@ -400,6 +439,12 @@ class OrderController extends Controller
                         }
                     }
                     $total = array_sum(array_column($lines, 'line_total'));
+                    if (filter_var($validated['first_total_overridden'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                        $overrideTotal = (float) ($validated['first_total'] ?? 0);
+                        if ($overrideTotal > 0) {
+                            $total = $overrideTotal;
+                        }
+                    }
                     break;
 
                 case InvoiceType::SecondFinal->value:
@@ -643,10 +688,33 @@ class OrderController extends Controller
         return preg_replace('/[^\p{L}\p{N}\s_\-]/u', '', $value) ?? $value;
     }
 
-    private function resolveInvoiceCommentMessage(string $message, float $total, Order $order): string
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveInvoiceCommentMessage(string $message, float $total, Order $order, string $invoiceType, array $validated = []): string
     {
-        $default = Setting::get('invoice_comment_default') ?: __('orders.invoice_attached');
-        $text = trim($message) !== '' ? $message : $default;
+        $text = trim($message);
+
+        if ($text === '' && $invoiceType === InvoiceType::FirstPayment->value) {
+            $template = trim((string) Setting::get('invoice_first_payment_comment_template', ''));
+            if ($template === '') {
+                $template = __('orders.invoice_first_payment_comment_default');
+            }
+            $subtotal = (float) ($validated['first_items_total'] ?? 0);
+            $commission = (float) ($validated['first_agent_fee'] ?? 0);
+            $whatsappDisplay = Setting::get('whatsapp', '') ?: '-';
+            $replacements = [
+                ':subtotal' => number_format($subtotal, 0, '.', ','),
+                ':commission' => number_format($commission, 0, '.', ','),
+                ':total' => number_format($total, 0, '.', ','),
+                ':site_name' => Setting::get('site_name') ?: config('app.name'),
+                ':whatsapp' => $whatsappDisplay,
+            ];
+            $text = str_replace(array_keys($replacements), array_values($replacements), $template);
+        } elseif ($text === '') {
+            $default = Setting::get('invoice_comment_default') ?: __('orders.invoice_attached');
+            $text = $default;
+        }
 
         $replacements = [
             '{amount}' => number_format($total, 2),
@@ -666,7 +734,7 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
 
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
 
         if (! $isOwner && ! $isStaff) {
             abort(403);
@@ -711,7 +779,7 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if ($user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             if ($request->get('export') === 'csv' && $user->can('export-csv')) {
                 return $this->exportCsv($request);
             }
@@ -725,7 +793,7 @@ class OrderController extends Controller
     public function indexVariant(Request $request, string $variant)
     {
         $user = auth()->user();
-        if ($user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if ($user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             return redirect()->route('orders.index');
         }
 
@@ -909,7 +977,7 @@ class OrderController extends Controller
     {
         $staff = auth()->user();
 
-        if (! $staff->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $staff->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1085,7 +1153,7 @@ class OrderController extends Controller
         $user = auth()->user();
         $order = Order::with('user')->findOrFail($id);
 
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1153,7 +1221,7 @@ class OrderController extends Controller
         $user = auth()->user();
         $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1179,7 +1247,7 @@ class OrderController extends Controller
         $user = auth()->user();
         $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1212,7 +1280,7 @@ class OrderController extends Controller
         $user = auth()->user();
         $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1228,7 +1296,7 @@ class OrderController extends Controller
     public function deleteProductImage(Request $request, int $orderId)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 
@@ -1261,7 +1329,7 @@ class OrderController extends Controller
     public function exportExcel(int $id)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
             abort(403);
         }
 

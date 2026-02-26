@@ -16,6 +16,8 @@ class GenerateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         $types = array_map(fn ($c) => $c->value, InvoiceType::cases());
+        $isFirstPayment = $this->input('invoice_type') === InvoiceType::FirstPayment->value;
+        $isPublish = $this->input('action') === 'publish';
 
         return [
             'action' => ['sometimes', 'in:preview,publish'],
@@ -27,8 +29,18 @@ class GenerateInvoiceRequest extends FormRequest
             'show_original_currency' => ['sometimes', 'boolean'],
 
             // First payment
-            'first_items_total' => ['nullable', 'numeric', 'min:0'],
+            'first_items_total' => array_filter([
+                $isFirstPayment && $isPublish ? 'required' : 'nullable',
+                'numeric',
+                'min:0',
+                $isFirstPayment && $isPublish ? 'gt:0' : null,
+            ]),
             'first_agent_fee' => ['nullable', 'numeric', 'min:0'],
+            'first_commission_overridden' => ['sometimes', 'boolean'],
+            'first_other_label' => ['nullable', 'string', 'max:200'],
+            'first_other_amount' => ['nullable', 'numeric', 'min:0'],
+            'first_total' => ['nullable', 'numeric', 'min:0'],
+            'first_total_overridden' => ['sometimes', 'boolean'],
             'first_extras' => ['nullable', 'array'],
             'first_extras.*.label' => ['nullable', 'string', 'max:100'],
             'first_extras.*.amount' => ['nullable', 'numeric', 'min:0'],

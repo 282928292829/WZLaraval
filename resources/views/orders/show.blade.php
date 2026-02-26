@@ -1233,7 +1233,11 @@
                             lines: {{ json_encode(array_map(fn($l) => ['label' => $l['label'] ?? '', 'amount' => (float)($l['amount'] ?? 0), 'visible' => (bool)($l['visible'] ?? true)], $invDefLines)) }},
                             firstItemsTotal: {{ json_encode((float)($invDef['first_items_total'] ?? 0)) }},
                             firstAgentFee: {{ json_encode((float)($invDef['first_agent_fee'] ?? 0)) }},
+                            firstOtherLabel: {{ json_encode($invDef['first_other_label'] ?? '') }},
+                            firstOtherAmount: {{ json_encode((float)($invDef['first_other_amount'] ?? 0)) }},
+                            firstTotal: {{ json_encode((float)(($invDef['first_items_total'] ?? 0) + ($invDef['first_agent_fee'] ?? 0) + ($invDef['first_other_amount'] ?? 0))) }},
                             firstCommissionOverridden: false,
+                            firstTotalOverridden: false,
                             commissionSettings: @js($commissionSettings),
                             addLine() { this.lines.push({ label: '', amount: 0, visible: true }); },
                             removeLine(i) { this.lines.splice(i, 1); },
@@ -1256,6 +1260,12 @@
                                 if (!this.firstCommissionOverridden) {
                                     this.firstAgentFee = Math.round(this.calcFirstPaymentCommission(this.firstItemsTotal) * 100) / 100;
                                 }
+                                if (!this.firstTotalOverridden) {
+                                    this.firstTotal = Math.round(((parseFloat(this.firstItemsTotal) || 0) + (parseFloat(this.firstAgentFee) || 0) + (parseFloat(this.firstOtherAmount) || 0)) * 100) / 100;
+                                }
+                            },
+                            firstPaymentTotal() {
+                                return ((parseFloat(this.firstItemsTotal) || 0) + (parseFloat(this.firstAgentFee) || 0) + (parseFloat(this.firstOtherAmount) || 0)).toFixed(2);
                             }
                         }">
                             <h4 class="text-xs font-semibold text-gray-700 mb-3">📄 {{ __('orders.generate_invoice') }}</h4>
@@ -1287,7 +1297,7 @@
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
                                 </div>
-                                {{-- First Payment: items total, auto-calc commission, override option --}}
+                                {{-- First Payment: items total, auto-calc commission, other, total override --}}
                                 <div x-show="invoiceType === 'first_payment'" x-cloak class="space-y-3">
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         <div>
@@ -1297,21 +1307,46 @@
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.fee_agent_fee') }}</label>
-                                            <input type="number" step="0.01" min="0" name="first_agent_fee" x-model.number="firstAgentFee"
+                                            <input type="number" step="0.01" min="0" name="first_agent_fee" x-model.number="firstAgentFee" @input="recalcFirstPayment()"
                                                 :readonly="!firstCommissionOverridden"
                                                 :class="firstCommissionOverridden ? 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400' : 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-gray-50'">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_total') }}</label>
-                                            <div class="px-2 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg" x-text="((parseFloat(firstItemsTotal) || 0) + (parseFloat(firstAgentFee) || 0)).toFixed(2)"></div>
+                                            <input type="hidden" name="first_total" :value="firstTotal">
+                                            <input type="number" step="0.01" min="0" x-model.number="firstTotal"
+                                                :readonly="!firstTotalOverridden"
+                                                :class="firstTotalOverridden ? 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400' : 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-gray-50'"
+                                                x-show="firstTotalOverridden">
+                                            <div class="px-2 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg" x-show="!firstTotalOverridden"
+                                                x-text="firstPaymentTotal()"></div>
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
                                         <input type="hidden" name="first_commission_overridden" :value="firstCommissionOverridden ? 1 : 0">
                                         <input type="checkbox" id="first_commission_override" x-model="firstCommissionOverridden"
                                             @change="if (!firstCommissionOverridden) recalcFirstPayment()"
                                             class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
                                         <label for="first_commission_override" class="text-xs text-gray-600">{{ __('orders.invoice_override_commission') }}</label>
+                                        <input type="hidden" name="first_total_overridden" :value="firstTotalOverridden ? 1 : 0">
+                                        <input type="checkbox" id="first_total_override" x-model="firstTotalOverridden"
+                                            @change="if (!firstTotalOverridden) recalcFirstPayment()"
+                                            class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
+                                        <label for="first_total_override" class="text-xs text-gray-600">{{ __('orders.invoice_override_total') }}</label>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_other') }}</label>
+                                            <div class="flex gap-2">
+                                                <input type="text" name="first_other_label" x-model="firstOtherLabel" @input="recalcFirstPayment()"
+                                                    placeholder="{{ __('orders.invoice_other_label_placeholder') }}"
+                                                    class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                                <input type="number" step="0.01" min="0" name="first_other_amount" x-model.number="firstOtherAmount" @input="recalcFirstPayment()"
+                                                    placeholder="0"
+                                                    class="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                            </div>
+                                            <p class="text-xs text-gray-400 mt-1">{{ __('orders.invoice_other_help') }}</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div x-show="invoiceType !== 'second_final'" class="flex items-center gap-2">
@@ -1682,9 +1717,9 @@
             @forelse ($visibleComments as $comment)
                 @php
                     $isMine   = $comment->user_id === auth()->id();
-                    $isStaffComment = optional($comment->user)->hasAnyRole(['editor', 'admin', 'superadmin']);
+                    $isStaffComment = optional($comment->user)->hasAnyRole(['staff', 'admin', 'superadmin']);
                     $customerReads = $comment->reads->filter(fn ($r) => optional($r->user)->hasRole('customer'));
-                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->hasAnyRole(['editor', 'admin', 'superadmin']));
+                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->hasAnyRole(['staff', 'admin', 'superadmin']));
                 @endphp
 
                 {{-- System / automated comments get a distinct teal-tinted treatment --}}

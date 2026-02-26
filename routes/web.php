@@ -39,10 +39,6 @@ Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
 })->name('language.switch');
 
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('orders.index');
-    }
-
     return view('welcome');
 });
 

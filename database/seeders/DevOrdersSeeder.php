@@ -95,9 +95,9 @@ class DevOrdersSeeder extends Seeder
         }
 
         $customer = $users->get('customer@wasetzon.test');
-        $editor = $users->get('editor@wasetzon.test');
+        $staffUser = $users->get('editor@wasetzon.test');
         $admin = $users->get('admin@wasetzon.test');
-        $staff = $editor ?? $admin ?? $users->first();
+        $staff = $staffUser ?? $admin ?? $users->first();
 
         $maxNum = 900000;
         if (DB::getDriverName() === 'mysql') {
@@ -179,7 +179,8 @@ class DevOrdersSeeder extends Seeder
         $messages = array_merge(self::CUSTOMER_MESSAGES, self::STAFF_REPLIES);
         $commentBodies = fake()->randomElements($messages, min($count, count($messages)), true);
 
-        $systemBody = __('orders.auto_comment_no_price');
+        $wa = \App\Models\Setting::get('whatsapp', '');
+        $systemBody = __('orders.auto_comment_no_price', ['whatsapp' => $wa ?: '-']);
         OrderComment::create([
             'order_id' => $order->id,
             'user_id' => null,

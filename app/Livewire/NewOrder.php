@@ -59,6 +59,9 @@ class NewOrder extends Component
 
     public string $createdOrderNumber = '';
 
+    /** Seconds before auto-redirect on success screen (clamped 0–120) */
+    public int $successRedirectSeconds = 45;
+
     // Guest login modal
     public bool $showLoginModal = false;
 
@@ -177,7 +180,7 @@ class NewOrder extends Component
     private function prefillFromDuplicate(int $orderId): void
     {
         $user = Auth::user();
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
 
         $order = Order::with('items')
             ->where('id', $orderId)
@@ -245,7 +248,7 @@ class NewOrder extends Component
         }
 
         $user = Auth::user();
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
 
         // Hourly rate limit
         $hourlyLimit = $isStaff
@@ -447,10 +450,11 @@ class NewOrder extends Component
 
             // Count total orders for this user (to decide success screen vs toast)
             $totalOrders = Order::where('user_id', Auth::id())->count();
+            $threshold = max(0, (int) Setting::get('order_success_screen_threshold', 1000));
 
-            if ($totalOrders <= 1000) {
-                // Full success screen for first 1000 orders
+            if ($totalOrders <= $threshold) {
                 $this->showSuccessScreen = true;
+                $this->successRedirectSeconds = max(0, min(120, (int) Setting::get('order_success_redirect_seconds', 45)));
             } else {
                 // Toast + immediate redirect for experienced users
                 session()->flash('success', __('order.created_successfully', [
@@ -587,20 +591,24 @@ class NewOrder extends Component
         $whatsapp = Setting::get('whatsapp', '');
         $whatsappDisplay = $whatsapp ?: '-';
 
-        if ($hasPrices) {
-            $commission = $order->total_amount - $order->subtotal;
+        $replacements = [
+            'subtotal' => number_format($order->subtotal, 0, '.', ','),
+            'commission' => number_format(max(0, $order->total_amount - $order->subtotal), 0, '.', ','),
+            'total' => number_format($order->total_amount, 0, '.', ','),
+            'site_name' => $siteName,
+            'whatsapp' => $whatsappDisplay,
+        ];
 
-            $body = __('orders.auto_comment_with_price', [
-                'subtotal' => number_format($order->subtotal, 0, '.', ','),
-                'commission' => number_format($commission, 0, '.', ','),
-                'total' => number_format($order->total_amount, 0, '.', ','),
-                'site_name' => $siteName,
-                'whatsapp' => $whatsappDisplay,
-            ]);
+        if ($hasPrices) {
+            $template = Setting::get('auto_comment_with_price', '');
+            $body = $template !== ''
+                ? str_replace(array_map(fn ($k) => ':'.$k, array_keys($replacements)), array_values($replacements), $template)
+                : __('orders.auto_comment_with_price', $replacements);
         } else {
-            $body = __('orders.auto_comment_no_price', [
-                'whatsapp' => $whatsappDisplay,
-            ]);
+            $template = Setting::get('auto_comment_no_price', '');
+            $body = $template !== ''
+                ? str_replace(':whatsapp', $whatsappDisplay, $template)
+                : __('orders.auto_comment_no_price', ['whatsapp' => $whatsappDisplay]);
         }
 
         OrderComment::create([
@@ -618,7 +626,7 @@ class NewOrder extends Component
     private function insertDevComments(Order $order): void
     {
         $customer = $order->user;
-        $staff = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['editor', 'admin', 'superadmin']))
+        $staff = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['staff', 'admin', 'superadmin']))
             ->first() ?? $customer;
 
         $messages = [

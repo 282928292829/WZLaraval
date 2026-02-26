@@ -13,10 +13,8 @@
 @endphp
 <x-slot name="title">{{ $seoTitle }}</x-slot>
 <x-slot name="description">{{ $seoDesc }}</x-slot>
-@if($page->robots)<x-slot name="robots">{{ $page->robots }}</x-slot>@endif
+<x-slot name="robots">{{ $page->robots ?? '' }}</x-slot>
 <x-slot name="canonicalUrl">{{ $canonicalUrl }}</x-slot>
-@if($ogImage)
-<x-slot name="ogImage">{{ $ogImage }}</x-slot>
-<x-slot name="ogImageAlt">{{ $seoTitle }}</x-slot>
-@endif
+<x-slot name="ogImage">{{ $ogImage ?? '' }}</x-slot>
+<x-slot name="ogImageAlt">{{ $ogImage ? $seoTitle : '' }}</x-slot>
 <x-slot name="schema">@json($schema)</x-slot>

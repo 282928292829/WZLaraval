@@ -2,7 +2,7 @@
     $roleLabel = match(true) {
         $user->hasRole('superadmin') => ['label' => __('Super Admin'), 'class' => 'bg-purple-100 text-purple-700'],
         $user->hasRole('admin')      => ['label' => __('Admin'),       'class' => 'bg-indigo-100 text-indigo-700'],
-        $user->hasRole('editor')     => ['label' => __('Editor'),      'class' => 'bg-teal-100 text-teal-700'],
+        $user->hasRole('staff')      => ['label' => __('Staff'),       'class' => 'bg-teal-100 text-teal-700'],
         default                      => ['label' => __('Customer'),    'class' => 'bg-gray-100 text-gray-600'],
     };
 
@@ -15,9 +15,9 @@
 <x-app-layout :minimal-footer="true">
 
 
-{{-- ── Tabs + content ──────────────────────────────────────────────────────── --}}
+{{-- ── Vertical accordion (mobile-friendly: all sections visible, tap to expand) ── --}}
 <div class="max-w-3xl mx-auto px-4 py-6 sm:py-8"
-     x-data="{ tab: '{{ $tab }}' }">
+     x-data="{ open: '{{ $tab }}' }">
 
     {{-- Flash messages --}}
     @if (session('status') === 'profile-updated')
@@ -117,65 +117,23 @@
         </a>
     </div>
 
-    {{-- Tab navigation --}}
-    <div class="flex border-b border-gray-200 -mx-4 px-4 mb-6 overflow-x-auto scrollbar-hide">
-        <button
-            @click="tab = 'profile'"
-            :class="tab === 'profile' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+    {{-- Accordion: Profile --}}
+    <div class="space-y-2">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button type="button" @click="open = open === 'profile' ? '' : 'profile'"
+                class="w-full flex items-center justify-between gap-3 px-5 py-4 text-start hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">{{ __('account.profile_tab') }}</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open === 'profile' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
             </svg>
-            {{ __('account.profile_tab') }}
         </button>
-        <button
-            @click="tab = 'addresses'"
-            :class="tab === 'addresses' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            {{ __('account.addresses_tab') }}
-            @if ($addresses->count())
-                <span class="text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5 leading-none">
-                    {{ $addresses->count() }}
-                </span>
-            @endif
-        </button>
-        <button
-            @click="tab = 'notifications'"
-            :class="tab === 'notifications' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-            </svg>
-            {{ __('account.notifications_tab') }}
-        </button>
-        <button
-            @click="tab = 'activity'"
-            :class="tab === 'activity' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            {{ __('account.activity_tab') }}
-        </button>
-        <button
-            @click="tab = 'balance'"
-            :class="tab === 'balance' ? 'border-primary-500 text-primary-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
-            </svg>
-            {{ __('account.balance_tab') }}
-        </button>
-    </div>
-
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    {{-- PROFILE TAB                                                           --}}
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'profile'" x-cloak class="space-y-6">
+        <div x-show="open === 'profile'" x-collapse x-cloak>
+        <div class="border-t border-gray-100 py-4 space-y-6">
 
         {{-- Personal info --}}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
@@ -611,12 +569,33 @@
         </div>
 
     </div>
+        </div>
+        </div>
+    </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    {{-- ADDRESSES TAB                                                         --}}
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'addresses'" x-cloak
-         x-data="{
+    {{-- Accordion: Addresses --}}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button type="button" @click="open = open === 'addresses' ? '' : 'addresses'"
+                class="w-full flex items-center justify-between gap-3 px-5 py-4 text-start hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">{{ __('account.addresses_tab') }}</span>
+                @if ($addresses->count())
+                    <span class="text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5 leading-none">
+                        {{ $addresses->count() }}
+                    </span>
+                @endif
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open === 'addresses' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div x-show="open === 'addresses'" x-collapse x-cloak>
+        <div class="border-t border-gray-100 py-4">
+    <div x-data="{
              showAdd: {{ $openAddressAdd ? 'true' : 'false' }},
              editId: {{ $openEditId ?? 'null' }}
          }"
@@ -1081,11 +1060,27 @@
         </div>
 
     </div>
+        </div>
+        </div>
+    </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    {{-- ACTIVITY LOG TAB                                                      --}}
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'activity'" x-cloak>
+    {{-- Accordion: Activity --}}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button type="button" @click="open = open === 'activity' ? '' : 'activity'"
+                class="w-full flex items-center justify-between gap-3 px-5 py-4 text-start hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">{{ __('account.activity_tab') }}</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open === 'activity' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div x-show="open === 'activity'" x-collapse x-cloak>
+        <div class="border-t border-gray-100 py-4">
+    <div x-cloak>
 
         @if ($activityLogs->isEmpty())
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-12 text-center">
@@ -1137,11 +1132,27 @@
         @endif
 
     </div>
+        </div>
+        </div>
+    </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    {{-- NOTIFICATIONS TAB                                                      --}}
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'notifications'" x-cloak class="space-y-4">
+    {{-- Accordion: Notifications --}}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button type="button" @click="open = open === 'notifications' ? '' : 'notifications'"
+                class="w-full flex items-center justify-between gap-3 px-5 py-4 text-start hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">{{ __('account.notifications_tab') }}</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open === 'notifications' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div x-show="open === 'notifications'" x-collapse x-cloak>
+        <div class="border-t border-gray-100 py-4">
+    <div class="space-y-4">
 
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100">
@@ -1223,11 +1234,27 @@
         </div>
 
     </div>
+        </div>
+        </div>
+    </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    {{-- BALANCE TAB                                                            --}}
-    {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="tab === 'balance'" x-cloak class="space-y-4">
+    {{-- Accordion: Balance --}}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button type="button" @click="open = open === 'balance' ? '' : 'balance'"
+                class="w-full flex items-center justify-between gap-3 px-5 py-4 text-start hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-900">{{ __('account.balance_tab') }}</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open === 'balance' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+        <div x-show="open === 'balance'" x-collapse x-cloak>
+        <div class="border-t border-gray-100 py-4">
+    <div class="space-y-4">
 
         {{-- Summary cards --}}
         @if ($balanceTotals)
@@ -1333,7 +1360,11 @@
         @endif
 
     </div>
+        </div>
+        </div>
+    </div>
 
+    </div>{{-- end space-y-2 --}}
 </div>
 
 </x-app-layout>

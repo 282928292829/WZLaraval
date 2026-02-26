@@ -128,6 +128,26 @@ class SettingsPage extends Page
             'logo_alt_ar' => '',
             'logo_alt_en' => '',
 
+            // Order auto-reply (system comment after order creation)
+            'auto_comment_with_price' => '',
+            'auto_comment_no_price' => '',
+
+            // Order success screen (after new order submission)
+            'order_success_title_ar' => '',
+            'order_success_title_en' => '',
+            'order_success_subtitle_ar' => '',
+            'order_success_subtitle_en' => '',
+            'order_success_message_ar' => '',
+            'order_success_message_en' => '',
+            'order_success_go_to_order_ar' => '',
+            'order_success_go_to_order_en' => '',
+            'order_success_redirect_prefix_ar' => '',
+            'order_success_redirect_prefix_en' => '',
+            'order_success_redirect_suffix_ar' => '',
+            'order_success_redirect_suffix_en' => '',
+            'order_success_redirect_seconds' => '45',
+            'order_success_screen_threshold' => '1000',
+
             // Order rules
             'max_products_per_order' => '30',
             'order_edit_enabled' => true,
@@ -229,6 +249,7 @@ class SettingsPage extends Page
             // Invoice defaults
             'invoice_filename_pattern' => 'Invoice-{order_number}.pdf',
             'invoice_comment_default' => '',
+            'invoice_first_payment_comment_template' => '',
             'invoice_greeting' => '',
             'invoice_confirmation' => '',
             'invoice_payment_instructions' => '',
@@ -520,6 +541,107 @@ class SettingsPage extends Page
                             ->label(__('hero.show_name_change_notice'))
                             ->helperText(__('hero.show_name_change_notice_help'))
                             ->default(true),
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
+
+                // ── Order Auto Reply ─────────────────────────────────────────
+                Section::make(__('Order Auto Reply'))
+                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                    ->description(__('Order auto-reply posted as system comment after order creation. Leave empty to use default translations.'))
+                    ->schema([
+                        Textarea::make('auto_comment_with_price')
+                            ->label(__('When prices entered'))
+                            ->helperText(__('Placeholders: :subtotal, :commission, :total, :site_name, :whatsapp. WhatsApp numbers become clickable wa.me links.'))
+                            ->rows(12)
+                            ->columnSpanFull(),
+
+                        Textarea::make('auto_comment_no_price')
+                            ->label(__('When no prices entered'))
+                            ->helperText(__('Placeholders: :whatsapp'))
+                            ->rows(4)
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(),
+
+                // ── Order Success Screen ──────────────────────────────────────
+                Section::make(__('settings.order_success_screen'))
+                    ->icon(Heroicon::OutlinedCheckCircle)
+                    ->description(__('settings.order_success_screen_desc'))
+                    ->schema([
+                        TextInput::make('order_success_title_ar')
+                            ->label(__('settings.order_success_title_ar'))
+                            ->maxLength(500)
+                            ->placeholder(__('order.success_title')),
+
+                        TextInput::make('order_success_title_en')
+                            ->label(__('settings.order_success_title_en'))
+                            ->maxLength(500)
+                            ->placeholder(__('order.success_title')),
+
+                        TextInput::make('order_success_subtitle_ar')
+                            ->label(__('settings.order_success_subtitle_ar'))
+                            ->helperText(__('settings.order_success_subtitle_help'))
+                            ->maxLength(500)
+                            ->placeholder(__('order.success_subtitle')),
+
+                        TextInput::make('order_success_subtitle_en')
+                            ->label(__('settings.order_success_subtitle_en'))
+                            ->helperText(__('settings.order_success_subtitle_help'))
+                            ->maxLength(500)
+                            ->placeholder(__('order.success_subtitle')),
+
+                        Textarea::make('order_success_message_ar')
+                            ->label(__('settings.order_success_message_ar'))
+                            ->rows(4)
+                            ->maxLength(2000)
+                            ->columnSpanFull(),
+
+                        Textarea::make('order_success_message_en')
+                            ->label(__('settings.order_success_message_en'))
+                            ->rows(4)
+                            ->maxLength(2000)
+                            ->columnSpanFull(),
+
+                        TextInput::make('order_success_go_to_order_ar')
+                            ->label(__('settings.order_success_go_to_order_ar'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_go_to_order_en')
+                            ->label(__('settings.order_success_go_to_order_en'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_redirect_prefix_ar')
+                            ->label(__('settings.order_success_redirect_prefix_ar'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_redirect_prefix_en')
+                            ->label(__('settings.order_success_redirect_prefix_en'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_redirect_suffix_ar')
+                            ->label(__('settings.order_success_redirect_suffix_ar'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_redirect_suffix_en')
+                            ->label(__('settings.order_success_redirect_suffix_en'))
+                            ->maxLength(500),
+
+                        TextInput::make('order_success_redirect_seconds')
+                            ->label(__('settings.order_success_redirect_seconds'))
+                            ->helperText(__('settings.order_success_redirect_seconds_help'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(120)
+                            ->default(45),
+
+                        TextInput::make('order_success_screen_threshold')
+                            ->label(__('settings.order_success_screen_threshold'))
+                            ->helperText(__('settings.order_success_screen_threshold_help'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(10000)
+                            ->default(1000),
                     ])
                     ->columns(2)
                     ->collapsible(),
@@ -1030,6 +1152,13 @@ class SettingsPage extends Page
                             ->placeholder(__('orders.invoice_attached'))
                             ->maxLength(500),
 
+                        Textarea::make('invoice_first_payment_comment_template')
+                            ->label(__('orders.invoice_first_payment_comment_template'))
+                            ->helperText(__('orders.invoice_first_payment_comment_template_help'))
+                            ->rows(8)
+                            ->placeholder(__('orders.invoice_first_payment_comment_default'))
+                            ->columnSpanFull(),
+
                         TextInput::make('invoice_greeting')
                             ->label(__('orders.invoice_greeting'))
                             ->placeholder(__('orders.invoice_greeting_placeholder'))
@@ -1194,6 +1323,22 @@ class SettingsPage extends Page
             'hero_whatsapp_button_text' => 'hero',
             'hero_whatsapp_number' => 'hero',
             'hero_show_name_change_notice' => 'hero',
+            'auto_comment_with_price' => 'orders',
+            'auto_comment_no_price' => 'orders',
+            'order_success_title_ar' => 'orders',
+            'order_success_title_en' => 'orders',
+            'order_success_subtitle_ar' => 'orders',
+            'order_success_subtitle_en' => 'orders',
+            'order_success_message_ar' => 'orders',
+            'order_success_message_en' => 'orders',
+            'order_success_go_to_order_ar' => 'orders',
+            'order_success_go_to_order_en' => 'orders',
+            'order_success_redirect_prefix_ar' => 'orders',
+            'order_success_redirect_prefix_en' => 'orders',
+            'order_success_redirect_suffix_ar' => 'orders',
+            'order_success_redirect_suffix_en' => 'orders',
+            'order_success_redirect_seconds' => 'orders',
+            'order_success_screen_threshold' => 'orders',
             'max_products_per_order' => 'orders',
             'order_edit_enabled' => 'orders',
             'order_edit_click_window_minutes' => 'orders',
@@ -1267,6 +1412,7 @@ class SettingsPage extends Page
             'carrier_url_ups' => 'shipping',
             'invoice_filename_pattern' => 'invoice',
             'invoice_comment_default' => 'invoice',
+            'invoice_first_payment_comment_template' => 'invoice',
             'invoice_greeting' => 'invoice',
             'invoice_confirmation' => 'invoice',
             'invoice_payment_instructions' => 'invoice',
@@ -1299,6 +1445,7 @@ class SettingsPage extends Page
 
         $integerKeys = [
             'smtp_port', 'max_products_per_order',
+            'order_success_redirect_seconds', 'order_success_screen_threshold',
             'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
             'orders_per_hour_customer', 'orders_per_hour_admin',
             'max_file_size_mb', 'max_orders_per_day',
