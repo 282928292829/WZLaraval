@@ -153,7 +153,7 @@
             <div class="order-table-header hidden lg:grid order-item-grid-desktop gap-2 p-2.5 font-bold text-xs text-slate-800 bg-orange-50 rounded-md mb-0">
                 <div>{{ __('opus46.th_num') }}</div>
                 <div>{{ __('opus46.th_url') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></div>
-                <div>{{ __('opus46.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_qty') }}</div>
                 <div>{{ __('opus46.th_color') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></div>
                 <div>{{ __('opus46.th_size') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></div>
                 <div>{{ __('opus46.th_price') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></div>
@@ -166,12 +166,14 @@
             <div id="items-container-wrapper" class="lg:overflow-x-auto lg:[-webkit-overflow-scrolling:touch]">
                 <div id="items-container" class="flex flex-col gap-2.5 lg:gap-0 lg:border lg:border-orange-100 lg:rounded-lg lg:relative lg:min-w-[900px]">
                     <template x-for="(item, idx) in items" :key="idx">
-                        <div class="order-item-card group bg-white border border-orange-100 rounded-xl lg:rounded-none lg:border-0 lg:border-b lg:border-orange-100 overflow-hidden shadow-sm transition-all duration-150 relative scroll-mb-[150px] focus-within:shadow-md focus-within:border-primary-400/40 focus-within:-translate-y-0.5 focus-within:z-10"
+                        <div class="order-item-card group border border-orange-100 rounded-xl lg:rounded-none lg:border-0 lg:border-b lg:border-orange-100 overflow-hidden shadow-sm transition-all duration-150 relative scroll-mb-[150px] focus-within:shadow-md focus-within:border-primary-400/40 focus-within:-translate-y-0.5 focus-within:z-10"
                              :class="{
                                  'expanded': item._expanded,
                                  'is-valid': item.url.trim().length > 0,
                                  'is-minimized': !item._expanded,
-                                 'lg:!bg-orange-50 lg:opacity-90': !item._expanded
+                                 'bg-white': item._expanded,
+                                 'lg:bg-orange-50 lg:opacity-90': !item._expanded,
+                                 'lg:!bg-orange-50': idx === 0
                              }">
 
                             {{-- Mobile Summary Bar --}}
@@ -194,7 +196,7 @@
                             </div>
 
                             {{-- Item Fields Grid --}}
-                            <div class="order-item-details p-3 max-lg:hidden max-lg:group-[.expanded]:grid grid-cols-6 gap-2.5 lg:grid lg:gap-2 lg:p-2.5 lg:items-center">
+                            <div class="order-item-details p-3 max-lg:hidden max-lg:group-[.expanded]:grid max-lg:grid-cols-6 gap-2.5 lg:grid lg:gap-2 lg:p-2.5 lg:items-center">
                                 {{-- Row number (desktop only) --}}
                                 <div class="hidden lg:flex items-center justify-center font-semibold text-sm text-slate-800">
                                     <span x-text="idx + 1"></span>
@@ -212,7 +214,7 @@
 
                                 {{-- Qty --}}
                                 <div class="order-cell-qty">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('opus46.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('opus46.optional') }})</span></span>
+                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('opus46.th_qty') }}</span>
                                     <input type="tel"
                                            x-model="item.qty"
                                            @input="convertArabicNums($event)"

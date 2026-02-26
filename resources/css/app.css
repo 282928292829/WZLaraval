@@ -118,7 +118,7 @@
 
     /* Item grid — desktop 9-column layout. Header uses this class directly; .order-item-details gets it via @media (lg: doesn't work on @layer components in Tailwind v4) */
     .order-item-grid-desktop {
-        grid-template-columns: 0.2fr 2fr 0.35fr 0.5fr 0.5fr 0.6fr 0.45fr 1.2fr 0.7fr;
+        grid-template-columns: 0.2fr 2fr 0.35fr 0.5fr 0.5fr 0.4fr 0.45fr 1.2fr 0.7fr;
     }
     /* Mobile grid cell spans */
     .order-item-details .order-cell-url { grid-column: span 6; }
@@ -134,7 +134,7 @@
     }
     @media (min-width: 1024px) {
         .order-item-details {
-            grid-template-columns: 0.2fr 2fr 0.35fr 0.5fr 0.5fr 0.6fr 0.45fr 1.2fr 0.7fr; /* same as .order-item-grid-desktop */
+            grid-template-columns: 0.2fr 2fr 0.35fr 0.5fr 0.5fr 0.4fr 0.45fr 1.2fr 0.7fr; /* same as .order-item-grid-desktop */
         }
         .order-item-details .order-cell-url,
         .order-item-details .order-cell-qty,
