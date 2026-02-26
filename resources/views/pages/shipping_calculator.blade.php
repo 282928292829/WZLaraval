@@ -107,13 +107,11 @@
                         </div>
                     </div>
                     <p x-show="inputError" x-transition
-                       class="mt-1.5 text-xs text-red-500 font-medium"
-                       style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">
+                       class="mt-1.5 text-xs text-red-500 font-medium font-arabic">
                         ⚠️ {{ __('shipping.numbers_only_hint') }}
                     </p>
                     <p x-show="!inputError"
-                       class="mt-1.5 text-xs text-gray-400"
-                       style="font-family: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;">
+                       class="mt-1.5 text-xs text-gray-400 font-arabic">
                         {{ __('shipping.numbers_format_hint') }}
                     </p>
                 </div>
