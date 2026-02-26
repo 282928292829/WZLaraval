@@ -14,7 +14,8 @@ class StoreOrderFileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
+            'files' => ['required', 'array', 'min:1', 'max:5'],
+            'files.*' => ['required', 'file', 'max:10240', 'mimes:'.allowed_upload_mimes()],
             'type' => ['sometimes', 'in:receipt,attachment'],
         ];
     }

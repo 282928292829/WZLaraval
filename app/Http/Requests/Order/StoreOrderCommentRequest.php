@@ -22,7 +22,7 @@ class StoreOrderCommentRequest extends FormRequest
             'is_internal' => ['sometimes', 'boolean'],
             'template_id' => ['sometimes', 'nullable', 'integer', 'exists:comment_templates,id'],
             'files' => ['sometimes', 'array', 'max:'.$maxFiles],
-            'files.*' => ['file', 'max:'.$maxFileKb, 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx'],
+            'files.*' => ['file', 'max:'.$maxFileKb, 'mimes:'.allowed_upload_mimes()],
         ];
     }
 

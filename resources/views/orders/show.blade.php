@@ -576,19 +576,29 @@
                                 <span class="text-xs text-gray-500 font-medium">{{ $i + 1 }}</span>
                             </td>
 
-                            {{-- URL / description: show domain only + Open + Copy --}}
+                            {{-- URL / description: show text + Open (enabled when safe) + Copy --}}
                             <td class="px-4 py-3 align-middle min-w-0">
-                                @if ($item->is_url)
+                                @if (trim($item->url ?? '') !== '')
                                     @php
-                                        $itemHost = parse_url($item->url, PHP_URL_HOST) ?: $item->url;
-                                        $itemHost = preg_replace('/^www\./i', '', $itemHost);
+                                        $safeUrl = safe_item_url($item->url);
+                                        $displayText = $safeUrl
+                                            ? (parse_url($safeUrl, PHP_URL_HOST) ?: $item->url)
+                                            : $item->url;
+                                        $displayText = preg_replace('/^www\./i', '', $displayText);
                                     @endphp
                                     <div class="flex flex-wrap items-center gap-1.5 min-w-0">
-                                        <span class="text-gray-800 font-medium truncate shrink-0 max-w-full" title="{{ $item->url }}">{{ $itemHost }}</span>
-                                        <a href="{{ $item->url }}" target="_blank" rel="noopener"
-                                            class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
-                                            {{ __('orders.view') }}
-                                        </a>
+                                        <span class="text-gray-800 font-medium truncate shrink-0 max-w-full" title="{{ $item->url }}">{{ $displayText }}</span>
+                                        @if ($safeUrl)
+                                            <a href="{{ $safeUrl }}" target="_blank" rel="noopener"
+                                                class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+                                                {{ __('orders.view') }}
+                                            </a>
+                                        @else
+                                            <span class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                                                title="{{ __('orders.view_disabled_unsafe') }}">
+                                                {{ __('orders.view') }}
+                                            </span>
+                                        @endif
                                         <button type="button"
                                             x-data="{ copied: false }"
                                             data-copy-url="{{ e($item->url) }}"
@@ -609,9 +619,7 @@
                                         </button>
                                     </div>
                                 @else
-                                    <div class="truncate min-w-0">
-                                        <span class="text-gray-800">{{ $item->url }}</span>
-                                    </div>
+                                    <span class="text-gray-400">—</span>
                                 @endif
                                 {{-- Mobile-only: show hidden columns inline --}}
                                 <div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-400 sm:hidden">
@@ -1165,7 +1173,18 @@
                                     <div><span class="text-gray-400">{{ __('orders.payment_amount') }}: </span><strong>{{ number_format($order->payment_amount, 0) }} {{ __('orders.sar') }}</strong></div>
                                     @if ($order->payment_date)<div><span class="text-gray-400">{{ __('orders.payment_date') }}: </span><strong>{{ $order->payment_date->format('Y/m/d') }}</strong></div>@endif
                                     @if ($order->payment_method)<div><span class="text-gray-400">{{ __('orders.payment_method') }}: </span><strong>{{ __('orders.payment_method_' . $order->payment_method) }}</strong></div>@endif
-                                    @if ($order->payment_receipt)<div><a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($order->payment_receipt) }}" target="_blank" class="text-primary-600 hover:underline font-medium">📄 {{ __('orders.view_receipt') }}</a></div>@endif
+                                    @php
+                                        $paymentReceipts = [];
+                                        if ($order->payment_receipt) {
+                                            $paymentReceipts[] = ['url' => \Illuminate\Support\Facades\Storage::disk('public')->url($order->payment_receipt), 'name' => __('orders.view_receipt')];
+                                        }
+                                        foreach ($order->files->where('type', 'payment_receipt') as $f) {
+                                            $paymentReceipts[] = ['url' => $f->url(), 'name' => $f->original_name];
+                                        }
+                                    @endphp
+                                    @foreach ($paymentReceipts as $receipt)
+                                        <div><a href="{{ $receipt['url'] }}" target="_blank" class="text-primary-600 hover:underline font-medium">📄 {{ $receipt['name'] }}</a></div>
+                                    @endforeach
                                 </div>
                             @endif
 
@@ -1196,8 +1215,8 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">{{ __('orders.payment_receipt_file') }}</label>
-                                        <input type="file" name="payment_receipt" accept="image/*,application/pdf"
+                                        <label class="block text-xs text-gray-500 mb-1">{{ __('orders.payment_receipt_file') }} ({{ __('orders.max_5_files') }})</label>
+                                        <input type="file" name="payment_receipts[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
                                             class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
                                 </div>
@@ -1632,7 +1651,7 @@
                 <div x-show="open" x-collapse class="mt-2">
                     <form action="{{ route('orders.files.store', $order->id) }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2 flex-wrap">
                         @csrf
-                        <input type="file" name="file" required
+                        <input type="file" name="files[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
                             class="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400">
                         <button type="submit"
                             class="shrink-0 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
@@ -1738,7 +1757,7 @@
                                 </div>
                                 <span class="text-xs text-gray-400 tabular-nums">{{ $comment->created_at->format('Y/m/d H:i') }}</span>
                             </div>
-                            <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{!! nl2br(linkify_whatsapp(e($comment->body))) !!}</div>
+                            <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{!! comment_body_safe($comment->body) !!}</div>
                         </div>
                     </div>
                 </div>
@@ -1809,7 +1828,7 @@
                     @if ($comment->deleted_at)
                         <p class="text-sm text-gray-400 italic">{{ __('orders.comment_deleted_placeholder') }}</p>
                     @else
-                        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{!! nl2br(linkify_whatsapp(e($comment->body))) !!}</div>
+                        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{!! comment_body_safe($comment->body) !!}</div>
 
                         {{-- Attached files --}}
                         @php $commentFiles = $order->files->where('comment_id', $comment->id); @endphp

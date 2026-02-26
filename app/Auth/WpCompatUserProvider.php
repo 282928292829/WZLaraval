@@ -5,6 +5,7 @@ namespace App\Auth;
 use App\Services\Migration\WpPhpassHasher;
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Extends the default Eloquent provider to support WordPress phpass hashes.
@@ -26,7 +27,7 @@ class WpCompatUserProvider extends EloquentUserProvider
             }
 
             // Re-hash with bcrypt and save — one-time upgrade per user.
-            $user->forceFill(['password' => bcrypt($plain)])->save();
+            $user->forceFill(['password' => Hash::make($plain)])->save();
 
             return true;
         }

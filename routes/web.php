@@ -129,7 +129,9 @@ Route::middleware('auth')->group(function () {
 
 // Dev-only quick login — never registered in production
 if (app()->environment('local')) {
-    Route::post('/_dev/login-as', [DevController::class, 'loginAs'])->name('dev.login-as');
+    Route::post('/_dev/login-as', [DevController::class, 'loginAs'])
+        ->middleware('local')
+        ->name('dev.login-as');
 }
 
 require __DIR__.'/auth.php';

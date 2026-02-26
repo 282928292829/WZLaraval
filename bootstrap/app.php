@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role.throttle' => \App\Http\Middleware\RoleBasedThrottle::class,
+            'local' => \App\Http\Middleware\EnsureAppIsLocal::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -361,7 +361,7 @@ class NewOrder extends Component
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'url' => $item['url'],
-                    'is_url' => (bool) filter_var($item['url'], FILTER_VALIDATE_URL),
+                    'is_url' => safe_item_url($item['url'] ?? '') !== null,
                     'qty' => $qty,
                     'color' => $item['color'] ?: null,
                     'size' => $item['size'] ?: null,
@@ -519,7 +519,7 @@ class NewOrder extends Component
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'url' => $item['url'],
-                    'is_url' => (bool) filter_var($item['url'], FILTER_VALIDATE_URL),
+                    'is_url' => safe_item_url($item['url'] ?? '') !== null,
                     'qty' => $qty,
                     'color' => $item['color'] ?: null,
                     'size' => $item['size'] ?: null,
@@ -857,7 +857,7 @@ class NewOrder extends Component
             'items.*.currency' => "nullable|string|in:{$currencyList}",
             'items.*.notes' => 'nullable|string|max:1000',
             'itemFiles' => 'nullable|array',
-            'itemFiles.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,bmp,pdf,xlsx,xls|max:'.(Setting::get('max_file_size_mb', 2) * 1024),
+            'itemFiles.*' => 'nullable|file|mimes:'.allowed_upload_mimes().'|max:'.(Setting::get('max_file_size_mb', 2) * 1024),
         ];
     }
 

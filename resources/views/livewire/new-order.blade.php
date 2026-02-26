@@ -172,13 +172,12 @@
                                  'is-valid': item.url.trim().length > 0,
                                  'is-minimized': !item._expanded,
                                  'bg-white': item._expanded,
-                                 'lg:bg-orange-50 lg:opacity-90': !item._expanded,
-                                 'lg:!bg-orange-50': idx === 0
+                                 'lg:bg-orange-50 lg:opacity-90': !item._expanded
                              }">
 
                             {{-- Mobile Summary Bar --}}
-                            <div class="flex items-center justify-between gap-2 px-3 py-3 bg-orange-50 cursor-pointer select-none lg:hidden border-b border-orange-100"
-                                 :class="{ 'bg-white border-b border-orange-100': item._expanded }"
+                            <div class="flex items-center justify-between gap-2 px-3 py-3 cursor-pointer select-none lg:hidden border-b border-orange-100"
+                                 :class="{ 'bg-orange-50': !item._expanded, 'bg-white': item._expanded }"
                                  @click="toggleItem(idx)">
                                 <div class="font-semibold text-sm text-slate-800 truncate flex-1 min-w-0" x-text="itemSummary(idx)"></div>
                                 <div class="flex gap-2 items-center" @click.stop>

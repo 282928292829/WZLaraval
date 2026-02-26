@@ -14,23 +14,30 @@ class OrderFileController extends Controller
         $order = Order::findOrFail($id);
         $validated = $request->validated();
 
-        $file = $request->file('file');
-        $path = $file->store('order-files/'.$order->id, 'public');
         $type = $validated['type'] ?? 'other';
         if ($type === 'attachment') {
             $type = 'other';
         }
 
-        $order->files()->create([
-            'user_id' => auth()->id(),
-            'comment_id' => null,
-            'path' => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'type' => $type,
-        ]);
+        $count = 0;
+        foreach ($request->file('files', []) as $file) {
+            $path = $file->store('order-files/'.$order->id, 'public');
+            $order->files()->create([
+                'user_id' => auth()->id(),
+                'comment_id' => null,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'type' => $type,
+            ]);
+            $count++;
+        }
 
-        return redirect()->route('orders.show', $id)->withFragment('files')->with('success', __('orders.file_uploaded'));
+        $message = $count === 1
+            ? __('orders.file_uploaded')
+            : __('orders.files_uploaded', ['count' => $count]);
+
+        return redirect()->route('orders.show', $id)->withFragment('files')->with('success', $message);
     }
 }

@@ -1253,11 +1253,19 @@ class OrderController extends Controller
 
         $validated = $request->validated();
 
-        $data = collect($validated)->except('payment_receipt')->toArray();
+        $data = collect($validated)->except('payment_receipts')->toArray();
 
-        if ($request->hasFile('payment_receipt')) {
-            $path = $request->file('payment_receipt')->store('payment-receipts', 'public');
-            $data['payment_receipt'] = $path;
+        foreach ($request->file('payment_receipts', []) as $file) {
+            $path = $file->store('payment-receipts', 'public');
+            $order->files()->create([
+                'user_id' => $user->id,
+                'comment_id' => null,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'type' => 'payment_receipt',
+            ]);
         }
 
         $order->update($data);

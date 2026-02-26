@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Demo - Incognito</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background: #f8fafc;
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1e293b; font-size: 1.25rem; }
+        p { color: #64748b; line-height: 1.6; }
+        .highlight { background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; }
+        button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #f97316;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #ea580c; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Incognito & cache</h1>
+        <p>In Incognito/Private mode, the browser uses a <span class="highlight">fresh cache</span> — it does not reuse cache from normal sessions. Each incognito window starts empty; cache is cleared when you close it.</p>
+        <p>So opening <code>http://wasetzonlaraval.test/new-order</code> in Incognito will load the latest assets (no stale CSS/JS from previous visits).</p>
+        <button onclick="document.body.style.background='#fef3c7'">Test JS</button>
+    </div>
+</body>
+</html>

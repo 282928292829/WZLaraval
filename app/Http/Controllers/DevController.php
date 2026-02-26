@@ -12,7 +12,7 @@ class DevController extends Controller
     /** Instantly log in as a test user by role. Local env only. */
     public function loginAs(Request $request): RedirectResponse
     {
-        abort_unless(app()->environment('local'), 403);
+        abort_unless(app()->isLocal(), 403);
 
         $role = $request->input('role', 'customer');
 
