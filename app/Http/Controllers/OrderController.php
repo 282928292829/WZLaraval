@@ -188,6 +188,7 @@ class OrderController extends Controller
         );
 
         $settings = $this->invoiceSettings();
+        $invoiceNumber = $this->resolveInvoiceNumber($order, $invoiceType, $invoiceCount);
 
         try {
             $pdfContent = $this->buildInvoicePdf(
@@ -199,7 +200,9 @@ class OrderController extends Controller
                 $extra,
                 $settings,
                 $invoiceLanguage,
-                $showOriginalCurrency
+                $showOriginalCurrency,
+                $invoiceCount,
+                $invoiceNumber
             );
         } catch (\Throwable $e) {
             Log::error('Invoice PDF generation failed', [
@@ -306,6 +309,12 @@ class OrderController extends Controller
         $invoiceCustomLines = Setting::get('invoice_custom_lines', []);
         $customLines = is_array($invoiceCustomLines) ? $invoiceCustomLines : [];
 
+        $invoiceCompanyDetails = Setting::get('invoice_company_details', []);
+        $companyDetails = is_array($invoiceCompanyDetails) ? $invoiceCompanyDetails : [];
+
+        $invoiceTypeLabels = Setting::get('invoice_type_labels', []);
+        $typeLabels = is_array($invoiceTypeLabels) ? $invoiceTypeLabels : [];
+
         return [
             'site_name' => $invoiceSiteName !== '' ? $invoiceSiteName : $siteName,
             'logo_path' => $fullLogoPath,
@@ -321,6 +330,14 @@ class OrderController extends Controller
             'invoice_show_order_items' => (bool) Setting::get('invoice_show_order_items', false),
             'invoice_custom_lines' => $customLines,
             'primary_color' => trim((string) Setting::get('primary_color', '#f97316')) ?: '#f97316',
+            'invoice_number_pattern' => trim((string) Setting::get('invoice_number_pattern', '{order_number}-{count}')),
+            'invoice_show_type_label' => (bool) Setting::get('invoice_show_type_label', false),
+            'invoice_type_labels' => $typeLabels,
+            'invoice_show_company_details' => (bool) Setting::get('invoice_show_company_details', false),
+            'invoice_company_details' => $companyDetails,
+            'invoice_show_due_date' => (bool) Setting::get('invoice_show_due_date', false),
+            'invoice_due_date_days' => (int) Setting::get('invoice_due_date_days', 7),
+            'invoice_due_date_label' => trim((string) Setting::get('invoice_due_date_label', '')) ?: __('orders.invoice_due_date'),
         ];
     }
 
@@ -590,7 +607,9 @@ class OrderController extends Controller
         array $extra,
         array $settings,
         string $invoiceLanguage,
-        bool $showOriginalCurrency
+        bool $showOriginalCurrency,
+        int $invoiceCount = 1,
+        string $invoiceNumber = ''
     ): string {
         $locales = $invoiceLanguage === 'both' ? ['ar', 'en'] : [$invoiceLanguage];
         $defaultConfig = (new \Mpdf\Config\ConfigVariables)->getDefaults();
@@ -618,7 +637,8 @@ class OrderController extends Controller
         ]);
 
         $firstLocale = $locales[0];
-        $mpdf->SetTitle($firstLocale === 'ar' ? 'فاتورة رقم '.$order->order_number : 'Invoice '.$order->order_number);
+        $titleNumber = $invoiceNumber !== '' ? $invoiceNumber : $order->order_number;
+        $mpdf->SetTitle($firstLocale === 'ar' ? 'فاتورة رقم '.$titleNumber : 'Invoice '.$titleNumber);
 
         foreach ($locales as $idx => $locale) {
             if ($idx > 0) {
@@ -640,6 +660,8 @@ class OrderController extends Controller
                 'invoiceLocale' => $locale,
                 'extra' => $extra,
                 'settings' => $settings,
+                'invoiceNumber' => $invoiceNumber,
+                'invoiceCount' => $invoiceCount,
             ])->render();
 
             $mpdf->WriteHTML($html);
@@ -672,6 +694,23 @@ class OrderController extends Controller
         $filename = $this->sanitizeFilename($filename);
 
         return $filename !== '' ? $filename : 'Invoice-'.$order->order_number.'.pdf';
+    }
+
+    private function resolveInvoiceNumber(Order $order, string $invoiceType, int $invoiceCount): string
+    {
+        $pattern = trim((string) Setting::get('invoice_number_pattern', '{order_number}-{count}'));
+        if ($pattern === '') {
+            return $invoiceCount > 1 ? $order->order_number.'-'.$invoiceCount : $order->order_number;
+        }
+
+        $replacements = [
+            '{order_number}' => $order->order_number,
+            '{count}' => (string) $invoiceCount,
+            '{date}' => now()->format('Y-m-d'),
+            '{type}' => $invoiceType,
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $pattern);
     }
 
     private function sanitizeFilename(string $filename): string
@@ -790,56 +829,6 @@ class OrderController extends Controller
         return $this->customerIndex($user, $request);
     }
 
-    public function indexDesign1(Request $request)
-    {
-        $user = auth()->user();
-        $data = $this->customerIndexData($user, $request);
-        $data['formAction'] = route('orders.design-1');
-        $data['clearFiltersUrl'] = route('orders.design-1');
-
-        return view('orders.design-1', $data);
-    }
-
-    public function indexDesign2(Request $request)
-    {
-        $user = auth()->user();
-        $data = $this->customerIndexData($user, $request);
-        $data['formAction'] = route('orders.design-2');
-        $data['clearFiltersUrl'] = route('orders.design-2');
-
-        return view('orders.design-2', $data);
-    }
-
-    public function indexDesign3(Request $request)
-    {
-        $user = auth()->user();
-        $data = $this->customerIndexData($user, $request);
-        $data['formAction'] = route('orders.design-3');
-        $data['clearFiltersUrl'] = route('orders.design-3');
-
-        return view('orders.design-3', $data);
-    }
-
-    public function indexDesign4(Request $request)
-    {
-        $user = auth()->user();
-        $data = $this->customerIndexData($user, $request);
-        $data['formAction'] = route('orders.design-4');
-        $data['clearFiltersUrl'] = route('orders.design-4');
-
-        return view('orders.design-4', $data);
-    }
-
-    public function indexDesign5(Request $request)
-    {
-        $user = auth()->user();
-        $data = $this->customerIndexData($user, $request);
-        $data['formAction'] = route('orders.design-5');
-        $data['clearFiltersUrl'] = route('orders.design-5');
-
-        return view('orders.design-5', $data);
-    }
-
     public function indexVariant(Request $request, string $variant)
     {
         $user = auth()->user();
@@ -857,6 +846,8 @@ class OrderController extends Controller
     private function customerIndex($user, Request $request)
     {
         $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.index');
+        $data['clearFiltersUrl'] = route('orders.index');
 
         return view('orders.index', $data);
     }
@@ -894,8 +885,8 @@ class OrderController extends Controller
             'active' => Order::where('user_id', $user->id)
                 ->whereNotIn('status', ['cancelled', 'delivered', 'completed'])
                 ->count(),
-            'shipped' => Order::where('user_id', $user->id)
-                ->where('status', 'shipped')
+            'delivered' => Order::where('user_id', $user->id)
+                ->where('status', 'delivered')
                 ->count(),
             'cancelled' => Order::where('user_id', $user->id)
                 ->where('status', 'cancelled')

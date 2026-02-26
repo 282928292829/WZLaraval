@@ -58,17 +58,10 @@ Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
 // Public static pages
 Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
 
-Route::get('/new-order', NewOrder::class)
-    ->middleware('role.throttle:new-order')
-    ->name('new-order');
+Route::get('/new-order', NewOrder::class)->name('new-order');
 
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders-design-1', [OrderController::class, 'indexDesign1'])->name('orders.design-1');
-    Route::get('/orders-design-2', [OrderController::class, 'indexDesign2'])->name('orders.design-2');
-    Route::get('/orders-design-3', [OrderController::class, 'indexDesign3'])->name('orders.design-3');
-    Route::get('/orders-design-4', [OrderController::class, 'indexDesign4'])->name('orders.design-4');
-    Route::get('/orders-design-5', [OrderController::class, 'indexDesign5'])->name('orders.design-5');
     Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
         ->where('variant', 'simple|table|minimal')
         ->name('orders.list-variant');
@@ -138,5 +131,11 @@ if (app()->environment('local')) {
         ->middleware('local')
         ->name('dev.login-as');
 }
+
+// Homepage test variants
+Route::get('/homepagetest555', fn () => view('homepage-tests.555'));
+Route::get('/homepagetest666', fn () => view('homepage-tests.666'));
+Route::get('/homepagetest777', fn () => view('homepage-tests.777'));
+Route::get('/homepagetest888', fn () => view('homepage-tests.888'));
 
 require __DIR__.'/auth.php';
