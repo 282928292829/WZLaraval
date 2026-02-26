@@ -790,6 +790,56 @@ class OrderController extends Controller
         return $this->customerIndex($user, $request);
     }
 
+    public function indexDesign1(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.design-1');
+        $data['clearFiltersUrl'] = route('orders.design-1');
+
+        return view('orders.design-1', $data);
+    }
+
+    public function indexDesign2(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.design-2');
+        $data['clearFiltersUrl'] = route('orders.design-2');
+
+        return view('orders.design-2', $data);
+    }
+
+    public function indexDesign3(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.design-3');
+        $data['clearFiltersUrl'] = route('orders.design-3');
+
+        return view('orders.design-3', $data);
+    }
+
+    public function indexDesign4(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.design-4');
+        $data['clearFiltersUrl'] = route('orders.design-4');
+
+        return view('orders.design-4', $data);
+    }
+
+    public function indexDesign5(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->customerIndexData($user, $request);
+        $data['formAction'] = route('orders.design-5');
+        $data['clearFiltersUrl'] = route('orders.design-5');
+
+        return view('orders.design-5', $data);
+    }
+
     public function indexVariant(Request $request, string $variant)
     {
         $user = auth()->user();

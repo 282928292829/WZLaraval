@@ -85,11 +85,6 @@
    New Order Page — minimal CSS (complex grid, pseudo-elements, toast, modal)
    Layout, cards, buttons, forms use Tailwind utilities.
    ============================================================ */
-@keyframes successScale {
-    from { transform: scale(0); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
 @layer components {
 
     /* Toast — created dynamically in JS */

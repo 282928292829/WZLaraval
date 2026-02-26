@@ -64,6 +64,11 @@ Route::get('/new-order', NewOrder::class)
 
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders-design-1', [OrderController::class, 'indexDesign1'])->name('orders.design-1');
+    Route::get('/orders-design-2', [OrderController::class, 'indexDesign2'])->name('orders.design-2');
+    Route::get('/orders-design-3', [OrderController::class, 'indexDesign3'])->name('orders.design-3');
+    Route::get('/orders-design-4', [OrderController::class, 'indexDesign4'])->name('orders.design-4');
+    Route::get('/orders-design-5', [OrderController::class, 'indexDesign5'])->name('orders.design-5');
     Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
         ->where('variant', 'simple|table|minimal')
         ->name('orders.list-variant');

@@ -208,7 +208,7 @@ class NewOrder extends Component
     public function addItem(string $currency = ''): void
     {
         if (count($this->items) >= $this->maxProducts) {
-            $this->dispatch('notify', type: 'error', message: __('opus46.max_products', ['max' => $this->maxProducts]));
+            $this->dispatch('notify', type: 'error', message: __('order_form.max_products', ['max' => $this->maxProducts]));
 
             return;
         }
@@ -774,7 +774,7 @@ class NewOrder extends Component
         $status = Password::sendResetLink(['email' => $this->modalEmail]);
 
         if ($status === Password::RESET_LINK_SENT) {
-            $this->modalSuccess = __('opus46.reset_link_sent');
+            $this->modalSuccess = __('order_form.reset_link_sent');
         } else {
             $this->modalError = __('passwords.user');
         }
@@ -864,15 +864,15 @@ class NewOrder extends Component
     private function buildCurrencies(): array
     {
         return [
-            'USD' => ['label' => __('opus46.cur_usd'), 'symbol' => '$'],
-            'EUR' => ['label' => __('opus46.cur_eur'), 'symbol' => '€'],
-            'GBP' => ['label' => __('opus46.cur_gbp'), 'symbol' => '£'],
-            'CNY' => ['label' => __('opus46.cur_cny'), 'symbol' => '¥'],
-            'JPY' => ['label' => __('opus46.cur_jpy'), 'symbol' => '¥'],
-            'KRW' => ['label' => __('opus46.cur_krw'), 'symbol' => '₩'],
-            'TRY' => ['label' => __('opus46.cur_try'), 'symbol' => '₺'],
-            'SAR' => ['label' => __('opus46.cur_sar'), 'symbol' => 'ر.س'],
-            'OTHER' => ['label' => __('opus46.cur_other'), 'symbol' => '—'],
+            'USD' => ['label' => __('order_form.cur_usd'), 'symbol' => '$'],
+            'EUR' => ['label' => __('order_form.cur_eur'), 'symbol' => '€'],
+            'GBP' => ['label' => __('order_form.cur_gbp'), 'symbol' => '£'],
+            'CNY' => ['label' => __('order_form.cur_cny'), 'symbol' => '¥'],
+            'JPY' => ['label' => __('order_form.cur_jpy'), 'symbol' => '¥'],
+            'KRW' => ['label' => __('order_form.cur_krw'), 'symbol' => '₩'],
+            'TRY' => ['label' => __('order_form.cur_try'), 'symbol' => '₺'],
+            'SAR' => ['label' => __('order_form.cur_sar'), 'symbol' => 'ر.س'],
+            'OTHER' => ['label' => __('order_form.cur_other'), 'symbol' => '—'],
         ];
     }
 
