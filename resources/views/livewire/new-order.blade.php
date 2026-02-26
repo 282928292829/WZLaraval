@@ -12,7 +12,7 @@
 @if ($showSuccessScreen)
 <div
     class="wz-order-page"
-    style="min-height:100dvh;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;background:linear-gradient(135deg,#fef3f2 0%,#fef7f5 100%);padding:16px;box-sizing:border-box;padding-top:48px;"
+    style="min-height:100dvh;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);padding:16px;box-sizing:border-box;padding-top:48px;"
 >
     <div class="wz-success-content" style="text-align:center;max-width:420px;width:100%;">
         {{-- Checkmark --}}
@@ -111,11 +111,13 @@
 <div class="order-page-container">
 <main id="main-content">
 
+    <h1 class="order-page-title">{{ $editingOrderId ? __('orders.edit_order_title', ['number' => $editingOrderNumber]) : __('Create new order') }}</h1>
+
     {{-- Tips Box --}}
     <section class="tips-box" x-show="!tipsHidden" x-cloak>
         <div class="tips-header" @click="tipsOpen = !tipsOpen">
             <h2>{{ __('opus46.tips_title') }}</h2>
-            <span x-text="tipsOpen ? '▲' : '▼'" style="color:#c2a08a;font-size:0.8rem;"></span>
+            <span x-text="tipsOpen ? '▲' : '▼'" style="color:var(--primary);font-size:0.8rem;"></span>
         </div>
         <div x-show="tipsOpen" x-collapse class="tips-content">
             <ul class="tips-list">
@@ -123,7 +125,7 @@
                     <li>{{ __("opus46.tip_{$i}") }}</li>
                 @endfor
             </ul>
-            <div style="margin-top:15px;padding-top:15px;border-top:1px solid #fef0e8;">
+            <div style="margin-top:15px;padding-top:15px;border-top:1px solid #ffedd5;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#64748b;cursor:pointer;">
                     <input type="checkbox" @change="hideTips30Days()" style="cursor:pointer;">
                     <span>{{ __('opus46.tips_dont_show') }}</span>
@@ -150,14 +152,14 @@
             {{-- Desktop Table Header --}}
             <div class="table-header">
                 <div>{{ __('opus46.th_num') }}</div>
-                <div>{{ __('opus46.th_url') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_qty') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_color') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_size') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_price') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_currency') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_notes') }} ({{ __('opus46.optional') }})</div>
-                <div>{{ __('opus46.th_files') }} ({{ __('opus46.optional') }})</div>
+                <div>{{ __('opus46.th_url') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_qty') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_color') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_size') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_price') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_currency') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_notes') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
+                <div>{{ __('opus46.th_files') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></div>
             </div>
 
             {{-- Items --}}
@@ -195,7 +197,7 @@
 
                                 {{-- URL --}}
                                 <div class="cell-url">
-                                    <span class="label-mobile">{{ __('opus46.lbl_url') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_url') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <input type="text"
                                            x-model="item.url"
                                            @blur="calcTotals(); saveDraft()"
@@ -205,7 +207,7 @@
 
                                 {{-- Qty --}}
                                 <div class="cell-qty">
-                                    <span class="label-mobile">{{ __('opus46.lbl_qty') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_qty') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <input type="tel"
                                            x-model="item.qty"
                                            @input="convertArabicNums($event)"
@@ -216,7 +218,7 @@
 
                                 {{-- Color --}}
                                 <div class="cell-col">
-                                    <span class="label-mobile">{{ __('opus46.lbl_color') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_color') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <input type="text"
                                            x-model="item.color"
                                            @blur="saveDraft()"
@@ -225,7 +227,7 @@
 
                                 {{-- Size --}}
                                 <div class="cell-siz">
-                                    <span class="label-mobile">{{ __('opus46.lbl_size') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_size') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <input type="text"
                                            x-model="item.size"
                                            @blur="saveDraft()"
@@ -234,7 +236,7 @@
 
                                 {{-- Price --}}
                                 <div class="cell-prc">
-                                    <span class="label-mobile">{{ __('opus46.lbl_price') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_price') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <input type="text"
                                            x-model="item.price"
                                            @input="convertArabicNums($event)"
@@ -245,7 +247,7 @@
 
                                 {{-- Currency --}}
                                 <div class="cell-cur">
-                                    <span class="label-mobile">{{ __('opus46.lbl_currency') }} ({{ __('opus46.optional') }})</span>
+                                    <span class="label-mobile">{{ __('opus46.lbl_currency') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                     <select x-model="item.currency"
                                             @change="onCurrencyChange(idx)"
                                             @blur="calcTotals(); saveDraft()"
@@ -261,7 +263,7 @@
                                 <div class="optional-section">
 
                                     <div class="cell-not">
-                                        <span class="label-mobile">{{ __('opus46.lbl_notes') }} ({{ __('opus46.optional') }})</span>
+                                        <span class="label-mobile">{{ __('opus46.lbl_notes') }} <span class="optional-hint">({{ __('opus46.optional') }})</span></span>
                                         <input type="text"
                                                x-model="item.notes"
                                                @blur="saveDraft()"
@@ -485,13 +487,11 @@
 @push('scripts')
 <style>
 :root {
-  --accent-amber: #b45309;
-  --accent-amber-light: #d97706;
   --secondary: #1e293b;
   --success: #10b981;
   --danger: #ef4444;
-  --light: #fef7f5;
-  --border: #f5e6e0;
+  --light: #fff7ed;
+  --border: #ffedd5;
 }
 
 .wz-order-page {
@@ -504,6 +504,13 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 15px;
+}
+
+.order-page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0 0 16px;
 }
 
 /* Toast */
@@ -575,7 +582,7 @@
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
   padding: 15px;
   margin-bottom: 15px;
-  border: 1px solid rgba(245,210,195,0.5);
+  border: 1px solid rgba(255,237,213,0.8);
 }
 
 /* Buttons */
@@ -595,26 +602,26 @@
 .btn-sm { padding:5px 10px; font-size:0.8rem; }
 
 .btn-primary {
-  background: rgba(180,83,9,0.08);
-  color: var(--accent-amber);
-  border: 1px solid rgba(180,83,9,0.2);
+  background: rgba(249,115,22,0.1);
+  color: var(--primary);
+  border: 1px solid rgba(249,115,22,0.25);
 }
 .btn-primary:hover {
-  background: rgba(180,83,9,0.15);
-  border-color: var(--accent-amber-light);
-  color: var(--accent-amber-light);
+  background: rgba(249,115,22,0.18);
+  border-color: var(--primary);
+  color: var(--primary-hover);
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, rgba(146,64,14,0.08), rgba(194,65,12,0.05));
-  color: var(--accent-amber);
-  border: 1.5px solid rgba(146,64,14,0.25);
+  background: linear-gradient(135deg, rgba(249,115,22,0.08), rgba(251,146,60,0.05));
+  color: var(--primary);
+  border: 1.5px solid rgba(249,115,22,0.25);
   font-weight: 600;
   transition: all 0.3s;
 }
 .btn-secondary:hover {
-  background: linear-gradient(135deg, rgba(146,64,14,0.15), rgba(194,65,12,0.12));
-  border-color: var(--accent-amber-light);
+  background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(251,146,60,0.1));
+  border-color: var(--primary);
   transform: translateY(-1px);
 }
 
@@ -657,7 +664,7 @@
 .form-control {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #f5e6e0;
+  border: 1px solid #ffedd5;
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
@@ -680,6 +687,12 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   font-weight: 500;
 }
 
+.optional-hint {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
 /* Items Container */
 #items-container {
   display: flex;
@@ -689,7 +702,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 
 .item-card {
   background: #fff;
-  border: 1px solid rgba(245,210,195,0.8);
+  border: 1px solid rgba(255,237,213,0.8);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -704,7 +717,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   z-index: 10;
 }
 .item-card.is-valid { border-color: rgba(16,185,129,0.3); }
-.item-card.is-minimized { background:#f5e6e0 !important; opacity:0.9; }
+.item-card.is-minimized { background:#fff7ed !important; opacity:0.9; }
 
 /* Mobile Summary Bar */
 .item-summary {
@@ -713,12 +726,12 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   justify-content: space-between;
   gap: 8px;
   padding: 12px;
-  background: #fef7f5;
+  background: #fff7ed;
   cursor: pointer;
   user-select: none;
 }
 .item-card.expanded .item-summary {
-  border-bottom: 1px solid #f5e6e0;
+  border-bottom: 1px solid #ffedd5;
   background: #fff;
 }
 .item-summary-text {
@@ -762,7 +775,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   gap: 10px;
   padding-top: 10px;
   margin-top: 5px;
-  border-top: 1px dashed #f5e6e0;
+  border-top: 1px dashed #ffedd5;
 }
 
 /* File Upload */
@@ -770,7 +783,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 .upload-btn {
   border: 1px dashed var(--border);
   color: #64748b;
-  background-color: #fef7f5;
+  background-color: #fff7ed;
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -782,7 +795,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   gap: 6px;
   transition: all 0.2s;
 }
-.upload-btn:hover { border-color:var(--primary); background-color:#fffaf5; color:var(--primary); }
+.upload-btn:hover { border-color:var(--primary); background-color:#fff7ed; color:var(--primary); }
 .hidden-file-input { display:none; }
 .preview-container { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; }
 .preview-item {
@@ -791,7 +804,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   flex-shrink:0;
   border-radius:6px;
   overflow:hidden;
-  border:1px solid #f5e6e0;
+  border:1px solid #ffedd5;
 }
 .preview-item img { width:100%; height:100%; object-fit:cover; }
 .preview-item .remove-img {
@@ -804,7 +817,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 .upload-info { text-align:start; font-size:0.7rem; color:#a8a29e; }
 
 .upload-progress {
-  width:100%; height:4px; background:#fef0e8; border-radius:2px; overflow:hidden; margin-top:4px;
+  width:100%; height:4px; background:#fff7ed; border-radius:2px; overflow:hidden; margin-top:4px;
 }
 .upload-progress-bar {
   height:100%; background:var(--primary); border-radius:2px;
@@ -825,7 +838,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   align-items: center;
   gap: 15px;
   box-shadow: 0 -4px 16px rgba(0,0,0,0.06), 0 -1px 4px rgba(0,0,0,0.03);
-  border-top: 1px solid rgba(245,210,195,0.6);
+  border-top: 1px solid rgba(255,237,213,0.6);
   z-index: 100;
 }
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
@@ -874,7 +887,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  border-bottom: 1px solid #fef0e8;
+  border-bottom: 1px solid #ffedd5;
 }
 .tips-header h2 { font-size:0.9rem; color:var(--secondary); font-weight:600; margin:0; }
 .tips-content { padding:15px; font-size:0.85rem; line-height:1.6; color:#475569; }
@@ -920,7 +933,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 
 .login-modal-header {
   padding: 30px 30px 20px;
-  border-bottom: 1px solid #f5e6e0;
+  border-bottom: 1px solid #ffedd5;
   position: relative;
 }
 .login-modal-close {
@@ -1034,7 +1047,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
 
   #items-container {
     gap: 0;
-    border: 1px solid #f5e6e0;
+    border: 1px solid #ffedd5;
     border-radius: 8px;
     position: relative;
     min-width: 900px;
@@ -1043,10 +1056,10 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
   .item-card {
     border-radius: 0;
     border: none;
-    border-bottom: 1px solid #fef0e8;
+    border-bottom: 1px solid #ffedd5;
     transition: background-color 0.15s ease;
   }
-  .item-card:hover { background-color:#fffaf7; }
+  .item-card:hover { background-color:#fff7ed; }
   .item-card::before {
     content:'';
     position:absolute;
@@ -1070,7 +1083,7 @@ textarea.form-control { height:auto; min-height:80px; resize:vertical; }
     font-weight: 700;
     font-size: 0.85rem;
     color: var(--secondary);
-    background-color: #fef7f5;
+    background-color: #fff7ed;
     border-radius: 6px;
     margin-bottom: 0;
   }
