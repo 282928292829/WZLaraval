@@ -14,12 +14,23 @@
     $invoiceConfirmation = $settings['invoice_confirmation'] ?? __('orders.invoice_confirmation_placeholder');
     $invoicePaymentInstructions = $settings['invoice_payment_instructions'] ?? '';
     $invoiceFooterText = $settings['invoice_footer_text'] ?? '';
+    $invoiceNumber = $invoiceNumber ?? $order->order_number;
+    $showTypeLabel = (bool) ($settings['invoice_show_type_label'] ?? false);
+    $typeLabels = $settings['invoice_type_labels'] ?? [];
+    $typeLabel = $typeLabels[$invoiceType] ?? (\App\Enums\InvoiceType::tryFrom($invoiceType)?->label() ?? $invoiceType);
+    $showCompanyDetails = (bool) ($settings['invoice_show_company_details'] ?? false);
+    $companyDetails = $settings['invoice_company_details'] ?? [];
+    $companyDetails = is_array($companyDetails) ? $companyDetails : [];
+    $showDueDate = (bool) ($settings['invoice_show_due_date'] ?? false);
+    $dueDateDays = (int) ($settings['invoice_due_date_days'] ?? 7);
+    $dueDateLabel = $settings['invoice_due_date_label'] ?? __('orders.invoice_due_date');
+    $dueDate = $showDueDate ? now()->addDays($dueDateDays)->format('Y-m-d') : null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', $invoiceLocale ?? app()->getLocale()) }}" dir="{{ ($isRtl ?? false) ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
-    <title>{{ $showOrderNumber ? __('orders.invoice_for', ['number' => $order->order_number]) : __('orders.invoice') }}</title>
+    <title>{{ $showOrderNumber ? __('orders.invoice_for', ['number' => $invoiceNumber]) : __('orders.invoice') }}</title>
     <style>
         body { font-size: {{ $isSecondFinal ? '14' : '12' }}px; color: #1f2937; line-height: 1.6; font-family: {{ ($isRtl ?? false) ? 'ibmplexarabic' : 'dejavusans' }}; margin: 0; }
         .page { padding: {{ $isSecondFinal ? '40px 45px' : '45px 50px' }}; }
@@ -68,7 +79,30 @@
                 @else
                     <h1>{{ $siteName }}</h1>
                 @endif
-                <div class="meta">{{ __('orders.invoice_date') }}: {{ now()->format('Y/m/d H:i') }} · {{ $siteName }}</div>
+                <div class="meta">
+                    @if ($showOrderNumber)
+                        {{ __('orders.invoice_number') }}: {{ $invoiceNumber }}
+                        ·
+                    @endif
+                    {{ __('orders.invoice_date') }}: {{ now()->format('Y/m/d H:i') }}
+                    @if ($showTypeLabel)
+                        · {{ $typeLabel }}
+                    @endif
+                    · {{ $siteName }}
+                </div>
+                @if ($showCompanyDetails && count($companyDetails) > 0)
+                    <div class="meta mt-2" style="margin-top: 8px;">
+                        @foreach ($companyDetails as $detail)
+                            @if (filter_var($detail['visible'] ?? true, FILTER_VALIDATE_BOOLEAN) && (trim($detail['label'] ?? '') !== '' || trim($detail['value'] ?? '') !== ''))
+                                <span>{{ trim($detail['label'] ?? '') }}{{ trim($detail['label'] ?? '') !== '' ? ': ' : '' }}{{ trim($detail['value'] ?? '') }}</span>
+                                @if (!$loop->last)<br>@endif
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+                @if ($showDueDate && $dueDate)
+                    <div class="meta mt-1" style="margin-top: 4px;">{{ $dueDateLabel }}: {{ $dueDate }}</div>
+                @endif
             </div>
         </div>
 
@@ -79,7 +113,7 @@
                     <p class="greeting">{{ $invoiceGreeting }}</p>
                 @endif
                 @if ($showOrderNumber)
-                    <p>{{ __('orders.invoice_for', ['number' => $order->order_number]) }}</p>
+                    <p>{{ __('orders.invoice_for', ['number' => $invoiceNumber]) }}</p>
                 @endif
                 @if ($invoiceConfirmation !== '')
                     <p>{{ $invoiceConfirmation }}</p>
@@ -104,7 +138,7 @@
             @endif
         @else
             @if ($showOrderNumber)
-            <p class="greeting">{{ __('orders.invoice_for', ['number' => $order->order_number]) }}</p>
+            <p class="greeting">{{ __('orders.invoice_for', ['number' => $invoiceNumber]) }}</p>
             @endif
         @endif
 

@@ -8,6 +8,7 @@ use App\Models\Setting;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -118,6 +119,7 @@ class SettingsPage extends Page
             'primary_color' => '#f97316',
             'font_family' => 'IBM Plex Sans Arabic',
             'logo_use_per_language' => false,
+            'logo_text_use_per_language' => true,
             'logo_image' => '',
             'logo_image_ar' => '',
             'logo_image_en' => '',
@@ -157,6 +159,9 @@ class SettingsPage extends Page
             'order_new_layout' => '1',
             'orders_per_hour_customer' => '50',
             'orders_per_hour_admin' => '50',
+            'orders_per_day_admin' => '100',
+            'orders_per_month_customer' => '500',
+            'orders_per_month_admin' => '1000',
             'max_file_size_mb' => '2',
             'max_orders_per_day' => '200',
             'comment_max_files' => '5',
@@ -248,6 +253,14 @@ class SettingsPage extends Page
 
             // Invoice defaults
             'invoice_filename_pattern' => 'Invoice-{order_number}.pdf',
+            'invoice_number_pattern' => '{order_number}-{count}',
+            'invoice_show_type_label' => false,
+            'invoice_type_labels' => [],
+            'invoice_show_company_details' => false,
+            'invoice_company_details' => [],
+            'invoice_show_due_date' => false,
+            'invoice_due_date_days' => 7,
+            'invoice_due_date_label' => '',
             'invoice_comment_default' => '',
             'invoice_first_payment_comment_template' => '',
             'invoice_greeting' => '',
@@ -415,12 +428,19 @@ class SettingsPage extends Page
                             ->placeholder(__('IBM Plex Sans Arabic')),
 
                         Toggle::make('logo_use_per_language')
-                            ->label(__('Use per-language logo and text'))
-                            ->helperText(__('When ON, you can set different logo image and text for Arabic and English.'))
+                            ->label(__('Use per-language logo image'))
+                            ->helperText(__('When ON, you can upload a different logo image for Arabic and English.'))
                             ->columnSpanFull()
                             ->onColor('success'),
 
-                        // Single logo (when per-language is OFF)
+                        Toggle::make('logo_text_use_per_language')
+                            ->label(__('Use per-language logo text'))
+                            ->helperText(__('When ON, text logo is localized (different text for Arabic and English). When OFF, one text is used for both. Recommended: ON.'))
+                            ->default(true)
+                            ->columnSpanFull()
+                            ->onColor('success'),
+
+                        // Single logo image (when per-language image is OFF)
                         FileUpload::make('logo_image')
                             ->label(__('Logo Image (all languages)'))
                             ->helperText(__('Shown in header. Recommended: PNG/SVG, max height 48px. Leave empty to show text logo.'))
@@ -430,11 +450,6 @@ class SettingsPage extends Page
                             ->nullable()
                             ->visible(fn ($get) => ! $get('logo_use_per_language')),
 
-                        TextInput::make('logo_text')
-                            ->label(__('Logo Text (all languages)'))
-                            ->helperText(__('Shown when no logo image is uploaded.'))
-                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
-
                         TextInput::make('logo_alt')
                             ->label(__('Logo Alt Text (SEO)'))
                             ->helperText(__('Used in img alt attribute for accessibility and SEO. Leave empty to use logo text.'))
@@ -442,7 +457,7 @@ class SettingsPage extends Page
                             ->maxLength(120)
                             ->visible(fn ($get) => ! $get('logo_use_per_language')),
 
-                        // Per-language logos (when per-language is ON)
+                        // Per-language logo images (when per-language image is ON)
                         FileUpload::make('logo_image_ar')
                             ->label(__('Logo Image').' — '.__('Arabic'))
                             ->helperText(__('Arabic version. Recommended: PNG/SVG, max height 48px.'))
@@ -461,16 +476,6 @@ class SettingsPage extends Page
                             ->nullable()
                             ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
 
-                        TextInput::make('logo_text_ar')
-                            ->label(__('Logo Text').' — '.__('Arabic'))
-                            ->helperText(__('Shown when no logo image is uploaded.'))
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_text_en')
-                            ->label(__('Logo Text').' — '.__('English'))
-                            ->helperText(__('Shown when no logo image is uploaded.'))
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
                         TextInput::make('logo_alt_ar')
                             ->label(__('Logo Alt Text (SEO)').' — '.__('Arabic'))
                             ->helperText(__('Used in img alt for Arabic pages. Leave empty to use logo text.'))
@@ -482,6 +487,23 @@ class SettingsPage extends Page
                             ->helperText(__('Used in img alt for English pages. Leave empty to use logo text.'))
                             ->maxLength(120)
                             ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
+
+                        // Single logo text (when per-language text is OFF)
+                        TextInput::make('logo_text')
+                            ->label(__('Logo Text (all languages)'))
+                            ->helperText(__('Shown when no logo image is uploaded. Used for both Arabic and English when per-language text is OFF.'))
+                            ->visible(fn ($get) => ! $get('logo_text_use_per_language')),
+
+                        // Per-language logo text (when per-language text is ON)
+                        TextInput::make('logo_text_ar')
+                            ->label(__('Logo Text').' — '.__('Arabic'))
+                            ->helperText(__('Shown when no logo image is uploaded.'))
+                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
+
+                        TextInput::make('logo_text_en')
+                            ->label(__('Logo Text').' — '.__('English'))
+                            ->helperText(__('Shown when no logo image is uploaded.'))
+                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
                     ])
                     ->columns(3)
                     ->collapsible(false),
@@ -680,11 +702,32 @@ class SettingsPage extends Page
                             ->helperText(__('Deprecated. Use the two windows above.')),
 
                         TextInput::make('max_orders_per_day')
-                            ->label(__('Max Orders per Day (per user)'))
+                            ->label(__('Orders/day — Customer'))
                             ->numeric()
-                            ->minValue(1)
+                            ->minValue(0)
                             ->maxValue(1000)
-                            ->helperText(__('Limit how many orders one user can place per day.')),
+                            ->helperText(__('Max orders per user per day. 0 = unlimited.')),
+
+                        TextInput::make('orders_per_day_admin')
+                            ->label(__('Orders/day — Admin'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(1000)
+                            ->helperText(__('Max orders per staff per day. 0 = unlimited.')),
+
+                        TextInput::make('orders_per_month_customer')
+                            ->label(__('Orders/month — Customer'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(10000)
+                            ->helperText(__('Max orders per user per month. 0 = unlimited.')),
+
+                        TextInput::make('orders_per_month_admin')
+                            ->label(__('Orders/month — Admin'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(10000)
+                            ->helperText(__('Max orders per staff per month. 0 = unlimited.')),
 
                         Select::make('order_new_layout')
                             ->label(__('New-Order Form Layout'))
@@ -1145,6 +1188,61 @@ class SettingsPage extends Page
                             ->placeholder('Invoice-{order_number}.pdf')
                             ->maxLength(120),
 
+                        TextInput::make('invoice_number_pattern')
+                            ->label(__('orders.invoice_number_pattern'))
+                            ->helperText(__('orders.invoice_number_pattern_help'))
+                            ->placeholder('{order_number}-{count}')
+                            ->maxLength(80),
+
+                        Toggle::make('invoice_show_type_label')
+                            ->label(__('orders.invoice_show_type_label'))
+                            ->helperText(__('orders.invoice_show_type_label_help')),
+
+                        KeyValue::make('invoice_type_labels')
+                            ->label(__('orders.invoice_type_labels'))
+                            ->keyLabel(__('orders.invoice_type'))
+                            ->valueLabel(__('Label'))
+                            ->helperText(__('orders.invoice_type_labels_help'))
+                            ->addActionLabel(__('Add')),
+
+                        Toggle::make('invoice_show_company_details')
+                            ->label(__('orders.invoice_show_company_details'))
+                            ->helperText(__('orders.invoice_show_company_details_help')),
+
+                        Repeater::make('invoice_company_details')
+                            ->label(__('orders.invoice_company_details'))
+                            ->schema([
+                                TextInput::make('label')
+                                    ->label(__('Label'))
+                                    ->placeholder(__('orders.invoice_company_address'))
+                                    ->maxLength(100),
+                                TextInput::make('value')
+                                    ->label(__('Value'))
+                                    ->maxLength(500),
+                                Toggle::make('visible')
+                                    ->label(__('Show'))
+                                    ->default(true),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(0)
+                            ->addActionLabel(__('Add')),
+
+                        Toggle::make('invoice_show_due_date')
+                            ->label(__('orders.invoice_show_due_date'))
+                            ->helperText(__('orders.invoice_show_due_date_help')),
+
+                        TextInput::make('invoice_due_date_days')
+                            ->label(__('orders.invoice_due_date_days'))
+                            ->numeric()
+                            ->default(7)
+                            ->minValue(1)
+                            ->maxValue(365),
+
+                        TextInput::make('invoice_due_date_label')
+                            ->label(__('orders.invoice_due_date_label'))
+                            ->placeholder(__('orders.invoice_due_date'))
+                            ->maxLength(80),
+
                         Textarea::make('invoice_comment_default')
                             ->label(__('Default Comment Message'))
                             ->helperText(__('Default text when posting invoice as comment. Placeholders: {amount}, {order_number}, {date}, {currency}'))
@@ -1305,6 +1403,7 @@ class SettingsPage extends Page
             'primary_color' => 'appearance',
             'font_family' => 'appearance',
             'logo_use_per_language' => 'appearance',
+            'logo_text_use_per_language' => 'appearance',
             'logo_image' => 'appearance',
             'logo_image_ar' => 'appearance',
             'logo_image_en' => 'appearance',
@@ -1347,6 +1446,9 @@ class SettingsPage extends Page
             'order_new_layout' => 'orders',
             'orders_per_hour_customer' => 'orders',
             'orders_per_hour_admin' => 'orders',
+            'orders_per_day_admin' => 'orders',
+            'orders_per_month_customer' => 'orders',
+            'orders_per_month_admin' => 'orders',
             'max_file_size_mb' => 'orders',
             'max_orders_per_day' => 'orders',
             'comment_max_files' => 'orders',
@@ -1411,6 +1513,14 @@ class SettingsPage extends Page
             'carrier_url_fedex' => 'shipping',
             'carrier_url_ups' => 'shipping',
             'invoice_filename_pattern' => 'invoice',
+            'invoice_number_pattern' => 'invoice',
+            'invoice_show_type_label' => 'invoice',
+            'invoice_type_labels' => 'invoice',
+            'invoice_show_company_details' => 'invoice',
+            'invoice_company_details' => 'invoice',
+            'invoice_show_due_date' => 'invoice',
+            'invoice_due_date_days' => 'invoice',
+            'invoice_due_date_label' => 'invoice',
             'invoice_comment_default' => 'invoice',
             'invoice_first_payment_comment_template' => 'invoice',
             'invoice_greeting' => 'invoice',
@@ -1428,6 +1538,9 @@ class SettingsPage extends Page
             'email_enabled', 'email_registration', 'email_welcome',
             'email_password_reset', 'email_comment_notification',
             'invoice_show_order_items',
+            'invoice_show_type_label',
+            'invoice_show_company_details',
+            'invoice_show_due_date',
             'google_login_enabled',
             'exchange_rates_auto_fetch',
             'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
@@ -1441,6 +1554,7 @@ class SettingsPage extends Page
             'hero_show_whatsapp',
             'hero_show_name_change_notice',
             'logo_use_per_language',
+            'logo_text_use_per_language',
         ];
 
         $integerKeys = [
@@ -1448,11 +1562,13 @@ class SettingsPage extends Page
             'order_success_redirect_seconds', 'order_success_screen_threshold',
             'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
             'orders_per_hour_customer', 'orders_per_hour_admin',
+            'orders_per_day_admin', 'orders_per_month_customer', 'orders_per_month_admin',
             'max_file_size_mb', 'max_orders_per_day',
             'comment_max_files', 'comment_max_file_size_mb',
             'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg',
             'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg',
             'domestic_first_half_kg', 'domestic_rest_half_kg',
+            'invoice_due_date_days',
         ];
 
         $floatKeys = [
@@ -1460,7 +1576,7 @@ class SettingsPage extends Page
             'commission_threshold_sar', 'commission_rate_above', 'commission_flat_below',
         ];
 
-        $jsonKeys = ['order_form_fields', 'invoice_custom_lines'];
+        $jsonKeys = ['order_form_fields', 'invoice_custom_lines', 'invoice_type_labels', 'invoice_company_details'];
 
         // Keys not saved to settings table (handled separately or read-only)
         $skipKeys = ['exchange_rates', 'currencies'];

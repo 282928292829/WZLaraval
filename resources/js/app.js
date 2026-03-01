@@ -7,6 +7,70 @@ import Collapse from '@alpinejs/collapse';
 document.addEventListener('alpine:init', () => {
     window.Alpine.plugin(Collapse);
 
+    window.Alpine.data('orderDesignForm', (config = {}) => {
+        const count = config.initialCount ?? 1;
+        const empty = (i) => ({ url: '', qty: '1', color: '', size: '', price: '', currency: 'USD', notes: '', _expanded: i === 0 });
+        const defaultCurrencies = { USD: { label: 'USD' }, EUR: { label: 'EUR' }, GBP: { label: 'GBP' }, SAR: { label: 'SAR' } };
+        const serverCurrencies = config.currencyList && typeof config.currencyList === 'object' ? config.currencyList : null;
+        return {
+            items: Array.from({ length: count }, (_, i) => empty(i)),
+            orderNotes: '',
+            currencyList: (serverCurrencies && Object.keys(serverCurrencies).length > 0) ? serverCurrencies : defaultCurrencies,
+            filledCount: 0,
+            totalSar: 0,
+            init() {
+                if (this.items.length === 0) this.addItem();
+                this.calcTotals();
+            },
+            addItem() {
+                const last = this.items[this.items.length - 1];
+                this.items.forEach((it, i) => { it._expanded = false; });
+                this.items.push({ url: '', qty: '1', color: '', size: '', price: '', currency: last?.currency || 'USD', notes: '', _expanded: true });
+                this.calcTotals();
+                this.$nextTick(() => {
+                    if (window.innerWidth >= 1024 && this.$refs.tableScrollContainer) {
+                        const scrollToBottom = () => {
+                            const el = this.$refs.tableScrollContainer;
+                            if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+                        };
+                        requestAnimationFrame(scrollToBottom);
+                        setTimeout(scrollToBottom, 50);
+                    }
+                });
+            },
+            removeItem(idx) {
+                this.items.splice(idx, 1);
+                if (this.items.length === 0) this.addItem();
+                else if (this.items.length > 0 && !this.items.some(i => i._expanded)) this.items[0]._expanded = true;
+                this.calcTotals();
+            },
+            toggleItem(idx) { this.items[idx]._expanded = !this.items[idx]._expanded; },
+            itemSummary(idx, expanded) {
+                const num = idx + 1;
+                if (!expanded) return (document.documentElement.lang === 'ar' ? 'منتج رقم: ' : 'Product #') + num;
+                const url = (this.items[idx].url || '').trim();
+                if (!url) return (document.documentElement.lang === 'ar' ? 'منتج رقم: ' : 'Product #') + num;
+                try {
+                    const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
+                    return (document.documentElement.lang === 'ar' ? 'منتج رقم: ' : 'Product #') + num + ': ' + host;
+                } catch { return (document.documentElement.lang === 'ar' ? 'منتج رقم: ' : 'Product #') + num + ': ' + url.substring(0, 30); }
+            },
+            calcTotals() {
+                let filled = 0, total = 0;
+                this.items.forEach(item => {
+                    if ((item.url || '').trim()) filled++;
+                    const q = Math.max(1, parseFloat(item.qty) || 1);
+                    const p = parseFloat(item.price) || 0;
+                    total += p * q;
+                });
+                this.filledCount = filled;
+                this.totalSar = Math.floor(total);
+            },
+            productCountText() { return (document.documentElement.lang === 'ar' ? 'منتجات: ' : 'Products: ') + this.filledCount; },
+            totalText() { return (document.documentElement.lang === 'ar' ? 'القيمة التقريبية: ' : 'Value (approx): ') + this.totalSar.toLocaleString() + ' SAR'; }
+        };
+    });
+
     window.Alpine.data('invoiceForm', (config = {}) => ({
         type: config.type || 'first_payment',
         firstItemsTotal: config.firstItemsTotal ?? 0,

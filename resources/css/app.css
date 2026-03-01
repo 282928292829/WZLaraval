@@ -111,9 +111,9 @@
         to { opacity: 0; transform: translateY(-20px) scale(0.8); }
     }
 
-    /* Item grid — desktop 9-column layout. Header uses this class directly; .order-item-details gets it via @media (lg: doesn't work on @layer components in Tailwind v4) */
+    /* Item grid — desktop 9-column layout (#, url, qty, color, size, price, currency, notes, files). Attach + trash in Files. Header uses this class directly; .order-item-details gets it via @media (lg: doesn't work on @layer components in Tailwind v4) */
     .order-item-grid-desktop {
-        grid-template-columns: 0.2fr 1.2fr 0.35fr 0.4fr 0.4fr 0.4fr 0.4fr 0.9fr 0.55fr;
+        grid-template-columns: minmax(1.5rem, 0.12fr) 1fr 0.35fr 0.35fr 0.35fr 0.35fr 0.35fr 0.65fr 0.55fr;
     }
     /* Mobile grid cell spans */
     .order-item-details .order-cell-url { grid-column: span 6; }
@@ -129,7 +129,7 @@
     }
     @media (min-width: 1024px) {
         .order-item-details {
-            grid-template-columns: 0.2fr 1.2fr 0.35fr 0.4fr 0.4fr 0.4fr 0.4fr 0.9fr 0.55fr; /* same as .order-item-grid-desktop */
+            grid-template-columns: minmax(1.5rem, 0.12fr) 1fr 0.35fr 0.35fr 0.35fr 0.35fr 0.35fr 0.65fr 0.55fr; /* same as .order-item-grid-desktop */
         }
         .order-item-details .order-cell-url { min-width: 0; }
         .order-item-details .order-cell-url input { overflow: hidden; text-overflow: ellipsis; }

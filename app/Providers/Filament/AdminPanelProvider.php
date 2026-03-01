@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\FontSettingsPage;
 use App\Filament\Pages\SettingsPage;
 use App\Filament\Pages\TranslationsPage;
 use App\Http\Middleware\SetLocale;
@@ -47,6 +48,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
                 SettingsPage::class,
+                FontSettingsPage::class,
                 TranslationsPage::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

@@ -86,7 +86,7 @@ class NewOrder extends Component
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
-        $this->currencies = $this->buildCurrencies();
+        $this->currencies = order_form_currencies();
         $this->exchangeRates = $this->buildExchangeRates();
 
         // Edit mode: ?edit={id} — must be logged in, load order, start resubmit window
@@ -250,10 +250,10 @@ class NewOrder extends Component
         $user = Auth::user();
         $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
 
-        // Hourly rate limit
+        // Per-hour limit
         $hourlyLimit = $isStaff
             ? (int) Setting::get('orders_per_hour_admin', 50)
-            : (int) Setting::get('orders_per_hour_customer', 10);
+            : (int) Setting::get('orders_per_hour_customer', 50);
 
         if ($hourlyLimit > 0) {
             $hourlyCount = Order::where('user_id', $user->id)
@@ -268,19 +268,39 @@ class NewOrder extends Component
             }
         }
 
-        if (! $isStaff) {
-            $maxPerDay = (int) Setting::get('max_orders_per_day', 5);
-            if ($maxPerDay > 0) {
-                $todayCount = Order::where('user_id', $user->id)
-                    ->whereDate('created_at', today())
-                    ->count();
+        // Per-day limit
+        $dayLimit = $isStaff
+            ? (int) Setting::get('orders_per_day_admin', 100)
+            : (int) Setting::get('max_orders_per_day', 200);
 
-                if ($todayCount >= $maxPerDay) {
-                    $this->dispatch('notify', type: 'error',
-                        message: __('order.daily_limit_reached', ['max' => $maxPerDay]));
+        if ($dayLimit > 0) {
+            $todayCount = Order::where('user_id', $user->id)
+                ->whereDate('created_at', today())
+                ->count();
 
-                    return;
-                }
+            if ($todayCount >= $dayLimit) {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order.daily_limit_reached', ['max' => $dayLimit]));
+
+                return;
+            }
+        }
+
+        // Per-month limit
+        $monthLimit = $isStaff
+            ? (int) Setting::get('orders_per_month_admin', 1000)
+            : (int) Setting::get('orders_per_month_customer', 500);
+
+        if ($monthLimit > 0) {
+            $monthCount = Order::where('user_id', $user->id)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->count();
+
+            if ($monthCount >= $monthLimit) {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order.monthly_limit_reached', ['max' => $monthLimit]));
+
+                return;
             }
         }
 
@@ -858,21 +878,6 @@ class NewOrder extends Component
             'items.*.notes' => 'nullable|string|max:1000',
             'itemFiles' => 'nullable|array',
             'itemFiles.*' => 'nullable|file|mimes:'.allowed_upload_mimes().'|max:'.(Setting::get('max_file_size_mb', 2) * 1024),
-        ];
-    }
-
-    private function buildCurrencies(): array
-    {
-        return [
-            'USD' => ['label' => __('order_form.cur_usd'), 'symbol' => '$'],
-            'EUR' => ['label' => __('order_form.cur_eur'), 'symbol' => '€'],
-            'GBP' => ['label' => __('order_form.cur_gbp'), 'symbol' => '£'],
-            'CNY' => ['label' => __('order_form.cur_cny'), 'symbol' => '¥'],
-            'JPY' => ['label' => __('order_form.cur_jpy'), 'symbol' => '¥'],
-            'KRW' => ['label' => __('order_form.cur_krw'), 'symbol' => '₩'],
-            'TRY' => ['label' => __('order_form.cur_try'), 'symbol' => '₺'],
-            'SAR' => ['label' => __('order_form.cur_sar'), 'symbol' => 'ر.س'],
-            'OTHER' => ['label' => __('order_form.cur_other'), 'symbol' => '—'],
         ];
     }
 

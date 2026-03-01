@@ -1,5 +1,26 @@
 <?php
 
+if (! function_exists('order_form_currencies')) {
+    /**
+     * Currency list for the order form. Same source used by NewOrder and design prototypes.
+     * Keys: currency code; values: ['label' => translated label, 'symbol' => symbol].
+     */
+    function order_form_currencies(): array
+    {
+        return [
+            'USD' => ['label' => __('order_form.cur_usd'), 'symbol' => '$'],
+            'EUR' => ['label' => __('order_form.cur_eur'), 'symbol' => '€'],
+            'GBP' => ['label' => __('order_form.cur_gbp'), 'symbol' => '£'],
+            'CNY' => ['label' => __('order_form.cur_cny'), 'symbol' => '¥'],
+            'JPY' => ['label' => __('order_form.cur_jpy'), 'symbol' => '¥'],
+            'KRW' => ['label' => __('order_form.cur_krw'), 'symbol' => '₩'],
+            'TRY' => ['label' => __('order_form.cur_try'), 'symbol' => '₺'],
+            'SAR' => ['label' => __('order_form.cur_sar'), 'symbol' => 'ر.س'],
+            'OTHER' => ['label' => __('order_form.cur_other'), 'symbol' => '—'],
+        ];
+    }
+}
+
 if (! function_exists('allowed_upload_mimes')) {
     /**
      * Allowed MIME types for order-related file uploads (images, docs, spreadsheets).

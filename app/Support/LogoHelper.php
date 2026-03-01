@@ -33,11 +33,13 @@ class LogoHelper
 
     /**
      * Get the logo text for the current locale.
+     * Text logo is localized by default: use per-language text when logo_text_use_per_language is ON,
+     * or one text for both when OFF. Falls back to logo_use_per_language for backward compatibility.
      */
     public static function getLogoText(?string $locale = null): string
     {
         $locale = $locale ?? app()->getLocale();
-        $usePerLanguage = (bool) Setting::get('logo_use_per_language', false);
+        $usePerLanguage = (bool) Setting::get('logo_text_use_per_language', Setting::get('logo_use_per_language', false));
 
         if ($usePerLanguage) {
             $text = $locale === 'ar' ? Setting::get('logo_text_ar', '') : Setting::get('logo_text_en', '');

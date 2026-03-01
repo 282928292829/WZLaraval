@@ -21,8 +21,14 @@
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
         <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|ibm-plex-sans-arabic:300,400,500,600,700&display=swap" rel="stylesheet" />
+        {{-- Fonts: custom (from settings) or default --}}
+        @if(\App\Support\FontHelper::hasCustomFont())
+            {!! \App\Support\FontHelper::getFontHeadHtml() !!}
+        @else
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        @endif
 
         <style>:root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }</style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -41,7 +47,7 @@
         @endisset
 
         <main class="flex-1">
-            {{ $slot }}
+            {!! $slot ?? '' !!}
         </main>
 
         @livewireScripts

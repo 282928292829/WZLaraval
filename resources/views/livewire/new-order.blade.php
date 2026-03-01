@@ -151,9 +151,9 @@
 
             {{-- Desktop Table Header --}}
             <div class="order-table-header hidden lg:grid order-item-grid-desktop gap-2 p-2.5 font-bold text-xs text-slate-800 bg-orange-50 rounded-md mb-0">
-                <div>{{ __('order_form.th_num') }}</div>
+                <div class="flex items-center justify-start font-bold">#</div>
                 <div>{{ __('order_form.th_url') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_qty') }}</div>
+                <div>{{ __('order_form.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
                 <div>{{ __('order_form.th_color') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
                 <div>{{ __('order_form.th_size') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
                 <div>{{ __('order_form.th_price') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
@@ -164,7 +164,7 @@
 
             {{-- Items --}}
             <div id="items-container-wrapper" class="lg:overflow-x-auto lg:[-webkit-overflow-scrolling:touch]">
-                <div id="items-container" class="flex flex-col gap-2.5 lg:gap-0 lg:border lg:border-orange-100 lg:rounded-lg lg:relative lg:min-w-[900px]">
+                <div id="items-container" class="flex flex-col gap-2.5 lg:gap-0 lg:border lg:border-orange-100 lg:rounded-lg lg:relative lg:min-w-[780px]">
                     <template x-for="(item, idx) in items" :key="idx">
                         <div class="order-item-card group border border-orange-100 rounded-xl lg:rounded-none lg:border-0 lg:border-b lg:border-orange-100 overflow-hidden shadow-sm transition-all duration-150 relative scroll-mb-[150px] focus-within:shadow-md focus-within:border-primary-400/40 focus-within:-translate-y-0.5 focus-within:z-10"
                              :class="{
@@ -197,7 +197,7 @@
                             {{-- Item Fields Grid --}}
                             <div class="order-item-details p-3 max-lg:hidden max-lg:group-[.expanded]:grid max-lg:grid-cols-6 gap-2.5 lg:grid lg:gap-2 lg:p-2.5 lg:items-center">
                                 {{-- Row number (desktop only) --}}
-                                <div class="hidden lg:flex items-center justify-center font-semibold text-sm text-slate-800">
+                                <div class="hidden lg:flex items-center justify-start font-semibold text-sm text-slate-800">
                                     <span x-text="idx + 1"></span>
                                 </div>
 
@@ -213,7 +213,7 @@
 
                                 {{-- Qty --}}
                                 <div class="order-cell-qty">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_qty') }}</span>
+                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
                                     <input type="tel"
                                            x-model="item.qty"
                                            @input="convertArabicNums($event)"
@@ -249,7 +249,7 @@
                                            @input="convertArabicNums($event)"
                                            @blur="calcTotals(); saveDraft()"
                                            inputmode="decimal" placeholder="{{ __('placeholder.amount') }}"
-                                           class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
+                                           class="order-form-input w-full px-3 py-2 min-w-[4ch] border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
                                 </div>
 
                                 {{-- Currency --}}
@@ -279,13 +279,12 @@
 
                                     <div class="order-upload-container flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-2 lg:mt-0">
                                         <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_files') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                        <div class="flex items-center gap-2.5 lg:shrink-0">
+                                        <div class="flex items-center gap-2 flex-nowrap shrink-0">
                                             <template x-if="!item._file">
                                                 <button type="button"
                                                         class="border border-dashed border-orange-100 text-slate-500 bg-orange-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center gap-1.5 hover:border-primary-500 hover:bg-orange-50 hover:text-primary-500 transition-colors lg:py-1.5 lg:px-2 lg:text-[0.75rem]"
-                                                        @click.stop="triggerUpload(idx)"
-                                                        title="{{ __('order_form.attach') }}">
-                                                    <span>📎 {{ __('order_form.attach') }}</span>
+                                                        @click.stop="triggerUpload(idx)">
+                                                    <span>{{ __('order_form.attach') }}</span>
                                                 </button>
                                             </template>
                                             <template x-if="item._file">
@@ -306,6 +305,11 @@
                                                     </div>
                                                 </div>
                                             </template>
+                                            <button type="button"
+                                                    class="hidden lg:inline-flex py-2 px-3 rounded-md text-xs font-medium cursor-pointer border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-colors lg:py-1.5 lg:px-2 lg:text-[0.75rem]"
+                                                    @click.stop="removeItem(idx)">
+                                                {{ __('order_form.remove_row') }}
+                                            </button>
                                         </div>
                                         <template x-if="item._uploadProgress !== null">
                                             <div class="w-full h-1 bg-orange-50 rounded-sm overflow-hidden mt-1 lg:mt-0 lg:min-w-[60px] lg:flex-1">
@@ -648,7 +652,6 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
         removeItem(idx) {
             this.$wire.shiftFileIndex(idx);
             this.items.splice(idx, 1);
-            if (this.items.length === 0) this.items.push(this.emptyItem());
             this.calcTotals();
             this.saveDraft();
         },

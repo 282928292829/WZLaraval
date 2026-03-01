@@ -60,6 +60,11 @@ Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show')
 
 Route::get('/new-order', NewOrder::class)->name('new-order');
 
+// Design prototypes for order form table — compare at /new-order-design-1, -2, -3
+Route::get('/new-order-design-1', [\App\Http\Controllers\OrderDesignController::class, 'design1']);
+Route::get('/new-order-design-2', [\App\Http\Controllers\OrderDesignController::class, 'design2']);
+Route::get('/new-order-design-3', [\App\Http\Controllers\OrderDesignController::class, 'design3']);
+
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
