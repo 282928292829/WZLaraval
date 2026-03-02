@@ -32,17 +32,17 @@ class PostResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedNewspaper;
 
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Content');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Blog Posts');
     }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('Blog');
-    }
-
-    protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
     {

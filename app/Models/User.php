@@ -31,6 +31,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'locale',
+        'timezone',
         'phone',
         'phone_secondary',
         'google_id',

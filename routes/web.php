@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\CommentsController;
 use App\Http\Controllers\DevController;
 use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
@@ -67,6 +68,7 @@ Route::get('/new-order-design-3', [\App\Http\Controllers\OrderDesignController::
 
 Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/all', [OrderController::class, 'allOrders'])->name('orders.all');
     Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
         ->where('variant', 'simple|table|minimal')
         ->name('orders.list-variant');
@@ -75,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{id}/comments', [OrderCommentController::class, 'store'])->name('orders.comments.store');
     Route::patch('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'update'])->name('orders.comments.update');
+    Route::post('/orders/{orderId}/comments/{commentId}/attach-files', [OrderCommentController::class, 'attachFiles'])->name('orders.comments.attach-files');
     Route::delete('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'destroy'])->name('orders.comments.destroy');
     Route::post('/orders/{id}/status', [OrderStatusController::class, 'update'])->name('orders.status.update');
     Route::post('/orders/{id}/mark-paid', [OrderStatusController::class, 'markPaid'])->name('orders.mark-paid');
@@ -119,6 +122,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'can:view-all-orders'])->group(function () {
+    Route::get('/comments', [CommentsController::class, 'index'])->name('comments.index');
     Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
     Route::post('/inbox/mark-all-read', [InboxController::class, 'markAllRead'])->name('inbox.mark-all-read');
     Route::post('/inbox/{activity}/mark-read', [InboxController::class, 'markRead'])->name('inbox.mark-read');

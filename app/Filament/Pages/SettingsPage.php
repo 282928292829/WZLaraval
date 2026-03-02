@@ -34,25 +34,23 @@ class SettingsPage extends Page
 
     protected static ?string $navigationLabel = null;
 
-    protected static string|\UnitEnum|null $navigationGroup = null;
-
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $title = null;
 
-    public static function getNavigationLabel(): string
+    public static function getNavigationGroup(): ?string
     {
         return __('Settings');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationLabel(): string
     {
-        return __('Administration');
+        return __('General');
     }
 
     public function getTitle(): string
     {
-        return __('Site Settings');
+        return __('General Settings');
     }
 
     /** @var array<string, mixed> */
@@ -109,6 +107,8 @@ class SettingsPage extends Page
             'site_name' => 'Wasetzon',
             'default_language' => 'ar',
             'default_currency' => 'USD',
+            'site_timezone' => 'Asia/Riyadh',
+            'times_use_user_timezone' => false,
 
             // Contact (footer, hero WhatsApp)
             'whatsapp' => '',
@@ -166,7 +166,7 @@ class SettingsPage extends Page
             'max_images_per_item' => '3',
             'max_images_per_order' => '10',
             'orders_per_day_customer' => '200',
-            'comment_max_files' => '5',
+            'comment_max_files' => '10',
             'comment_max_file_size_mb' => '10',
 
             // Email (disabled by default, SMTP not configured)
@@ -363,6 +363,39 @@ class SettingsPage extends Page
                             ->required(),
                     ])
                     ->columns(3),
+
+                // ── Date & Time ────────────────────────────────────────────────
+                Section::make(__('Date & Time'))
+                    ->icon(Heroicon::OutlinedClock)
+                    ->description(__('How dates and times are displayed. Site timezone is used when user timezone is OFF or when the user has not set their timezone.'))
+                    ->schema([
+                        Select::make('site_timezone')
+                            ->label(__('Site timezone'))
+                            ->options([
+                                'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
+                                'Asia/Dubai' => 'Asia/Dubai (UAE)',
+                                'Asia/Kuwait' => 'Asia/Kuwait',
+                                'Asia/Bahrain' => 'Asia/Bahrain',
+                                'Asia/Qatar' => 'Asia/Qatar',
+                                'Africa/Cairo' => 'Africa/Cairo (Egypt)',
+                                'Europe/London' => 'Europe/London (UK)',
+                                'Europe/Paris' => 'Europe/Paris',
+                                'America/New_York' => 'America/New_York (US East)',
+                                'America/Los_Angeles' => 'America/Los_Angeles (US West)',
+                                'America/Chicago' => 'America/Chicago (US Central)',
+                                'UTC' => 'UTC',
+                            ])
+                            ->default('Asia/Riyadh')
+                            ->searchable()
+                            ->required(),
+
+                        Toggle::make('times_use_user_timezone')
+                            ->label(__('Use user timezone when set'))
+                            ->helperText(__('When ON, dates are shown in the user\'s timezone if they have set one in their profile. When OFF or if the user has no timezone, site timezone is used.'))
+                            ->default(false)
+                            ->onColor('success'),
+                    ])
+                    ->columns(2),
 
                 // ── SEO (Site-Wide Defaults) ───────────────────────────────────
                 Section::make(__('SEO'))
@@ -769,18 +802,18 @@ class SettingsPage extends Page
                             ->helperText(__('settings.max_images_per_order_help')),
 
                         TextInput::make('comment_max_files')
-                            ->label(__('Max Files per Comment'))
+                            ->label(__('settings.comment_max_files'))
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(20)
-                            ->helperText(__('Max number of files a user can attach to one comment. Default: 5.')),
+                            ->helperText(__('settings.comment_max_files_help')),
 
                         TextInput::make('comment_max_file_size_mb')
-                            ->label(__('Max Comment File Size (MB)'))
+                            ->label(__('settings.comment_max_file_size_mb'))
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(100)
-                            ->helperText(__('Maximum size per file attached to a comment. Default: 10 MB.')),
+                            ->helperText(__('settings.comment_max_file_size_mb_help')),
 
                     ])
                     ->columns(3),
@@ -1410,6 +1443,8 @@ class SettingsPage extends Page
             'site_name' => 'general',
             'default_language' => 'general',
             'default_currency' => 'general',
+            'site_timezone' => 'general',
+            'times_use_user_timezone' => 'general',
             'seo_default_og_image' => 'seo',
             'seo_default_meta_description' => 'seo',
             'seo_twitter_handle' => 'seo',
@@ -1573,6 +1608,7 @@ class SettingsPage extends Page
             'hero_show_name_change_notice',
             'logo_use_per_language',
             'logo_text_use_per_language',
+            'times_use_user_timezone',
         ];
 
         $integerKeys = [

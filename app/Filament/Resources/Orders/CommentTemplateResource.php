@@ -25,7 +25,14 @@ class CommentTemplateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
+    protected static ?int $navigationSort = 4;
+
     public static function getNavigationLabel(): string
+    {
+        return __('Comment Templates');
+    }
+
+    public static function getTitle(): string
     {
         return __('Comment Templates');
     }
@@ -33,11 +40,6 @@ class CommentTemplateResource extends Resource
     public static function getNavigationGroup(): ?string
     {
         return __('Orders');
-    }
-
-    public static function getTitle(): string
-    {
-        return __('Comment Templates');
     }
 
     public static function canAccess(): bool

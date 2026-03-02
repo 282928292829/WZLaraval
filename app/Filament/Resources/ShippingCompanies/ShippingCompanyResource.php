@@ -29,14 +29,11 @@ class ShippingCompanyResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 
+    protected static ?int $navigationSort = 3;
+
     public static function getNavigationLabel(): string
     {
         return __('Shipping Companies');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('Administration');
     }
 
     public static function getModelLabel(): string
@@ -47,6 +44,11 @@ class ShippingCompanyResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('Shipping Companies');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Settings');
     }
 
     public static function form(Schema $schema): Schema

@@ -25,17 +25,17 @@ class PostCategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
+    protected static ?int $navigationSort = 2;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Content');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Categories');
     }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('Blog');
-    }
-
-    protected static ?int $navigationSort = 2;
 
     public static function canAccess(): bool
     {
@@ -135,9 +135,9 @@ class PostCategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPostCategories::route('/'),
+            'index' => ListPostCategories::route('/'),
             'create' => CreatePostCategory::route('/create'),
-            'edit'   => EditPostCategory::route('/{record}/edit'),
+            'edit' => EditPostCategory::route('/{record}/edit'),
         ];
     }
 }

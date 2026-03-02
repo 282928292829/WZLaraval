@@ -2,26 +2,26 @@
     <x-slot name="header">
         <div class="flex items-center justify-between gap-3">
             <div>
-                <h1 class="text-xl font-semibold text-gray-900">{{ __('All Orders') }}</h1>
+                <h1 class="text-xl font-semibold text-gray-900">{{ __('staff.all_orders') }}</h1>
                 <p class="mt-0.5 text-sm text-gray-500">
                     {{ $orders->total() }} {{ __('orders.orders') }}
                     @if (request()->hasAny(['search','status','from','to']))
-                        — <a href="{{ route('orders.index') }}"
+                        — <a href="{{ route('orders.all') }}"
                              class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
                             {{ __('staff.clear_filters') }}
                         </a>
                     @endif
                 </p>
             </div>
-            @can('export-csv')
-                <a href="{{ route('orders.index', array_merge(request()->only(['search','status','from','to']), ['export' => 'csv'])) }}"
+            @if(auth()->user()->hasRole('superadmin'))
+                <a href="{{ route('orders.all', array_merge(request()->only(['search','status','from','to']), ['export' => 'csv'])) }}"
                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
-                    {{ __('Export CSV') }}
+                    {{ __('staff.export_csv') }}
                 </a>
-            @endcan
+            @endif
         </div>
     </x-slot>
 
@@ -29,6 +29,7 @@
     <div x-data="{
         selected: [],
         bulkStatus: '',
+        selectMode: false,
         filtersOpen: {{ request()->hasAny(['status','from','to']) ? 'true' : 'false' }},
         get allIds() {
             return [...document.querySelectorAll('.order-checkbox')].map(el => el.value);
@@ -49,11 +50,16 @@
                 this.selected.splice(idx, 1);
             }
             this.selectAll = this.selected.length === this.allIds.length;
+        },
+        exitSelectMode() {
+            this.selectMode = false;
+            this.selected = [];
+            this.selectAll = false;
         }
     }">
 
         {{-- ── Bulk action bar (visible when rows selected) ──────────────── --}}
-        <div x-show="selected.length > 0"
+        <div x-show="selectMode && selected.length > 0"
              x-cloak
              x-transition:enter="transition ease-out duration-150"
              x-transition:enter-start="opacity-0 -translate-y-2"
@@ -77,8 +83,9 @@
                     {{ __('orders.bulk_apply') }}
                 </button>
                 <button type="button"
-                        @click="selected = []; selectAll = false;"
-                        class="p-1.5 text-primary-200 hover:text-white transition-colors">
+                        @click="exitSelectMode()"
+                        class="p-1.5 text-primary-200 hover:text-white transition-colors"
+                        title="{{ __('staff.done') }}">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -108,8 +115,20 @@
             @endif
 
             {{-- ── Search + filter bar ─────────────────────────────────── --}}
-            <form method="GET" action="{{ route('orders.index') }}" class="space-y-3">
+            <form method="GET" action="{{ route('orders.all') }}" class="space-y-3">
                 <div class="flex gap-2">
+                    {{-- Selection mode toggle (before search, only when orders exist) --}}
+                    @if (! $orders->isEmpty())
+                        <button type="button"
+                                @click="selectMode = !selectMode; if (!selectMode) exitSelectMode();"
+                                :class="selectMode ? 'bg-primary-100 border-primary-300 text-primary-700' : 'bg-white border-gray-200 text-gray-600'"
+                                class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium border rounded-xl hover:border-primary-300 hover:text-primary-600 transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                            </svg>
+                            <span x-text="selectMode ? '{{ __('staff.done') }}' : '{{ __('staff.select_orders') }}'"></span>
+                        </button>
+                    @endif
                     {{-- Search input --}}
                     <div class="flex-1 relative">
                         <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
@@ -120,7 +139,7 @@
                         <input type="search"
                                name="search"
                                value="{{ request('search') }}"
-                               placeholder="{{ __('orders.search_placeholder') }}"
+                               placeholder="{{ __('staff.search_placeholder') }}"
                                class="w-full ps-9 pe-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none transition-colors">
                     </div>
 
@@ -206,14 +225,14 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
-                    <p class="text-sm font-medium text-gray-500">{{ __('No orders yet') }}</p>
+                    <p class="text-sm font-medium text-gray-500">{{ __('staff.no_orders_yet') }}</p>
                     <p class="text-xs text-gray-400 mt-1">
                         {{ request()->hasAny(['search','status','from','to'])
                             ? (__('staff.no_orders_match_your_filters'))
                             : (__('staff.no_orders_in_the_system')) }}
                     </p>
                     @if (request()->hasAny(['search','status','from','to']))
-                        <a href="{{ route('orders.index') }}"
+                        <a href="{{ route('orders.all') }}"
                            class="mt-4 text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">
                             {{ __('staff.clear_filters') }}
                         </a>
@@ -227,7 +246,7 @@
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="border-b border-gray-100 bg-gray-50/80">
-                                    <th class="ps-4 pe-2 py-3 w-10">
+                                    <th class="ps-4 pe-2 py-3 w-10" x-show="selectMode" x-cloak>
                                         <input type="checkbox"
                                                x-model="selectAll"
                                                @change="toggleAll()"
@@ -247,6 +266,16 @@
                                     </th>
                                     <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                         {{ __('staff.payment') }}
+                                    </th>
+                                    <th class="w-4"></th>
+                                    <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-14">
+                                        {{ __('staff.items') }}
+                                    </th>
+                                    <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-14">
+                                        {{ __('staff.comments_count') }}
+                                    </th>
+                                    <th class="px-3 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                        {{ __('staff.last_comment') }}
                                     </th>
                                     <th class="ps-3 pe-4 py-3"></th>
                                 </tr>
@@ -269,7 +298,7 @@
                                     @endphp
                                     <tr class="hover:bg-gray-50/60 transition-colors cursor-pointer group"
                                         onclick="if(!event.target.closest('input,a,button')) window.location='{{ route('orders.show', $order->id) }}'">
-                                        <td class="ps-4 pe-2 py-3" onclick="event.stopPropagation()">
+                                        <td class="ps-4 pe-2 py-3" x-show="selectMode" x-cloak onclick="event.stopPropagation()">
                                             <input type="checkbox"
                                                    class="order-checkbox rounded border-gray-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
                                                    value="{{ $order->id }}"
@@ -277,16 +306,9 @@
                                                    @change="toggleRow('{{ $order->id }}')">
                                         </td>
                                         <td class="px-3 py-3">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                                                    {{ $order->order_number }}
-                                                </span>
-                                                @if ($order->items_count)
-                                                    <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
-                                                        {{ $order->items_count }}
-                                                    </span>
-                                                @endif
-                                            </div>
+                                            <span class="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                                {{ $order->order_number }}
+                                            </span>
                                         </td>
                                         <td class="px-3 py-3">
                                             <p class="font-medium text-gray-800 truncate max-w-[160px]">{{ $order->user?->name ?? '—' }}</p>
@@ -313,10 +335,36 @@
                                                 <span class="text-xs text-gray-400">{{ __('staff.unpaid') }}</span>
                                             @endif
                                         </td>
+                                        <td class="w-4"></td>
+                                        <td class="px-3 py-3 text-center">
+                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
+                                                {{ $order->items_count ?? 0 }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-3 text-center">
+                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
+                                                {{ $order->comments_count ?? 0 }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-3">
+                                            @php
+                                                $lastComment = $order->lastComment;
+                                                $lastCommentBy = $lastComment && $lastComment->user
+                                                    ? ($lastComment->user->hasAnyRole(['staff', 'admin', 'superadmin', 'editor']) ? 'team' : 'customer')
+                                                    : ($lastComment ? 'team' : null);
+                                            @endphp
+                                            @if ($lastCommentBy === 'team')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{{ __('staff.last_comment_team') }}</span>
+                                            @elseif ($lastCommentBy === 'customer')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">{{ __('staff.last_comment_customer') }}</span>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="ps-3 pe-4 py-3">
                                             <a href="{{ route('orders.show', $order->id) }}"
-                                               class="text-xs font-medium text-primary-500 hover:text-primary-700 whitespace-nowrap transition-colors">
-                                                {{ __('orders.view') }} →
+                                               class="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+                                                {{ __('orders.action_open') }}
                                             </a>
                                         </td>
                                     </tr>
@@ -346,7 +394,7 @@
                         <a href="{{ route('orders.show', $order->id) }}"
                            class="flex items-start gap-3 px-4 py-4 hover:bg-gray-50 transition-colors group">
                             {{-- Checkbox --}}
-                            <div class="pt-0.5" onclick="event.preventDefault(); event.stopPropagation();">
+                            <div class="pt-0.5 shrink-0" x-show="selectMode" x-cloak onclick="event.preventDefault(); event.stopPropagation();">
                                 <input type="checkbox"
                                        class="order-checkbox rounded border-gray-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
                                        value="{{ $order->id }}"
@@ -360,20 +408,29 @@
                                         <span class="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
                                             {{ $order->order_number }}
                                         </span>
-                                        @if ($order->items_count)
-                                            <span class="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
-                                                {{ $order->items_count }}
-                                            </span>
-                                        @endif
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500" title="{{ __('staff.items') }}">{{ $order->items_count ?? 0 }}</span>
+                                            <span class="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500" title="{{ __('staff.comments_count') }}">{{ $order->comments_count ?? 0 }}</span>
+                                        </span>
                                     </div>
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset {{ $statusClasses }}">
                                         {{ $order->statusLabel() }}
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <div class="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
                                     <span class="font-medium truncate max-w-[140px]">{{ $order->user?->name ?? '—' }}</span>
                                     <span class="text-gray-300">·</span>
                                     <span>{{ $order->created_at->format('Y/m/d') }}</span>
+                                    @php
+                                        $lastComment = $order->lastComment;
+                                        $lastCommentBy = $lastComment && $lastComment->user
+                                            ? ($lastComment->user->hasAnyRole(['staff', 'admin', 'superadmin', 'editor']) ? 'team' : 'customer')
+                                            : ($lastComment ? 'team' : null);
+                                    @endphp
+                                    @if ($lastCommentBy)
+                                        <span class="text-gray-300">·</span>
+                                        <span class="{{ $lastCommentBy === 'team' ? 'text-blue-600' : 'text-amber-600' }}">{{ $lastCommentBy === 'team' ? __('staff.last_comment_team') : __('staff.last_comment_customer') }}</span>
+                                    @endif
                                     @if ($order->is_paid)
                                         <span class="text-gray-300">·</span>
                                         <span class="text-green-600 font-medium">{{ __('staff.paid') }}</span>
@@ -392,7 +449,7 @@
                 @if ($orders->hasPages())
                     <div class="flex items-center justify-between gap-4 pt-1">
                         <p class="text-xs text-gray-400">
-                            {{ __('Showing') }} {{ $orders->firstItem() }}–{{ $orders->lastItem() }} {{ __('of') }} {{ $orders->total() }}
+                            {{ __('staff.showing') }} {{ $orders->firstItem() }}–{{ $orders->lastItem() }} {{ __('staff.of') }} {{ $orders->total() }}
                         </p>
                         <div class="flex items-center gap-1">
                             {{-- Previous --}}

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
@@ -79,6 +80,11 @@ class Order extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(OrderComment::class);
+    }
+
+    public function lastComment(): HasOne
+    {
+        return $this->hasOne(OrderComment::class)->latestOfMany('created_at');
     }
 
     public function timeline(): HasMany

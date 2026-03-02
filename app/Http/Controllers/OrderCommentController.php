@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Order\AttachCommentFilesRequest;
 use App\Http\Requests\Order\StoreOrderCommentRequest;
 use App\Http\Requests\Order\UpdateOrderCommentRequest;
 use App\Models\Activity;
@@ -84,6 +85,10 @@ class OrderCommentController extends Controller
         $order = Order::findOrFail($orderId);
         $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
 
+        if ($comment->is_system) {
+            abort(403, __('orders.cannot_edit_system_comment'));
+        }
+
         $isOwner = $comment->user_id === $user->id;
         $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
         $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
@@ -106,7 +111,101 @@ class OrderCommentController extends Controller
             'edited_at' => now(),
         ]);
 
+        foreach ($request->file('files', []) as $file) {
+            $path = $file->store('order-files/'.$order->id, 'public');
+            $order->files()->create([
+                'user_id' => $user->id,
+                'comment_id' => $comment->id,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'type' => 'comment',
+            ]);
+        }
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('orders.comment_updated'),
+                'body' => $comment->body,
+                'edited_at' => $comment->edited_at->toIso8601String(),
+            ]);
+        }
+
         return redirect()->route('orders.show', $orderId)->with('success', __('orders.comment_updated'));
+    }
+
+    public function attachFiles(AttachCommentFilesRequest $request, int $orderId, int $commentId)
+    {
+        $user = auth()->user();
+        $order = Order::findOrFail($orderId);
+        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+
+        if ($comment->is_system) {
+            abort(403, __('orders.cannot_edit_system_comment'));
+        }
+
+        $isOwner = $comment->user_id === $user->id;
+        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
+
+        if (! $canEdit) {
+            abort(403);
+        }
+
+        $maxFiles = (int) \App\Models\Setting::get('comment_max_files', 10);
+        $existingCount = $comment->files()->count();
+        $newCount = count($request->file('files', []));
+
+        if ($existingCount + $newCount > $maxFiles) {
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('comments.attach_limit_exceeded', ['max' => $maxFiles]),
+                ], 422);
+            }
+
+            return redirect()->back()->with('error', __('comments.attach_limit_exceeded', ['max' => $maxFiles]));
+        }
+
+        $uploaded = [];
+
+        foreach ($request->file('files', []) as $file) {
+            $path = $file->store('order-files/'.$order->id, 'public');
+            $orderFile = $order->files()->create([
+                'user_id' => $user->id,
+                'comment_id' => $comment->id,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'type' => 'comment',
+            ]);
+            $uploaded[] = [
+                'id' => $orderFile->id,
+                'url' => $orderFile->url(),
+                'original_name' => $orderFile->original_name,
+                'size' => $orderFile->size,
+                'human_size' => $orderFile->humanSize(),
+                'is_image' => $orderFile->isImage(),
+            ];
+        }
+
+        $count = count($uploaded);
+        $message = $count === 1
+            ? __('comments.file_attached')
+            : __('comments.files_attached', ['count' => $count]);
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'files' => $uploaded,
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 
     public function destroy(Request $request, int $orderId, int $commentId)
@@ -148,6 +247,14 @@ class OrderCommentController extends Controller
             Mail::to($order->user->email, $order->user->name)
                 ->locale($order->user->locale ?? 'ar')
                 ->queue(new \App\Mail\CommentNotification($comment));
+
+            \App\Models\OrderCommentNotificationLog::create([
+                'order_id' => $orderId,
+                'comment_id' => $commentId,
+                'user_id' => auth()->id(),
+                'channel' => 'email',
+                'sent_at' => now(),
+            ]);
 
             $order->timeline()->create([
                 'user_id' => auth()->id(),

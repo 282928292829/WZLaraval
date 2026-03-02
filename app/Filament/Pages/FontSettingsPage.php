@@ -33,25 +33,18 @@ class FontSettingsPage extends Page
 
     protected static ?string $navigationLabel = null;
 
-    protected static string|\UnitEnum|null $navigationGroup = null;
-
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $title = null;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Settings');
+    }
 
     public static function getNavigationLabel(): string
     {
         return __('Font');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('Appearance');
-    }
-
-    public static function getNavigationSort(): int
-    {
-        return 11;
     }
 
     public function getTitle(): string

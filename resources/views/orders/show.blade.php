@@ -175,10 +175,10 @@
                         {{ __('Bottom') }}
                     </a>
                     <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
-                    <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_date') }}</strong> {{ $order->created_at->format('Y/m/d') }}</span>
+                    <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_date') }}</strong> {{ format_datetime_for_display($order->created_at, 'Y/m/d') }}</span>
                     @if ($isStaff)
                         <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
-                        <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_time') }}</strong> {{ $order->created_at->format('H:i') }}</span>
+                        <span class="text-xs text-gray-400 whitespace-nowrap shrink-0"><strong>{{ __('orders.order_time') }}</strong> {{ format_datetime_for_display($order->created_at, 'H:i') }}</span>
                         <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
                         <span class="text-xs text-gray-400 whitespace-nowrap shrink-0">{{ $order->user->name }}</span>
                         <span class="hidden md:inline text-gray-300 select-none shrink-0">|</span>
@@ -852,7 +852,7 @@
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0 flex-1">
                                     <div class="text-xs text-gray-400 mb-0.5">
-                                        {{ $entry->created_at?->format('Y/m/d H:i') }}
+                                        {{ format_datetime_for_display($entry->created_at, 'Y/m/d H:i') }}
                                         @if ($entry->user)
                                             — {{ $entry->user->name }}
                                         @endif
@@ -1171,7 +1171,7 @@
                             @if ($order->payment_amount)
                                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-gray-600 mb-2">
                                     <div><span class="text-gray-400">{{ __('orders.payment_amount') }}: </span><strong>{{ number_format($order->payment_amount, 0) }} {{ __('orders.sar') }}</strong></div>
-                                    @if ($order->payment_date)<div><span class="text-gray-400">{{ __('orders.payment_date') }}: </span><strong>{{ $order->payment_date->format('Y/m/d') }}</strong></div>@endif
+                                    @if ($order->payment_date)<div><span class="text-gray-400">{{ __('orders.payment_date') }}: </span><strong>{{ format_datetime_for_display($order->payment_date, 'Y/m/d') }}</strong></div>@endif
                                     @if ($order->payment_method)<div><span class="text-gray-400">{{ __('orders.payment_method') }}: </span><strong>{{ __('orders.payment_method_' . $order->payment_method) }}</strong></div>@endif
                                     @php
                                         $paymentReceipts = [];
@@ -1569,7 +1569,7 @@
                                                 class="text-primary-500 focus:ring-primary-400">
                                             <div>
                                                 <span class="text-sm font-medium text-gray-800">{{ $ro->order_number }}</span>
-                                                <span class="ms-2 text-xs text-gray-400">{{ $ro->created_at->format('Y/m/d') }}</span>
+                                                <span class="ms-2 text-xs text-gray-400">{{ format_datetime_for_display($ro->created_at, 'Y/m/d') }}</span>
                                                 <span class="ms-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ $ro->statusLabel() }}</span>
                                             </div>
                                         </label>
@@ -1628,7 +1628,7 @@
                             <a href="{{ $file->url() }}" target="_blank" class="text-sm text-gray-800 hover:text-primary-600 truncate block">
                                 {{ $file->original_name }}
                             </a>
-                            <p class="text-xs text-gray-400">{{ $file->humanSize() }} · {{ $file->created_at->format('Y/m/d') }}</p>
+                            <p class="text-xs text-gray-400">{{ $file->humanSize() }} · {{ format_datetime_for_display($file->created_at, 'Y/m/d') }}</p>
                         </div>
                         <a href="{{ $file->url() }}" target="_blank" download
                             class="shrink-0 text-xs text-gray-400 hover:text-primary-500 border border-gray-200 rounded-lg px-2 py-1 transition-colors">
@@ -1721,7 +1721,7 @@
     @endif
 
     {{-- ── Comments & conversation ────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden order-comments-section" id="comments" data-order-id="{{ $order->id }}" data-mark-read-url="{{ route('orders.comments.mark-read', $order->id) }}">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm order-comments-section" id="comments" data-order-id="{{ $order->id }}" data-mark-read-url="{{ route('orders.comments.mark-read', $order->id) }}">
         <div class="px-4 py-3 border-b border-gray-100">
             <h2 class="text-sm font-semibold text-gray-700">
                 {{ __('orders.comments') }}
@@ -1737,8 +1737,8 @@
                 @php
                     $isMine   = $comment->user_id === auth()->id();
                     $isStaffComment = optional($comment->user)->hasAnyRole(['staff', 'admin', 'superadmin']);
-                    $customerReads = $comment->reads->filter(fn ($r) => optional($r->user)->hasRole('customer'));
-                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->hasAnyRole(['staff', 'admin', 'superadmin']));
+                    $customerReads = $comment->reads->filter(fn ($r) => $r->user_id === $order->user_id); // order owner = customer for read receipts
+                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->hasAnyRole(['staff', 'admin', 'superadmin']) && $r->user_id !== $order->user_id);
                 @endphp
 
                 {{-- System / automated comments get a distinct teal-tinted treatment --}}
@@ -1755,7 +1755,7 @@
                                     <span class="text-sm font-medium text-teal-800">{{ __('orders.system_comment_label') }}</span>
                                     <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">auto</span>
                                 </div>
-                                <span class="text-xs text-gray-400 tabular-nums">{{ $comment->created_at->format('Y/m/d H:i') }}</span>
+                                <span class="text-xs text-gray-400 tabular-nums">{{ __('orders.comment_date') }} {{ format_datetime_for_display($comment->created_at, 'Y/m/d') }} {{ __('orders.comment_time') }} {{ format_datetime_for_display($comment->created_at, 'H:i') }}</span>
                             </div>
                             <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{!! comment_body_safe($comment->body) !!}</div>
                         </div>
@@ -1785,7 +1785,7 @@
                                 <span class="text-xs text-gray-400 italic">{{ __('orders.edited') }}</span>
                             @endif
                         </div>
-                        <span class="text-xs text-gray-400 tabular-nums">{{ $comment->created_at->format('Y/m/d H:i') }}</span>
+                        <span class="text-xs text-gray-400 tabular-nums">{{ __('orders.comment_date') }} {{ format_datetime_for_display($comment->created_at, 'Y/m/d') }} {{ __('orders.comment_time') }} {{ format_datetime_for_display($comment->created_at, 'H:i') }}</span>
                     </div>
 
                     {{-- Read receipts (staff only) — same placement & UI as WordPress — above body --}}
@@ -1797,7 +1797,7 @@
                         <div class="flex gap-1.5 items-start flex-wrap">
                             @if ($firstCustomerRead)
                                 <span class="text-xs px-2 py-1 bg-emerald-500 rounded text-white font-medium">
-                                    ✓ {{ __('orders.read_by_customer_at', ['date' => $firstCustomerRead->read_at->format('Y/m/d'), 'time' => $firstCustomerRead->read_at->format('H:i')]) }}
+                                    ✓ {{ __('orders.read_by_customer_at', ['date' => format_datetime_for_display($firstCustomerRead->read_at, 'Y/m/d'), 'time' => format_datetime_for_display($firstCustomerRead->read_at, 'H:i')]) }}
                                 </span>
                             @endif
                             @if ($staffReadsDeduped->count() > 0)
@@ -1807,7 +1807,7 @@
                                         {{ __('orders.team_reads_label', ['count' => $staffReadsDeduped->count()]) }}
                                     </button>
                                     <div id="comment-read-{{ $comment->id }}" x-show="open" x-cloak
-                                        class="absolute top-full end-0 mt-1 p-2.5 bg-white border border-slate-300 rounded-md text-xs shadow-lg z-10 min-w-[200px]"
+                                        class="absolute top-full end-0 mt-1 p-2.5 bg-white border border-slate-300 rounded-md text-xs shadow-lg z-50 min-w-[200px]"
                                         @click.outside="open = false">
                                         @foreach ($staffReadsDeduped as $read)
                                             <div class="mb-2 pb-2 border-b border-slate-200 last:mb-0 last:pb-0 last:border-b-0">
@@ -1815,7 +1815,7 @@
                                                 @if (optional($read->user)->email)
                                                     <br><span class="text-slate-500 text-[0.9em]">{{ $read->user->email }}</span>
                                                 @endif
-                                                <br><span class="text-slate-500 text-[0.9em]">{{ __('orders.read_by_team_at', ['date' => $read->read_at->format('Y/m/d'), 'time' => $read->read_at->format('H:i')]) }}</span>
+                                                <br><span class="text-slate-500 text-[0.9em]">{{ __('orders.read_by_team_at', ['date' => format_datetime_for_display($read->read_at, 'Y/m/d'), 'time' => format_datetime_for_display($read->read_at, 'H:i')]) }}</span>
                                             </div>
                                         @endforeach
                                     </div>
@@ -1856,9 +1856,10 @@
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                             {{-- Edit --}}
                             @if ($comment->canBeEditedBy(auth()->user()))
+                                @php $commentExistingFiles = $order->files->where('comment_id', $comment->id)->count(); @endphp
                                 <button type="button"
                                     x-data
-                                    @click="$dispatch('edit-comment', { id: {{ $comment->id }}, body: {{ json_encode($comment->body) }} })"
+                                    @click="$dispatch('edit-comment', { id: {{ $comment->id }}, body: {{ json_encode($comment->body) }}, existingFilesCount: {{ $commentExistingFiles }} })"
                                     class="text-xs text-gray-400 hover:text-primary-500 transition-colors">
                                     {{ __('orders.edit') }}
                                 </button>
@@ -1868,7 +1869,7 @@
                             @if ($isStaff && $comment->edits->count())
                                 <button type="button"
                                     x-data
-                                    @click="$dispatch('view-history', { id: {{ $comment->id }}, edits: {{ $comment->edits->map(fn ($e) => ['old_body' => $e->old_body, 'editor' => optional($e->editor)->name, 'at' => optional($e->created_at)?->format('Y/m/d H:i')]) }} })"
+                                    @click="$dispatch('view-history', { commentId: {{ $comment->id }}, orderId: {{ $order->id }}, edits: @js($comment->edits->map(fn ($e) => ['old_body' => $e->old_body, 'editor' => optional($e->editor)->name, 'at' => format_datetime_for_display($e->edited_at, 'Y/m/d H:i')])->values()->all()) })"
                                     class="text-xs text-gray-400 hover:text-indigo-500 transition-colors">
                                     {{ __('orders.edit_history') }} ({{ $comment->edits->count() }})
                                 </button>
@@ -1877,12 +1878,30 @@
                             {{-- Send notification (staff, non-internal) --}}
                             @if ($isStaff && ! $comment->is_internal)
                                 @can('send-comment-notification')
-                                    <form action="{{ route('orders.comments.notify', [$order->id, $comment->id]) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="text-xs text-gray-400 hover:text-blue-500 transition-colors">
-                                            {{ __('orders.send_notification') }}
-                                        </button>
-                                    </form>
+                                    @php $emailLogs = $comment->notificationLogs->where('channel', 'email'); @endphp
+                                    <span class="inline-flex items-center gap-1">
+                                        <form action="{{ route('orders.comments.notify', [$order->id, $comment->id]) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-xs text-gray-400 hover:text-blue-500 transition-colors">
+                                                {{ __('orders.send_notification') }}
+                                            </button>
+                                        </form>
+                                        @if ($emailLogs->isNotEmpty())
+                                            <span x-data="{ open: false }" class="relative inline-flex items-center gap-1">
+                                                <button type="button" @click="open = !open"
+                                                    class="text-xs text-gray-400 hover:text-blue-600 transition-colors">
+                                                    {{ __('orders.email_history') }} ({{ $emailLogs->count() }})
+                                                </button>
+                                                <div x-show="open" x-collapse
+                                                    class="absolute left-0 top-full z-10 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow text-xs text-gray-600 space-y-1 max-h-32 overflow-y-auto min-w-[180px]"
+                                                    @click.outside="open = false">
+                                                    @foreach ($emailLogs->sortByDesc('sent_at') as $log)
+                                                        <div>{{ optional($log->user)->name }} — {{ format_datetime_for_display($log->sent_at, 'Y/m/d H:i') }}</div>
+                                                    @endforeach
+                                                </div>
+                                            </span>
+                                        @endif
+                                    </span>
                                 @endcan
 
                                 {{-- WhatsApp: log send then open wa.me (staff, non-internal) --}}
@@ -1922,7 +1941,7 @@
                                                     class="absolute left-0 top-full z-10 mt-1 p-2 bg-white border border-gray-200 rounded-lg shadow text-xs text-gray-600 space-y-1 max-h-32 overflow-y-auto min-w-[180px]"
                                                     @click.outside="open = false">
                                                     @foreach ($waLogs->sortByDesc('sent_at') as $log)
-                                                        <div>{{ optional($log->user)->name }} — {{ $log->sent_at->format('Y/m/d H:i') }}</div>
+                                                        <div>{{ optional($log->user)->name }} — {{ format_datetime_for_display($log->sent_at, 'Y/m/d H:i') }}</div>
                                                     @endforeach
                                                 </div>
                                             </span>
@@ -2163,15 +2182,43 @@
 ═══════════════════════════════════════════════════════════════════════════ --}}
 
 {{-- Edit comment modal --}}
+@php $maxCommentFilesEdit = (int) \App\Models\Setting::get('comment_max_files', 10); @endphp
 <div
     x-data="{
         show: false,
         commentId: null,
         body: '',
+        pickedFiles: [],
+        maxFiles: 0,
+        maxCommentFiles: {{ $maxCommentFilesEdit }},
+        addFiles(e) {
+            const incoming = Array.from(e.target.files);
+            const remaining = this.maxFiles - this.pickedFiles.length;
+            this.pickedFiles = this.pickedFiles.concat(incoming.slice(0, remaining));
+            e.target.value = '';
+        },
+        removeFile(i) {
+            this.pickedFiles.splice(i, 1);
+        },
+        get fileLabel() {
+            if (this.pickedFiles.length === 0) return '{{ __('orders.attach_files', ['max' => '__MAX__']) }}'.replace('__MAX__', this.maxFiles);
+            return '{{ __('orders.files_selected', ['count' => '']) }}' + this.pickedFiles.length;
+        },
+        submitForm(e) {
+            if (this.pickedFiles.length > 0) {
+                const dt = new DataTransfer();
+                this.pickedFiles.forEach(f => dt.items.add(f));
+                const realInput = e.target.querySelector('input[data-edit-comment-files]');
+                if (realInput) realInput.files = dt.files;
+            }
+        },
         init() {
             window.addEventListener('edit-comment', e => {
                 this.commentId = e.detail.id;
                 this.body = e.detail.body;
+                this.pickedFiles = [];
+                const existing = e.detail.existingFilesCount ?? 0;
+                this.maxFiles = Math.max(0, this.maxCommentFiles - existing);
                 this.show = true;
             })
         }
@@ -2185,11 +2232,35 @@
             <h3 class="font-semibold text-gray-800">{{ __('orders.edit_comment') }}</h3>
             <button @click="show = false" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form :action="`{{ url('/orders/' . $order->id . '/comments') }}/${commentId}`" method="POST">
+        <form :action="`{{ url('/orders/' . $order->id . '/comments') }}/${commentId}`" method="POST"
+            enctype="multipart/form-data"
+            @submit="submitForm($event)">
             @csrf
             <input type="hidden" name="_method" value="PATCH">
             <textarea name="body" rows="5" x-model="body" required
                 class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none leading-relaxed"></textarea>
+            <template x-if="maxFiles > 0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="flex items-center gap-1.5 text-xs cursor-pointer"
+                        :class="pickedFiles.length >= maxFiles ? 'text-gray-300 pointer-events-none' : 'text-gray-500 hover:text-gray-700'">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                        <span x-text="fileLabel"></span>
+                        <input type="file" class="sr-only" multiple
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                            :disabled="pickedFiles.length >= maxFiles"
+                            @change="addFiles($event)">
+                    </label>
+                    <input type="file" name="files[]" multiple class="sr-only" data-edit-comment-files
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx">
+                    <template x-for="(f, i) in pickedFiles" :key="i">
+                        <span class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 max-w-[140px]">
+                            <span class="truncate" x-text="f.name"></span>
+                            <button type="button" @click="removeFile(i)"
+                                class="text-gray-400 hover:text-red-500 shrink-0 leading-none">✕</button>
+                        </span>
+                    </template>
+                </div>
+            </template>
             <div class="flex gap-2 mt-3">
                 <button type="submit"
                     class="flex-1 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">
@@ -2293,10 +2364,16 @@
 <div
     x-data="{
         show: false,
+        commentId: null,
+        orderId: {{ $order->id }},
         edits: [],
+        updateUrl(commentId) {
+            return `{{ url('/orders') }}/${this.orderId}/comments/${commentId}`;
+        },
         init() {
             window.addEventListener('view-history', e => {
-                this.edits = e.detail.edits;
+                this.commentId = e.detail.commentId;
+                this.edits = e.detail.edits || [];
                 this.show = true;
             })
         }
@@ -2312,12 +2389,22 @@
         </div>
         <div class="space-y-3">
             <template x-for="(edit, i) in edits" :key="i">
-                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
                     <div class="flex items-center justify-between text-xs text-gray-400">
                         <span x-text="edit.editor"></span>
                         <span x-text="edit.at"></span>
                     </div>
                     <p class="text-sm text-gray-600 whitespace-pre-wrap" x-text="edit.old_body"></p>
+                    <form :action="updateUrl(commentId)" method="POST" class="mt-2"
+                        @submit.prevent="if (confirm('{{ __('orders.confirm_restore_comment') }}')) { $el.submit(); }">
+                        @csrf
+                        <input type="hidden" name="_method" value="PATCH">
+                        <input type="hidden" name="body" :value="edit.old_body">
+                        <button type="submit"
+                            class="text-xs px-2 py-1 bg-white border border-gray-200 rounded-lg text-gray-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
+                            {{ __('orders.restore') }}
+                        </button>
+                    </form>
                 </div>
             </template>
         </div>
@@ -2477,7 +2564,7 @@ window.addEventListener('open-address-selector', () => {
                                 class="text-primary-500 focus:ring-primary-400 shrink-0">
                             <div class="flex-1">
                                 <span class="text-sm font-medium text-gray-800">{{ $ro->order_number }}</span>
-                                <span class="ms-2 text-xs text-gray-400">{{ $ro->created_at->format('Y/m/d') }}</span>
+                                <span class="ms-2 text-xs text-gray-400">{{ format_datetime_for_display($ro->created_at, 'Y/m/d') }}</span>
                                 <span class="ms-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ $ro->statusLabel() }}</span>
                             </div>
                         </label>

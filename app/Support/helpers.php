@@ -106,6 +106,30 @@ if (! function_exists('safe_item_url')) {
     }
 }
 
+if (! function_exists('format_datetime_for_display')) {
+    /**
+     * Format a date/time for display, using site timezone or authenticated user's timezone.
+     * When "use user timezone" is enabled and user has a timezone set, uses that.
+     * Otherwise uses site timezone from admin settings (default Asia/Riyadh).
+     */
+    function format_datetime_for_display(?\Carbon\CarbonInterface $date, string $format = 'Y/m/d H:i'): string
+    {
+        if (! $date) {
+            return '—';
+        }
+        if (! $date instanceof \Carbon\Carbon) {
+            $date = \Carbon\Carbon::parse($date);
+        }
+        $tz = \App\Models\Setting::get('times_use_user_timezone', false)
+            && auth()->check()
+            && filled(auth()->user()->timezone ?? null)
+            ? auth()->user()->timezone
+            : \App\Models\Setting::get('site_timezone', 'Asia/Riyadh');
+
+        return $date->copy()->timezone($tz)->format($format);
+    }
+}
+
 if (! function_exists('comment_body_safe')) {
     /**
      * Escape comment body and convert newlines/URLs for safe HTML output.

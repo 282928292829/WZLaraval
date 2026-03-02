@@ -7,6 +7,143 @@ import Collapse from '@alpinejs/collapse';
 document.addEventListener('alpine:init', () => {
     window.Alpine.plugin(Collapse);
 
+    window.Alpine.store('commentExpanded', { id: null });
+
+    window.Alpine.data('commentCard', (config = {}) => ({
+        id: config.id,
+        body: config.body ?? '',
+        orderId: config.orderId,
+        orderNumber: config.orderNumber ?? '',
+        author: config.author ?? '',
+        createdAt: config.createdAt ?? '',
+        isoCreatedAt: config.isoCreatedAt ?? '',
+        isInternal: config.isInternal ?? false,
+        trashed: config.trashed ?? false,
+        canEdit: config.canEdit ?? false,
+        updateUrl: config.updateUrl ?? '',
+        bodyRequired: config.bodyRequired ?? 'Body is required.',
+        editSuccess: config.editSuccess ?? 'Comment updated',
+        editError: config.editError ?? 'Failed to update comment',
+        savingText: config.savingText ?? 'Saving...',
+        editing: false,
+        editBody: '',
+        editErrorMsg: null,
+        saving: false,
+        files: config.files ?? [],
+        attachUrl: config.attachUrl ?? '',
+        maxFiles: config.maxFiles ?? 10,
+        maxFileSizeMb: config.maxFileSizeMb ?? 10,
+        acceptFileTypes: config.acceptFileTypes ?? '.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic',
+        attachErrorMsg: null,
+        attaching: false,
+        attachSuccess: config.attachSuccess ?? 'File attached',
+        attachError: config.attachError ?? 'Failed to attach file',
+        attachLimitExceeded: config.attachLimitExceeded ?? 'Maximum files per comment.',
+        toggle() {
+            if (this.$store.commentExpanded.id === this.id) {
+                this.$store.commentExpanded.id = null;
+                this.editing = false;
+                this.editErrorMsg = null;
+            } else {
+                this.$store.commentExpanded.id = this.id;
+            }
+        },
+        startEdit() {
+            this.editBody = this.body;
+            this.editErrorMsg = null;
+            this.editing = true;
+        },
+        cancelEdit() {
+            this.editing = false;
+            this.editErrorMsg = null;
+        },
+        async saveEdit() {
+            if (!this.updateUrl || !String(this.editBody).trim()) {
+                this.editErrorMsg = this.bodyRequired;
+                return;
+            }
+            this.saving = true;
+            this.editErrorMsg = null;
+            try {
+                const res = await fetch(this.updateUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ body: String(this.editBody).trim() }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    this.body = data.body ?? String(this.editBody).trim();
+                    this.editing = false;
+                    this.showToast(this.editSuccess, 'success');
+                } else {
+                    this.editErrorMsg = data.message ?? data.errors?.body?.[0] ?? this.editError;
+                }
+            } catch {
+                this.editErrorMsg = this.editError;
+            } finally {
+                this.saving = false;
+            }
+        },
+        showToast(message, type = 'success') {
+            const el = document.createElement('div');
+            el.className = `fixed bottom-4 ${document.documentElement.dir === 'rtl' ? 'left' : 'right'}-4 z-[60] px-4 py-3 rounded-lg text-sm font-medium shadow-lg ${type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`;
+            el.textContent = message;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        },
+        triggerAttach() {
+            this.$refs.attachInput?.click();
+        },
+        async onAttachInputChange(e) {
+            const input = e.target;
+            const fileList = input?.files;
+            if (!fileList?.length || !this.attachUrl) return;
+            const maxBytes = this.maxFileSizeMb * 1024 * 1024;
+            const remaining = Math.max(0, this.maxFiles - this.files.length);
+            if (fileList.length > remaining) {
+                this.attachErrorMsg = this.attachLimitExceeded.replace(':max', this.maxFiles);
+                input.value = '';
+                return;
+            }
+            for (const f of fileList) {
+                if (f.size > maxBytes) {
+                    this.attachErrorMsg = `${this.attachError} — ${f.name} exceeds ${this.maxFileSizeMb} MB`;
+                    input.value = '';
+                    return;
+                }
+            }
+            this.attaching = true;
+            this.attachErrorMsg = null;
+            const formData = new FormData();
+            for (const f of fileList) formData.append('files[]', f);
+            formData.append('_token', this.csrfToken);
+            try {
+                const res = await fetch(this.attachUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success && Array.isArray(data.files)) {
+                    this.files.push(...data.files);
+                    this.showToast(data.message ?? this.attachSuccess, 'success');
+                } else {
+                    this.attachErrorMsg = data.message ?? this.attachError;
+                }
+            } catch {
+                this.attachErrorMsg = this.attachError;
+            } finally {
+                this.attaching = false;
+                input.value = '';
+            }
+        },
+    }));
+
     window.Alpine.data('orderDesignForm', (config = {}) => {
         const count = config.initialCount ?? 1;
         const empty = (i) => ({ url: '', qty: '1', color: '', size: '', price: '', currency: 'USD', notes: '', _expanded: i === 0 });

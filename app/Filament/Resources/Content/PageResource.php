@@ -31,17 +31,17 @@ class PageResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    public static function getNavigationLabel(): string
-    {
-        return __('Static Pages');
-    }
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationGroup(): ?string
     {
         return __('Content');
     }
 
-    protected static ?int $navigationSort = 1;
+    public static function getNavigationLabel(): string
+    {
+        return __('Static Pages');
+    }
 
     public static function canAccess(): bool
     {

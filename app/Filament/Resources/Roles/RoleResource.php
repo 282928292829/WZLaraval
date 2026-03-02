@@ -19,21 +19,21 @@ class RoleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
+    protected static ?int $navigationSort = 2;
+
     public static function getNavigationLabel(): string
+    {
+        return __('Roles');
+    }
+
+    public static function getTitle(): string
     {
         return __('Roles');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Administration');
-    }
-
-    protected static ?int $navigationSort = 2;
-
-    public static function getTitle(): string
-    {
-        return __('Roles');
+        return __('Users');
     }
 
     public static function canAccess(): bool

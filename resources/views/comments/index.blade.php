@@ -1,0 +1,275 @@
+<x-app-layout :minimal-footer="true">
+
+<div x-data="{}" @keydown.escape.window="$store.commentExpanded.id = null">
+{{-- Page header --}}
+<div class="bg-white border-b border-gray-100">
+    <div class="max-w-4xl mx-auto px-4 py-4 sm:py-5">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-base font-bold text-gray-900">{{ __('comments.page_title') }}</h1>
+                <p class="text-xs text-gray-500 mt-0.5">{{ $comments->total() }} {{ __('Comments') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 py-5 sm:py-6 space-y-4">
+
+    {{-- Filter form --}}
+    <div x-data="{ open: {{ request()->hasAny(['search','internal','sort','per_page']) ? 'true' : 'false' }} }">
+        <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold text-gray-700">
+                {{ __('orders.filters') }}
+                @if (request()->hasAny(['search', 'internal', 'sort', 'per_page']))
+                    <span class="font-normal text-gray-500">· <a href="{{ $clearFiltersUrl }}" class="text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a></span>
+                @endif
+            </h2>
+            <button type="button" @click="open = !open"
+                    class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors shrink-0">
+                <template x-if="open"><span>{{ __('orders.filter_hide') }}</span></template>
+                <template x-if="!open"><span>{{ __('orders.filter_show') }}</span></template>
+            </button>
+        </div>
+
+        <form method="GET" action="{{ $formAction }}" x-show="open" x-cloak
+              class="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('orders.search_label') }}</label>
+                    <input type="text" name="search" value="{{ request('search') }}"
+                           placeholder="{{ __('comments.search_placeholder') }}"
+                           class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.internal_filter') }}</label>
+                    <select name="internal" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="" @selected(request('internal') === null)>{{ __('comments.internal_all') }}</option>
+                        <option value="1" @selected(request('internal') === '1')>{{ __('comments.internal_only') }}</option>
+                        <option value="0" @selected(request('internal') === '0')>{{ __('comments.internal_exclude') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('orders.sort_label') }}</label>
+                    <select name="sort" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="desc" @selected(request('sort', 'desc') === 'desc')>{{ __('orders.sort_newest') }}</option>
+                        <option value="asc" @selected(request('sort') === 'asc')>{{ __('orders.sort_oldest') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('orders.per_page_label') }}</label>
+                    <select name="per_page" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="10"  @selected(request('per_page', '25') === '10')>10</option>
+                        <option value="25"  @selected(request('per_page', '25') === '25')>25</option>
+                        <option value="50"  @selected(request('per_page') === '50')>50</option>
+                        <option value="100" @selected(request('per_page') === '100')>100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="px-4 pb-4 flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_apply') }}</button>
+                <a href="{{ $clearFiltersUrl }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_reset') }}</a>
+            </div>
+        </form>
+    </div>
+
+    {{-- Comments list --}}
+    @if ($comments->isEmpty())
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16 px-6">
+            <div class="w-16 h-16 mx-auto rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+            </div>
+            <h2 class="text-base font-semibold text-gray-700">{{ __('comments.no_comments') }}</h2>
+            <p class="mt-1.5 text-sm text-gray-400 max-w-xs mx-auto">{{ __('inbox.no_activity_hint') }}</p>
+        </div>
+    @else
+        <div class="space-y-3">
+            @foreach ($comments as $comment)
+                @php $canEdit = !$comment->trashed() && $comment->canBeEditedBy(auth()->user()); @endphp
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-colors {{ $comment->trashed() ? 'opacity-60' : '' }}"
+                     :class="{ 'ring-2 ring-primary-200 ring-offset-2': $store.commentExpanded.id === {{ $comment->id }} }"
+                     x-data="commentCard({
+                         id: {{ $comment->id }},
+                         body: @js($comment->body),
+                         orderId: {{ $comment->order_id }},
+                         orderNumber: @js($comment->order?->order_number ?? '#' . $comment->order_id),
+                         author: @js($comment->user?->name ?? __('System')),
+                         createdAt: @js($comment->created_at->format('d M Y, H:i')),
+                         isoCreatedAt: @js($comment->created_at->toIso8601String()),
+                         isInternal: {{ $comment->is_internal ? 'true' : 'false' }},
+                         trashed: {{ $comment->trashed() ? 'true' : 'false' }},
+                         canEdit: {{ $canEdit ? 'true' : 'false' }},
+                         updateUrl: @js(route('orders.comments.update', [$comment->order_id, $comment->id])),
+                         bodyRequired: @js(__('orders.comment_body_required')),
+                         editSuccess: @js(__('comments.edit_success')),
+                         editError: @js(__('comments.edit_error')),
+                         savingText: @js(__('comments.saving')),
+                         files: @js($comment->files->map(fn ($f) => ['id' => $f->id, 'url' => $f->url(), 'original_name' => $f->original_name, 'size' => $f->size, 'human_size' => $f->humanSize(), 'is_image' => $f->isImage()])->values()->all()),
+                         attachUrl: @js(route('orders.comments.attach-files', [$comment->order_id, $comment->id])),
+                         maxFiles: {{ $maxFilesPerComment }},
+                         maxFileSizeMb: {{ $maxFileSizeMb }},
+                         acceptFileTypes: @js($acceptFileTypes),
+                         attachSuccess: @js(__('comments.file_attached')),
+                         attachError: @js(__('comments.edit_error')),
+                         attachLimitExceeded: @js(__('comments.attach_limit_exceeded'))
+                     })">
+                    <div class="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors" @click="toggle()">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+                                    <a href="{{ route('orders.show', $comment->order_id) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" @click.stop>
+                                        {{ $comment->order?->order_number ?? '#' . $comment->order_id }}
+                                    </a>
+                                    <span>·</span>
+                                    <span x-text="author"></span>
+                                    <span>·</span>
+                                    <time :datetime="isoCreatedAt" x-text="createdAt"></time>
+                                    @if ($comment->is_internal)
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">{{ __('orders.internal_note') }}</span>
+                                    @endif
+                                    @if ($comment->trashed())
+                                        <span class="text-red-500">{{ __('Deleted') }}</span>
+                                    @endif
+                                </div>
+                                <p class="text-sm text-gray-800 leading-relaxed line-clamp-3" dir="auto" x-text="body"></p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0" @click.stop>
+                                <a href="{{ route('orders.show', $comment->order_id) }}" target="_blank" rel="noopener noreferrer"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    {{ __('comments.open_order') }}
+                                </a>
+                                <a href="{{ route('orders.show', $comment->order_id) }}#comment-{{ $comment->id }}" target="_blank" rel="noopener noreferrer"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                    </svg>
+                                    {{ __('comments.open_comment') }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Inline expanded: full body + edit --}}
+                    <div x-show="$store.commentExpanded.id === id"
+                         x-collapse
+                         x-cloak
+                         class="border-t border-gray-100">
+                        <div class="px-4 py-4 bg-gray-50/50">
+                            <div x-show="!editing">
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
+                                    <a :href="'{{ url('/orders') }}/' + orderId" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
+                                    <span>·</span>
+                                    <span x-text="author"></span>
+                                    <span>·</span>
+                                    <time :datetime="isoCreatedAt" x-text="createdAt"></time>
+                                </div>
+                                <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dir="auto" x-text="body"></p>
+
+                                {{-- Attachments --}}
+                                <template x-if="files.length > 0 || (canEdit && files.length < maxFiles)">
+                                    <div class="mt-4 space-y-2">
+                                        <p class="text-xs font-semibold text-gray-600" x-show="files.length > 0" x-text="files.length ? '{{ __('comments.attachments') }}' : ''"></p>
+                                        <div class="flex flex-wrap gap-2" x-show="files.length > 0">
+                                            <template x-for="f in files" :key="f.id">
+                                                <a :href="f.url" target="_blank" rel="noopener noreferrer"
+                                                   class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors">
+                                                    <template x-if="f.is_image">
+                                                        <img :src="f.url" :alt="f.original_name" class="w-5 h-5 object-cover rounded">
+                                                    </template>
+                                                    <template x-if="!f.is_image">
+                                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                    </template>
+                                                    <span class="truncate max-w-[140px]" x-text="f.original_name"></span>
+                                                    <span class="text-gray-400 text-[10px]" x-text="f.human_size"></span>
+                                                </a>
+                                            </template>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2" x-show="canEdit && files.length < maxFiles">
+                                            <input type="file" x-ref="attachInput" class="hidden" multiple
+                                                   :accept="acceptFileTypes"
+                                                   @change="onAttachInputChange($event)">
+                                            <button type="button" @click.stop="triggerAttach()" :disabled="attaching"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a3 3 0 104.243 4.243l2.872-2.876"/>
+                                                </svg>
+                                                <span x-show="!attaching">{{ __('comments.attach_files') }}</span>
+                                                <span x-show="attaching">{{ __('comments.saving') }}</span>
+                                            </button>
+                                            <span class="text-[10px] text-gray-400" x-text="'{{ __('comments.attach_limit') }}'.replace(':max', maxFiles).replace(':size', maxFileSizeMb)"></span>
+                                            <p x-show="attachErrorMsg" x-text="attachErrorMsg" class="text-xs text-red-600 w-full"></p>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <div class="flex flex-wrap gap-2 mt-4">
+                                    <a :href="'{{ url('/orders') }}/' + orderId" target="_blank" rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        {{ __('comments.open_order') }}
+                                    </a>
+                                    <a :href="'{{ url('/orders') }}/' + orderId + '#comment-' + id" target="_blank" rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                        </svg>
+                                        {{ __('comments.open_comment') }}
+                                    </a>
+                                    <template x-if="canEdit">
+                                        <button type="button" @click.stop="startEdit()"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                            {{ __('comments.edit') }}
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div x-show="editing" x-cloak style="display: none;">
+                                <textarea x-model="editBody" rows="8" dir="auto"
+                                          class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none resize-y min-h-[120px]"
+                                          :placeholder="bodyRequired"></textarea>
+                                <p x-show="editErrorMsg" x-text="editErrorMsg" class="mt-2 text-sm text-red-600"></p>
+                                <div class="flex gap-2 mt-4">
+                                    <button type="button" @click.stop="saveEdit()" :disabled="saving"
+                                            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors">
+                                        <span x-show="!saving">{{ __('comments.save') }}</span>
+                                        <span x-show="saving" x-text="savingText"></span>
+                                    </button>
+                                    <button type="button" @click.stop="cancelEdit()"
+                                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">
+                                        {{ __('comments.cancel') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Pagination --}}
+        @if ($comments->hasPages())
+            <div class="pt-4">
+                {{ $comments->links() }}
+            </div>
+        @endif
+    @endif
+
+</div>
+</div>
+</x-app-layout>

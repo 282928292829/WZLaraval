@@ -816,17 +816,22 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
+        return $this->customerIndex(auth()->user(), $request);
+    }
+
+    public function allOrders(Request $request)
+    {
         $user = auth()->user();
 
-        if ($user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
-            if ($request->get('export') === 'csv' && $user->can('export-csv')) {
-                return $this->exportCsv($request);
-            }
-
-            return $this->staffIndex($request);
+        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+            abort(403);
         }
 
-        return $this->customerIndex($user, $request);
+        if ($request->get('export') === 'csv' && $user->hasRole('superadmin')) {
+            return $this->exportCsv($request);
+        }
+
+        return $this->staffIndex($request);
     }
 
     public function indexVariant(Request $request, string $variant)
@@ -900,8 +905,8 @@ class OrderController extends Controller
     {
         $query = Order::query()
             ->select(['id', 'order_number', 'user_id', 'status', 'created_at', 'subtotal', 'total_amount', 'currency', 'is_paid'])
-            ->with(['user:id,name,email'])
-            ->withCount('items');
+            ->with(['user:id,name,email', 'lastComment.user'])
+            ->withCount(['items', 'comments']);
 
         if ($search = trim($request->get('search', ''))) {
             $query->where(function ($q) use ($search) {

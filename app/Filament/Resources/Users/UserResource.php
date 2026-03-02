@@ -33,17 +33,17 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    public static function getNavigationLabel(): string
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): ?string
     {
         return __('Users');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationLabel(): string
     {
-        return __('Administration');
+        return __('Users');
     }
-
-    protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
     {
@@ -182,6 +182,26 @@ class UserResource extends Resource
                             ->label(__('Phone'))
                             ->nullable()
                             ->maxLength(30),
+
+                        Select::make('timezone')
+                            ->label(__('Timezone'))
+                            ->helperText(__('Used when "Use user timezone" is enabled in Settings. Leave empty to use site timezone.'))
+                            ->options([
+                                'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
+                                'Asia/Dubai' => 'Asia/Dubai (UAE)',
+                                'Asia/Kuwait' => 'Asia/Kuwait',
+                                'Asia/Bahrain' => 'Asia/Bahrain',
+                                'Asia/Qatar' => 'Asia/Qatar',
+                                'Africa/Cairo' => 'Africa/Cairo (Egypt)',
+                                'Europe/London' => 'Europe/London (UK)',
+                                'Europe/Paris' => 'Europe/Paris',
+                                'America/New_York' => 'America/New_York (US East)',
+                                'America/Los_Angeles' => 'America/Los_Angeles (US West)',
+                                'America/Chicago' => 'America/Chicago (US Central)',
+                                'UTC' => 'UTC',
+                            ])
+                            ->searchable()
+                            ->nullable(),
 
                         TextInput::make('password')
                             ->label(__('New Password'))

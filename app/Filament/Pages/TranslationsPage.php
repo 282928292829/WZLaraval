@@ -25,23 +25,23 @@ class TranslationsPage extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLanguage;
 
+    protected static ?int $navigationSort = 4;
+
     /** @return array<string> */
     protected static function getSupportedLocales(): array
     {
         return config('app.available_locales', ['ar', 'en']);
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Settings');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Translations');
     }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('Administration');
-    }
-
-    protected static ?int $navigationSort = 11;
 
     public function getTitle(): string|Htmlable
     {

@@ -26,7 +26,14 @@ class AdCampaignResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
+    protected static ?int $navigationSort = 3;
+
     public static function getNavigationLabel(): string
+    {
+        return __('Ad Campaigns');
+    }
+
+    public static function getTitle(): string
     {
         return __('Ad Campaigns');
     }
@@ -34,11 +41,6 @@ class AdCampaignResource extends Resource
     public static function getNavigationGroup(): ?string
     {
         return __('Orders');
-    }
-
-    public static function getTitle(): string
-    {
-        return __('Ad Campaigns');
     }
 
     public static function canAccess(): bool
