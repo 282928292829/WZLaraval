@@ -40,8 +40,7 @@ document.addEventListener('alpine:init', () => {
             },
             removeItem(idx) {
                 this.items.splice(idx, 1);
-                if (this.items.length === 0) this.addItem();
-                else if (this.items.length > 0 && !this.items.some(i => i._expanded)) this.items[0]._expanded = true;
+                if (this.items.length > 0 && !this.items.some(i => i._expanded)) this.items[0]._expanded = true;
                 this.calcTotals();
             },
             toggleItem(idx) { this.items[idx]._expanded = !this.items[idx]._expanded; },

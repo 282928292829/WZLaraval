@@ -31,6 +31,44 @@ if (! function_exists('allowed_upload_mimes')) {
     }
 }
 
+if (! function_exists('allowed_upload_mime_types')) {
+    /**
+     * MIME types for client-side file validation. Derived from allowed_upload_mimes()
+     * so frontend and backend stay in sync.
+     *
+     * @return array<string>
+     */
+    function allowed_upload_mime_types(): array
+    {
+        $extensions = array_map('trim', explode(',', allowed_upload_mimes()));
+        $map = [
+            'jpg' => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+            'png' => ['image/png'],
+            'gif' => ['image/gif'],
+            'webp' => ['image/webp'],
+            'bmp' => ['image/bmp'],
+            'tiff' => ['image/tiff'],
+            'tif' => ['image/tiff'],
+            'pdf' => ['application/pdf'],
+            'doc' => ['application/msword'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'xls' => ['application/vnd.ms-excel'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'csv' => ['text/csv', 'application/csv'],
+            'heic' => ['image/heic'],
+        ];
+        $mimes = [];
+        foreach ($extensions as $ext) {
+            if (isset($map[$ext])) {
+                $mimes = array_merge($mimes, $map[$ext]);
+            }
+        }
+
+        return array_values(array_unique($mimes));
+    }
+}
+
 if (! function_exists('safe_item_url')) {
     /**
      * Return a safe URL for use in href, or null if unsafe.

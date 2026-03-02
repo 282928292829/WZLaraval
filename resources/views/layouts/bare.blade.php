@@ -29,7 +29,7 @@
     <body class="antialiased bg-white text-gray-900 min-h-screen flex flex-col">
 
         <main class="flex-1">
-            {{ $slot }}
+            {!! $slot ?? '' !!}
         </main>
 
         @livewireScripts

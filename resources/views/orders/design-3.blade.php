@@ -6,7 +6,7 @@
     <div class="max-w-7xl mx-auto p-4">
         <h1 class="text-xl font-bold text-slate-800 mb-2">{{ __('Create new order') }}</h1>
 
-        <div id="order-form" style="padding-bottom: 14rem">
+        <div id="order-form" class="!pb-0">
             <section class="bg-white rounded-xl shadow-sm border border-orange-100 p-4 mb-4">
                 {{-- Desktop: HTML table with sticky header --}}
                 <div x-ref="tableScrollContainer" class="overflow-auto lg:max-h-[22rem] lg:min-w-0 hidden lg:block">
@@ -68,7 +68,6 @@
                         <div class="order-item-card group border border-orange-100 rounded-xl overflow-hidden shadow-sm transition-all duration-150 relative"
                              :class="{
                                  'expanded': item._expanded,
-                                 'is-valid': (item.url || '').trim().length > 0,
                                  'bg-white': item._expanded,
                                  'bg-orange-50/50': !item._expanded
                              }">
@@ -137,8 +136,8 @@
 
             </section>
 
-            {{-- Always visible: Add Product + General Notes (sticky above footer) --}}
-            <div class="sticky bottom-[5.5rem] lg:bottom-[4.5rem] z-50 bg-white -mx-4 px-4 pt-2 pb-2 border-t border-orange-100/60 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+            {{-- Add Product + General Notes — sticky above submit bar on desktop only --}}
+            <div class="lg:sticky lg:bottom-[5.5rem] lg:z-50 bg-white -mx-4 px-4 pt-2 pb-2 border-t border-orange-100/60 lg:shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
                 <button type="button" @click="addItem()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                     + {{ __('order_form.add_product') }}
                 </button>

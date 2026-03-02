@@ -34,6 +34,10 @@ class NewOrder extends Component
 
     public int $maxProducts = 30;
 
+    public int $maxImagesPerItem = 3;
+
+    public int $maxImagesPerOrder = 10;
+
     public string $defaultCurrency = 'USD';
 
     public array $currencies = [];
@@ -85,6 +89,8 @@ class NewOrder extends Component
     public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = ''): void
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
+        $this->maxImagesPerItem = max(1, (int) Setting::get('max_images_per_item', 3));
+        $this->maxImagesPerOrder = max(1, (int) Setting::get('max_images_per_order', 10));
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
         $this->currencies = order_form_currencies();
         $this->exchangeRates = $this->buildExchangeRates();
@@ -222,16 +228,71 @@ class NewOrder extends Component
         $this->itemFiles = array_values($this->itemFiles);
     }
 
+    public function removeItemFile(int $itemIndex, int $fileIndex): void
+    {
+        $files = $this->itemFiles[$itemIndex] ?? null;
+        if ($files === null) {
+            return;
+        }
+        $arr = is_array($files) ? array_values($files) : ($files ? [$files] : []);
+        array_splice($arr, $fileIndex, 1);
+        $this->itemFiles[$itemIndex] = $arr;
+    }
+
     public function shiftFileIndex(int $removedIndex): void
     {
         $shifted = [];
-        foreach ($this->itemFiles as $idx => $file) {
+        foreach ($this->itemFiles as $idx => $files) {
             if ($idx === $removedIndex) {
                 continue;
             }
-            $shifted[$idx > $removedIndex ? $idx - 1 : $idx] = $file;
+            $newIdx = $idx > $removedIndex ? $idx - 1 : $idx;
+            $shifted[$newIdx] = is_array($files) ? array_values($files) : ($files ? [$files] : []);
         }
         $this->itemFiles = $shifted;
+    }
+
+    /**
+     * Normalize itemFiles to array-of-arrays. Ensures each item has [file, ...].
+     */
+    private function normalizeItemFiles(): array
+    {
+        $normalized = [];
+        foreach ($this->itemFiles as $idx => $files) {
+            if (is_array($files)) {
+                $normalized[$idx] = array_values(array_filter($files));
+            } elseif ($files) {
+                $normalized[$idx] = [$files];
+            } else {
+                $normalized[$idx] = [];
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Count total files and check per-item / per-order limits.
+     *
+     * @return array{valid: bool, per_item_violation: ?int, total: int}
+     */
+    private function checkFileLimits(): array
+    {
+        $normalized = $this->normalizeItemFiles();
+        $total = 0;
+        $perItemViolation = null;
+
+        foreach ($normalized as $idx => $files) {
+            $count = count($files);
+            $total += $count;
+            if ($count > $this->maxImagesPerItem) {
+                $perItemViolation = $idx;
+            }
+        }
+
+        $valid = $total <= $this->maxImagesPerOrder && $perItemViolation === null;
+
+        return ['valid' => $valid, 'per_item_violation' => $perItemViolation, 'total' => $total];
     }
 
     // -------------------------------------------------------------------------
@@ -270,8 +331,8 @@ class NewOrder extends Component
 
         // Per-day limit
         $dayLimit = $isStaff
-            ? (int) Setting::get('orders_per_day_admin', 100)
-            : (int) Setting::get('max_orders_per_day', 200);
+            ? (int) Setting::get('orders_per_day_staff', 100)
+            : (int) Setting::get('orders_per_day_customer', 200);
 
         if ($dayLimit > 0) {
             $todayCount = Order::where('user_id', $user->id)
@@ -318,9 +379,17 @@ class NewOrder extends Component
             }
         }
 
-        $totalFiles = count(array_filter($this->itemFiles));
-        if ($totalFiles > 10) {
-            $this->dispatch('notify', type: 'error', message: __('order.max_files_exceeded'));
+        $limits = $this->checkFileLimits();
+        if (! $limits['valid']) {
+            if ($limits['per_item_violation'] !== null) {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order_form.max_per_item_exceeded', ['max' => $this->maxImagesPerItem]));
+            } else {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order.max_images_per_order_blocked', [
+                        'max' => $this->maxImagesPerOrder,
+                    ]));
+            }
 
             return;
         }
@@ -391,15 +460,20 @@ class NewOrder extends Component
                     'sort_order' => $sortOrder,
                 ]);
 
-                if (isset($this->itemFiles[$origIndex]) && $this->itemFiles[$origIndex]) {
-                    $file = $this->itemFiles[$origIndex];
+                $files = $this->normalizeItemFiles()[$origIndex] ?? [];
+                $firstPath = null;
+                foreach ($files as $file) {
+                    if (! $file) {
+                        continue;
+                    }
                     $path = $file->store("orders/{$order->id}", 'public');
                     $origName = $file->getClientOriginalName();
                     $mime = $file->getMimeType();
                     $size = $file->getSize();
-
-                    $orderItem->update(['image_path' => $path]);
-
+                    if ($firstPath === null) {
+                        $firstPath = $path;
+                        $orderItem->update(['image_path' => $path]);
+                    }
                     OrderFile::create([
                         'order_id' => $order->id,
                         'user_id' => Auth::id(),
@@ -516,6 +590,19 @@ class NewOrder extends Component
             return;
         }
 
+        $limits = $this->checkFileLimits();
+        if (! $limits['valid']) {
+            if ($limits['per_item_violation'] !== null) {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order_form.max_per_item_exceeded', ['max' => $this->maxImagesPerItem]));
+            } else {
+                $this->dispatch('notify', type: 'error',
+                    message: __('order.max_images_per_order_blocked', ['max' => $this->maxImagesPerOrder]));
+            }
+
+            return;
+        }
+
         $rates = $this->exchangeRates;
 
         DB::transaction(function () use ($order, $itemsWithOriginalIndex, $rates) {
@@ -549,15 +636,20 @@ class NewOrder extends Component
                     'sort_order' => $sortOrder,
                 ]);
 
-                if (isset($this->itemFiles[$origIndex]) && $this->itemFiles[$origIndex]) {
-                    $file = $this->itemFiles[$origIndex];
+                $files = $this->normalizeItemFiles()[$origIndex] ?? [];
+                $firstPath = null;
+                foreach ($files as $file) {
+                    if (! $file) {
+                        continue;
+                    }
                     $path = $file->store("orders/{$order->id}", 'public');
                     $origName = $file->getClientOriginalName();
                     $mime = $file->getMimeType();
                     $size = $file->getSize();
-
-                    $orderItem->update(['image_path' => $path]);
-
+                    if ($firstPath === null) {
+                        $firstPath = $path;
+                        $orderItem->update(['image_path' => $path]);
+                    }
                     OrderFile::create([
                         'order_id' => $order->id,
                         'user_id' => Auth::id(),
@@ -870,14 +962,15 @@ class NewOrder extends Component
             'orderNotes' => 'nullable|string|max:5000',
             'items' => 'required|array|min:1',
             'items.*.url' => 'nullable|string|max:2000',
-            'items.*.qty' => 'nullable|integer|min:1|max:9999',
-            'items.*.color' => 'nullable|string|max:100',
-            'items.*.size' => 'nullable|string|max:100',
+            'items.*.qty' => 'nullable|string|max:2000',
+            'items.*.color' => 'nullable|string|max:2000',
+            'items.*.size' => 'nullable|string|max:2000',
             'items.*.price' => 'nullable|numeric|min:0',
             'items.*.currency' => "nullable|string|in:{$currencyList}",
-            'items.*.notes' => 'nullable|string|max:1000',
+            'items.*.notes' => 'nullable|string|max:2000',
             'itemFiles' => 'nullable|array',
-            'itemFiles.*' => 'nullable|file|mimes:'.allowed_upload_mimes().'|max:'.(Setting::get('max_file_size_mb', 2) * 1024),
+            'itemFiles.*' => 'nullable|array',
+            'itemFiles.*.*' => 'nullable|file|mimes:'.allowed_upload_mimes().'|max:'.(Setting::get('max_file_size_mb', 2) * 1024),
         ];
     }
 
@@ -914,8 +1007,11 @@ class NewOrder extends Component
 
     public function render()
     {
+        $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
         $view = view('livewire.new-order')
-            ->with('commissionSettings', CommissionCalculator::getSettings());
+            ->with('commissionSettings', CommissionCalculator::getSettings())
+            ->with('allowedMimeTypes', allowed_upload_mime_types())
+            ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024);
 
         if ($this->editingOrderId) {
             return $view->title(__('orders.edit_order_title', ['number' => $this->editingOrderNumber]));

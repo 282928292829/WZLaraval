@@ -137,6 +137,17 @@ if (app()->environment('local')) {
         ->name('dev.login-as');
 }
 
+// Layout demo pages — one page per layout, titled by name
+Route::get('/layout-demo/app', fn () => view('layouts-demo.app'));
+Route::get('/layout-demo/guest', fn () => view('layouts-demo.guest'));
+Route::get('/layout-demo/order', fn () => view('layouts.order', [
+    'slot' => view('layouts-demo.order-content'),
+    'title' => __('layouts_demo.order_layout'),
+]));
+Route::get('/layout-demo/bare', fn () => view('layouts.bare', [
+    'slot' => view('layouts-demo.bare-content'),
+    'title' => __('layouts_demo.bare_layout'),
+]));
 // Homepage test variants
 Route::get('/homepagetest555', fn () => view('homepage-tests.555'));
 Route::get('/homepagetest666', fn () => view('homepage-tests.666'));

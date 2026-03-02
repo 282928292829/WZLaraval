@@ -7,8 +7,10 @@
 @endphp
 
 {{-- ============================================================ --}}
-{{-- SUCCESS SCREEN — configurable via Settings > Order Success Screen --}}
+{{-- Single root required for Livewire --}}
 {{-- ============================================================ --}}
+<div>
+{{-- SUCCESS SCREEN — configurable via Settings > Order Success Screen --}}
 @if ($showSuccessScreen)
 @php
     $seconds = $successRedirectSeconds ?? 45;
@@ -83,14 +85,44 @@
 <div
     x-data="newOrderForm(
         @js($exchangeRates),
-        0.03,
         @js($currencies),
         {{ $maxProducts }},
         @js($defaultCurrency),
         {{ $isLoggedIn ? 'true' : 'false' }},
         @js($commissionSettings),
         @js(($editingOrderId || $productUrl || $duplicateFrom) ? $items : null),
-        @js($editingOrderId ? $orderNotes : null)
+        @js($editingOrderId ? $orderNotes : null),
+        {{ $maxImagesPerItem }},
+        {{ $maxImagesPerOrder }},
+        @js(__('order_form.max_per_item_reached', ['max' => $maxImagesPerItem])),
+        @js(__('order_form.max_files', ['max' => $maxImagesPerOrder])),
+        @js([
+            'colors' => [
+                __('order_form.test_color_1'),
+                __('order_form.test_color_2'),
+                __('order_form.test_color_3'),
+                __('order_form.test_color_4'),
+                __('order_form.test_color_5'),
+            ],
+            'sizes' => [
+                __('order_form.test_size_s'),
+                __('order_form.test_size_m'),
+                __('order_form.test_size_l'),
+                __('order_form.test_size_xl'),
+                __('order_form.test_size_us8'),
+                __('order_form.test_size_us10'),
+                __('order_form.test_size_one'),
+            ],
+            'notes' => [
+                __('order_form.test_note_1'),
+                __('order_form.test_note_2'),
+                __('order_form.test_note_3'),
+                __('order_form.test_note_4'),
+                __('order_form.test_note_5'),
+            ],
+        ]),
+        @js($allowedMimeTypes ?? []),
+        {{ $maxFileSizeBytes ?? (2 * 1024 * 1024) }}
     )"
     x-init="
         init();
@@ -102,26 +134,35 @@
         @endif
     "
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
+    @zoom-image.window="zoomedImage = $event.detail"
+    @keydown.escape.window="closeZoom()"
     class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)]"
 >
 
 {{-- Toast Container --}}
 <div x-ref="toasts" id="toast-container"></div>
 
-<div class="max-w-7xl mx-auto p-4">
-<main id="main-content">
+<div class="max-w-7xl mx-auto p-4 lg:flex lg:flex-col lg:h-[calc(100vh-7rem)] lg:overflow-hidden lg:min-h-0">
+<main id="main-content" class="lg:flex lg:flex-col lg:min-h-0 lg:flex-1">
 
-    <h1 class="text-xl font-bold text-slate-800 mb-4">{{ $editingOrderId ? __('orders.edit_order_title', ['number' => $editingOrderNumber]) : __('Create new order') }}</h1>
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 lg:shrink-0">
+        <h1 class="text-xl font-bold text-slate-800 m-0">{{ $editingOrderId ? __('orders.edit_order_title', ['number' => $editingOrderNumber]) : __('Create new order') }}</h1>
+        @if (config('app.env') === 'local')
+        <button type="button" @click="addFiveTestItems()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+            {{ __('order.dev_add_5_test_items') }}
+        </button>
+        @endif
+    </div>
 
     {{-- Tips Box --}}
-    <section class="bg-white rounded-lg shadow-sm border-s-4 border-primary-500 mb-5 overflow-hidden" x-show="!tipsHidden" x-cloak>
+    <section class="bg-white rounded-lg shadow-sm border border-orange-100 mb-5 overflow-hidden lg:shrink-0" x-show="!tipsHidden" x-cloak>
         <div class="px-4 py-3 flex justify-between items-center cursor-pointer border-b border-orange-100" @click="tipsOpen = !tipsOpen">
             <h2 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.tips_title') }}</h2>
             <span x-text="tipsOpen ? '▲' : '▼'" class="text-primary-500 text-xs"></span>
         </div>
         <div x-show="tipsOpen" x-collapse class="p-4 text-sm leading-relaxed text-slate-600">
             <ul class="list-none p-0 m-0">
-                @for ($i = 1; $i <= 7; $i++)
+                @for ($i = 1; $i <= 8; $i++)
                     <li class="mb-2.5 relative ps-[18px] before:content-['•'] before:absolute before:start-0 before:text-primary-500 before:font-bold">{{ __("order_form.tip_{$i}") }}</li>
                 @endfor
             </ul>
@@ -135,7 +176,7 @@
     </section>
 
     {{-- Order Form --}}
-    <div id="order-form">
+    <div id="order-form" class="lg:flex lg:flex-col lg:flex-1 lg:min-h-0 !pb-[5.5rem] lg:!pb-4">
 
         @if ($editingOrderId)
         <section class="p-3 mb-3 bg-amber-100 border border-amber-300 rounded-xl">
@@ -146,202 +187,88 @@
         </section>
         @endif
 
-        {{-- Products Section --}}
-        <section class="bg-white rounded-xl shadow-sm border border-orange-100 p-4 mb-4">
+        {{-- Products Section — desktop: HTML table (scrolls); mobile: collapsible cards --}}
+        <section class="bg-white rounded-xl shadow-sm border border-orange-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
 
-            {{-- Desktop Table Header --}}
-            <div class="order-table-header hidden lg:grid order-item-grid-desktop gap-2 p-2.5 font-bold text-xs text-slate-800 bg-orange-50 rounded-md mb-0">
-                <div class="flex items-center justify-start font-bold">#</div>
-                <div>{{ __('order_form.th_url') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_color') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_size') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_price') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_currency') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_notes') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
-                <div>{{ __('order_form.th_files') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></div>
+            {{-- Desktop: HTML table (only scrollable area) — design-3 layout --}}
+            <div x-ref="tableScrollContainer" class="overflow-auto lg:flex-1 lg:min-h-0 lg:min-w-0 hidden lg:block">
+                <table class="w-full border-collapse table-fixed min-w-[720px]">
+                    <colgroup>
+                        <col style="width:2rem">
+                        <col style="width:1.75rem">
+                        <col style="width:auto">
+                        <col style="width:8.25rem">
+                        <col style="width:8.25rem">
+                        <col style="width:6rem">
+                        <col style="width:4.25rem">
+                        <col style="width:auto">
+                        <col style="width:auto">
+                        <col style="width:7rem">
+                    </colgroup>
+                    <thead class="sticky top-0 z-10 bg-orange-50 shadow-sm">
+                        <tr>
+                            <th class="p-2 w-9" aria-label="{{ __('order_form.remove_row') }}"></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">#</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_url') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_color') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_size') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_qty') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_price_per_unit') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_currency') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_notes') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_files') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-t border-orange-100">
+                        <template x-for="(item, idx) in items" :key="idx">
+                            @include('livewire.partials._order-item-table-row')
+                        </template>
+                    </tbody>
+                </table>
             </div>
 
-            {{-- Items --}}
-            <div id="items-container-wrapper" class="lg:overflow-x-auto lg:[-webkit-overflow-scrolling:touch]">
-                <div id="items-container" class="flex flex-col gap-2.5 lg:gap-0 lg:border lg:border-orange-100 lg:rounded-lg lg:relative lg:min-w-[780px]">
+            {{-- Desktop: Add Product, General notes, Reset — always under table edge --}}
+            <div class="hidden lg:flex lg:flex-col lg:gap-3 lg:shrink-0 pt-3 border-t border-orange-100">
+                <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
+                    + {{ __('order_form.add_product') }}
+                </button>
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }}</h3>
+                        <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                            {{ __('order_form.reset_all') }}
+                        </button>
+                    </div>
+                    <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
+                </div>
+            </div>
+
+            {{-- Mobile: collapsible cards --}}
+            <div id="items-container-wrapper" class="lg:hidden flex flex-col gap-2.5">
+                <div id="items-container" class="flex flex-col gap-2.5">
                     <template x-for="(item, idx) in items" :key="idx">
-                        <div class="order-item-card group border border-orange-100 rounded-xl lg:rounded-none lg:border-0 lg:border-b lg:border-orange-100 overflow-hidden shadow-sm transition-all duration-150 relative scroll-mb-[150px] focus-within:shadow-md focus-within:border-primary-400/40 focus-within:-translate-y-0.5 focus-within:z-10"
-                             :class="{
-                                 'expanded': item._expanded,
-                                 'is-valid': item.url.trim().length > 0,
-                                 'is-minimized': !item._expanded,
-                                 'bg-white': item._expanded,
-                                 'lg:bg-orange-50 lg:opacity-90': !item._expanded
-                             }">
-
-                            {{-- Mobile Summary Bar --}}
-                            <div class="flex items-center justify-between gap-2 px-3 py-3 cursor-pointer select-none lg:hidden border-b border-orange-100"
-                                 :class="{ 'bg-orange-50': !item._expanded, 'bg-white': item._expanded }"
-                                 @click="toggleItem(idx)">
-                                <div class="font-semibold text-sm text-slate-800 truncate flex-1 min-w-0" x-text="itemSummary(idx, item._expanded)"></div>
-                                <div class="flex gap-2 items-center" @click.stop>
-                                    <button type="button"
-                                            class="inline-flex items-center justify-center py-1.5 px-2.5 rounded-md text-xs font-semibold bg-primary-500/10 text-primary-500 border border-primary-500/25 hover:bg-primary-500/20 hover:border-primary-500 transition-colors"
-                                            @click="item._expanded = !item._expanded">
-                                        {{ __('order_form.show_edit') }}
-                                    </button>
-                                    <button type="button"
-                                            class="inline-flex items-center justify-center py-1.5 px-2.5 rounded-md text-xs font-semibold bg-red-100/30 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700 transition-colors"
-                                            @click="removeItem(idx)">
-                                        {{ __('order_form.remove') }}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {{-- Item Fields Grid --}}
-                            <div class="order-item-details p-3 max-lg:hidden max-lg:group-[.expanded]:grid max-lg:grid-cols-6 gap-2.5 lg:grid lg:gap-2 lg:p-2.5 lg:items-center">
-                                {{-- Row number (desktop only) --}}
-                                <div class="hidden lg:flex items-center justify-start font-semibold text-sm text-slate-800">
-                                    <span x-text="idx + 1"></span>
-                                </div>
-
-                                {{-- URL --}}
-                                <div class="order-cell-url">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_url') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <input type="text"
-                                           x-model="item.url"
-                                           @blur="calcTotals(); saveDraft()"
-                                           :placeholder="idx === 0 ? '{{ __('order_form.url_placeholder') }}' : ''"
-                                           class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
-                                </div>
-
-                                {{-- Qty --}}
-                                <div class="order-cell-qty">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_qty') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <input type="tel"
-                                           x-model="item.qty"
-                                           @input="convertArabicNums($event)"
-                                           @blur="calcTotals(); saveDraft()"
-                                           value="1" placeholder="1"
-                                           class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors"
-                                           dir="rtl">
-                                </div>
-
-                                {{-- Color --}}
-                                <div class="order-cell-col">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_color') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <input type="text"
-                                           x-model="item.color"
-                                           @blur="saveDraft()"
-                                           class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
-                                </div>
-
-                                {{-- Size --}}
-                                <div class="order-cell-siz">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_size') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <input type="text"
-                                           x-model="item.size"
-                                           @blur="saveDraft()"
-                                           class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
-                                </div>
-
-                                {{-- Price --}}
-                                <div class="order-cell-prc">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_price') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <input type="text"
-                                           x-model="item.price"
-                                           @input="convertArabicNums($event)"
-                                           @blur="calcTotals(); saveDraft()"
-                                           inputmode="decimal" placeholder="{{ __('placeholder.amount') }}"
-                                           class="order-form-input w-full px-3 py-2 min-w-[4ch] border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
-                                </div>
-
-                                {{-- Currency --}}
-                                <div class="order-cell-cur">
-                                    <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_currency') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                    <select x-model="item.currency"
-                                            @change="onCurrencyChange(idx)"
-                                            @blur="calcTotals(); saveDraft()"
-                                            class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 px-1 text-xs sm:text-sm">
-                                        <template x-for="(cur, code) in currencyList" :key="code">
-                                            <option :value="code" x-text="cur.label" :selected="code === item.currency"></option>
-                                        </template>
-                                    </select>
-                                </div>
-
-                                {{-- Optional Section (notes + file) always visible --}}
-                                <div class="order-optional-section">
-
-                                    <div class="order-cell-not">
-                                        <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_notes') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                        <input type="text"
-                                               x-model="item.notes"
-                                               @blur="saveDraft()"
-                                               :placeholder="idx === 0 ? '{{ __('order_form.notes_placeholder') }}' : ''"
-                                               class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white h-10 sm:h-11 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors">
-                                    </div>
-
-                                    <div class="order-upload-container flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-2 lg:mt-0">
-                                        <span class="block text-xs text-slate-500 mb-0.5 font-medium lg:hidden">{{ __('order_form.th_files') }} <span class="text-[0.65rem] text-slate-400 font-normal">({{ __('order_form.optional') }})</span></span>
-                                        <div class="flex items-center gap-2 flex-nowrap shrink-0">
-                                            <template x-if="!item._file">
-                                                <button type="button"
-                                                        class="border border-dashed border-orange-100 text-slate-500 bg-orange-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center gap-1.5 hover:border-primary-500 hover:bg-orange-50 hover:text-primary-500 transition-colors lg:py-1.5 lg:px-2 lg:text-[0.75rem]"
-                                                        @click.stop="triggerUpload(idx)">
-                                                    <span>{{ __('order_form.attach') }}</span>
-                                                </button>
-                                            </template>
-                                            <template x-if="item._file">
-                                                <div class="flex flex-wrap overflow-x-auto gap-2">
-                                                    <div class="relative w-11 h-11 shrink-0 rounded-md overflow-hidden border border-orange-100">
-                                                        <template x-if="item._preview">
-                                                            <img :src="item._preview" class="w-full h-full object-cover">
-                                                        </template>
-                                                        <template x-if="!item._preview && item._fileType === 'pdf'">
-                                                            <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
-                                                        </template>
-                                                        <template x-if="!item._preview && item._fileType === 'xls'">
-                                                            <div class="w-full h-full flex items-center justify-center bg-green-100 text-green-600 text-[10px] font-bold">XLS</div>
-                                                        </template>
-                                                        <button type="button"
-                                                                class="absolute top-0 start-0 w-4 h-4 bg-red-500/90 text-white border-none rounded-full text-[10px] cursor-pointer flex items-center justify-center"
-                                                                @click="removeFile(idx)">×</button>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                            <button type="button"
-                                                    class="hidden lg:inline-flex py-2 px-3 rounded-md text-xs font-medium cursor-pointer border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-colors lg:py-1.5 lg:px-2 lg:text-[0.75rem]"
-                                                    @click.stop="removeItem(idx)">
-                                                {{ __('order_form.remove_row') }}
-                                            </button>
-                                        </div>
-                                        <template x-if="item._uploadProgress !== null">
-                                            <div class="w-full h-1 bg-orange-50 rounded-sm overflow-hidden mt-1 lg:mt-0 lg:min-w-[60px] lg:flex-1">
-                                                <div class="h-full bg-primary-500 rounded-sm transition-[width] duration-200" :style="'width:' + item._uploadProgress + '%'"></div>
-                                            </div>
-                                        </template>
-                                        <div class="text-start text-[0.7rem] text-stone-400 lg:hidden">{{ __('order_form.file_info') }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        @include('livewire.partials._order-item-mobile-card')
                     </template>
                 </div>
             </div>
 
-            {{-- Add Product Button --}}
-            <button type="button" @click="addProduct()"
-                    class="w-full mt-4 py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm sm:text-base sm:py-3 sm:px-4 min-h-11 sm:min-h-11 hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 hover:-translate-y-px transition-all">
+        </section>
+
+        {{-- Add Product + General Notes — mobile only; desktop has them under table --}}
+        <div class="lg:hidden bg-white -mx-4 px-4 pt-2 pb-2 border-t border-orange-100/60">
+            <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                 + {{ __('order_form.add_product') }}
             </button>
-
+            <section class="mt-2">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                    <h3 class="text-base m-0">{{ __('order_form.general_notes') }}</h3>
+                    <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                        {{ __('order_form.reset_all') }}
+                    </button>
+                </div>
+                <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
             </section>
-
-        {{-- General Notes --}}
-        <section class="bg-white rounded-xl shadow-sm border border-orange-100 p-4 mb-4">
-            <h3 class="text-base mb-2.5">{{ __('order_form.general_notes') }}</h3>
-            <textarea x-model="orderNotes"
-                      @input.debounce.500ms="saveDraft()"
-                      wire:model.blur="orderNotes"
-                      placeholder="{{ __('order_form.general_notes_ph') }}"
-                      class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white min-h-20 resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
-        </section>
+        </div>
 
         {{-- Fixed Footer --}}
         <div class="order-summary-card">
@@ -361,27 +288,24 @@
             </button>
         </div>
 
-        {{-- Reset Link --}}
-        <div class="text-start mt-2.5 ps-5 flex flex-col gap-1.5">
-            <button type="button" @click="resetAll()"
-                    class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                {{ __('order_form.reset_all') }}
-            </button>
-            @if (config('app.env') === 'local')
-            <button type="button" @click="addFourTestItems()"
-                    class="bg-transparent border-none text-slate-400 text-xs underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                🧪 {{ __('order.dev_add_4_test_items') }}
-            </button>
-            @endif
-        </div>
     </div>
 </main>
 </div>
 
-{{-- Hidden File Input --}}
-<input type="file" x-ref="fileInput" class="hidden"
-       accept="image/*,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-       @change="handleFileSelect($event)">
+{{-- Image Zoom Modal --}}
+<div class="fixed inset-0 z-[9998] bg-black/90 flex items-center justify-center p-4"
+     x-show="zoomedImage"
+     x-cloak
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @click.self="closeZoom()">
+    <button type="button" class="absolute top-4 end-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white text-2xl border-none cursor-pointer hover:bg-white/30 z-10" @click="closeZoom()" aria-label="{{ __('Close') }}">&times;</button>
+    <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
+</div>
 
 {{-- Login Modal --}}
 <div class="order-login-modal-overlay"
@@ -511,27 +435,50 @@
 
 </div>
 @endif
+</div>
 
 @push('scripts')
 <script>
-function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes) {
+function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes) {
+    maxImagesPerItem = maxImagesPerItem || 3;
+    maxImagesPerOrder = maxImagesPerOrder || 10;
+    msgMaxPerItem = msgMaxPerItem || 'Maximum :max images per product.';
+    msgMaxOrder = msgMaxOrder || 'Maximum :max images per order. Remove some to submit.';
+    testOptions = testOptions || { colors: ['White / Blue if unavailable', 'Black / Gray if unavailable', 'Navy / Blue', 'Red / Maroon', 'Beige / White'], notes: ['Same as picture', 'Please send photo when it arrives', 'Exact match to image', 'I want image when it arrives', 'As shown in listing'] };
+    const cs = commissionSettings || { threshold: 500, below_type: 'flat', below_value: 50, above_type: 'percent', above_value: 8 };
+    function calcCommission(subtotalSar) {
+        if (subtotalSar <= 0) return 0;
+        const isAbove = subtotalSar >= (cs.threshold || 500);
+        if (isAbove) {
+            return cs.above_type === 'percent' ? subtotalSar * (cs.above_value / 100) : cs.above_value;
+        }
+        return cs.below_type === 'percent' ? subtotalSar * (cs.below_value / 100) : cs.below_value;
+    }
     return {
         items: [],
         orderNotes: '',
         rates,
-        margin,
         currencyList,
         maxProducts,
         defaultCurrency,
         isLoggedIn,
-        commissionSettings: commissionSettings || { threshold: 500, below_type: 'flat', below_value: 50, above_type: 'percent', above_value: 8 },
+        maxImagesPerItem,
+        maxImagesPerOrder,
+        msgMaxPerItem,
+        msgMaxOrder,
+        maxCharsMsg: @js(__('order_form.max_2000_chars')),
+        testOptions,
+        commissionSettings: cs,
+        calcCommission,
+        allowedMimeTypes: Array.isArray(allowedMimeTypes) && allowedMimeTypes.length > 0 ? allowedMimeTypes : ['image/jpeg','image/png','image/gif','image/webp','image/bmp','image/tiff','image/heic','application/pdf','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        maxFileSizeBytes: maxFileSizeBytes > 0 ? maxFileSizeBytes : (2 * 1024 * 1024),
         tipsOpen: false,
         tipsHidden: false,
+        zoomedImage: null,
         totalSar: 0,
         filledCount: 0,
         submitting: false,
-        _uploadIdx: null,
-
+        openCurrencyRow: null,
         init() {
             this.checkTipsHidden();
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
@@ -541,7 +488,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
                     price: (d.price !== null && d.price !== undefined) ? String(d.price) : '',
                     currency: d.currency || this.defaultCurrency, notes: d.notes || '',
                     _expanded: isMobile ? (i === 0) : true, _focused: false, _showOptional: false,
-                    _file: null, _preview: null, _fileType: null, _fileName: null, _uploadProgress: null
+                    _files: []
                 }));
                 this.orderNotes = initialOrderNotes || '';
             } else if (!this.loadDraft()) {
@@ -552,6 +499,9 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
 
             window.addEventListener('beforeunload', (e) => {
                 if (this.submitting || !this.hasUnsavedData()) return;
+                @if (config('app.env') === 'local')
+                return;
+                @endif
                 e.preventDefault();
             });
         },
@@ -571,14 +521,17 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
                 url: '', qty: '1', color: '', size: '', price: '',
                 currency: cur || this.defaultCurrency, notes: '',
                 _expanded: true, _focused: false, _showOptional: false,
-                _file: null, _preview: null, _fileType: null, _fileName: null,
-                _uploadProgress: null
+                _files: []
             };
+        },
+
+        totalFileCount() {
+            return this.items.reduce((sum, i) => sum + (i._files ? i._files.length : 0), 0);
         },
 
         addProduct() {
             if (this.items.length >= this.maxProducts) {
-                this.showNotify('error', this.maxProducts + ' {{ __('order_form.max_limit_suffix') }}');
+                this.showNotify('error', @js(__('order_form.max_products', ['max' => $maxProducts])));
                 return;
             }
             const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
@@ -599,43 +552,50 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             this.saveDraft();
             this.$nextTick(() => {
                 setTimeout(() => {
-                    const cards = document.querySelectorAll('#items-container > div');
-                    if (window.innerWidth < 1024 && cards.length >= 3) {
-                        cards[cards.length - 3].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else if (window.innerWidth < 1024 && cards.length >= 2) {
-                        cards[cards.length - 2].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (window.innerWidth >= 1024 && this.$refs.tableScrollContainer) {
+                        const el = this.$refs.tableScrollContainer;
+                        el.scrollTop = el.scrollHeight - el.clientHeight;
                     } else {
-                        const last = cards[cards.length - 1];
-                        if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        const cards = document.querySelectorAll('#items-container > div');
+                        if (cards.length >= 3) {
+                            cards[cards.length - 3].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else if (cards.length >= 2) {
+                            cards[cards.length - 2].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            const last = cards[cards.length - 1];
+                            if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
                     }
                 }, 150);
             });
         },
 
-        addFourTestItems() {
+        addFiveTestItems() {
             const urls = [
                 'https://www.amazon.com/dp/B0BSHF7LLL',
                 'https://www.ebay.com/itm/' + Math.floor(100000000 + Math.random() * 900000000),
                 'https://www.walmart.com/ip/' + Math.floor(100000 + Math.random() * 900000),
                 'https://www.target.com/p/product-' + Math.floor(100 + Math.random() * 900),
+                'https://www.aliexpress.com/item/' + Math.floor(1000000000 + Math.random() * 9000000000) + '.html',
             ];
-            const colors = ['Red', 'Blue', 'Black', 'White', 'Navy', 'Gray', 'Green'];
-            const sizes = ['S', 'M', 'L', 'XL', 'US 8', 'US 10', 'One Size'];
+            const sizes = this.testOptions?.sizes || ['S', 'M', 'L', 'XL', 'US 8', 'US 10', 'One Size'];
             const currencies = ['USD', 'EUR', 'GBP'];
+            const colors = this.testOptions?.colors || ['White / Blue if unavailable', 'Black / Gray if unavailable', 'Navy / Blue', 'Red / Maroon', 'Beige / White'];
+            const notes = this.testOptions?.notes || ['Same as picture', 'Please send photo when it arrives', 'Exact match to image', 'I want image when it arrives', 'As shown in listing'];
             const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
             const isEmpty = (item) => !(item.url || '').trim() && !(item.color || '').trim() && !(item.size || '').trim() && !parseFloat(item.price) && !(item.notes || '').trim();
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 5; i++) {
                 const cur = currencies[i % currencies.length] || lastCur;
                 const testData = {
                     url: urls[i],
                     qty: String(Math.floor(Math.random() * 2) + 1),
-                    color: colors[Math.floor(Math.random() * colors.length)],
+                    color: colors[i % colors.length],
                     size: sizes[Math.floor(Math.random() * sizes.length)],
                     price: String((Math.random() * 80 + 15).toFixed(2)),
                     currency: cur,
-                    notes: 'Test item ' + (i + 1),
+                    notes: notes[i % notes.length],
                     _expanded: true, _focused: false, _showOptional: false,
-                    _file: null, _preview: null, _fileType: null, _fileName: null, _uploadProgress: null
+                    _files: []
                 };
                 const emptyIdx = this.items.findIndex(isEmpty);
                 if (emptyIdx !== -1) {
@@ -646,7 +606,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             }
             this.calcTotals();
             this.saveDraft();
-            this.showNotify('success', '{{ __('order.dev_4_items_added') }}');
+            this.showNotify('success', '{{ __('order.dev_5_items_added') }}');
         },
 
         removeItem(idx) {
@@ -660,16 +620,25 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             this.items[idx]._expanded = !this.items[idx]._expanded;
         },
 
+        getItemSite(item) {
+            const url = (item.url || '').trim();
+            if (!url) return '';
+            let name = '';
+            try {
+                const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
+                name = (host.split('.')[0] || host).replace(/^./, c => c.toUpperCase());
+            } catch { name = url.substring(0, 6); }
+            name = (name.length > 6 ? name.substring(0, 6) : name) + '..';
+            return '(' + name + ')';
+        },
+
         itemSummary(idx, expanded) {
             const item = this.items[idx];
             const num = idx + 1;
-            if (!expanded) return '{{ __('order_form.product_num') }} ' + num;
+            if (expanded) return '{{ __('order_form.product_num') }} ' + num;
             const url = (item.url || '').trim();
-            if (!url) return '{{ __('order_form.product_num') }} ' + num;
-            try {
-                const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
-                return '{{ __('order_form.product_num') }} ' + num + ': ' + host;
-            } catch { return '{{ __('order_form.product_num') }} ' + num + ': ' + url.substring(0, 30); }
+            const short = this.getItemSite(item);
+            return '{{ __('order_form.product_num') }} ' + num + (short ? '  ·  ' + short : '');
         },
 
         onCurrencyChange(idx) {
@@ -682,21 +651,26 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             const ar = '٠١٢٣٤٥٦٧٨٩';
             let v = e.target.value;
             let changed = false;
-            v = v.replace(/[٠-٩]/g, d => { changed = true; return ar.indexOf(d); });
+            v = v.replace(/[٠-٩]/g, (d) => {
+                const idx = ar.indexOf(d);
+                if (idx >= 0) { changed = true; return String(idx); }
+                return d;
+            });
             if (changed) e.target.value = v;
         },
 
         calcTotals() {
-            let total = 0;
+            let subtotal = 0;
             let filled = 0;
             this.items.forEach(item => {
                 if (item.url.trim()) filled++;
                 const q = Math.max(1, parseFloat(item.qty) || 1);
                 const p = parseFloat(item.price) || 0;
                 const r = this.rates[item.currency] || 0;
-                if (p > 0 && r > 0) total += (p * q * r);
+                if (p > 0 && r > 0) subtotal += (p * q * r);
             });
-            this.totalSar = Math.floor(total * (1 + this.margin));
+            const commission = this.calcCommission ? this.calcCommission(subtotal) : 0;
+            this.totalSar = Math.round(subtotal + commission);
             this.filledCount = filled;
         },
 
@@ -740,8 +714,7 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
                     size: d.size || '', price: d.price || '',
                     currency: d.currency || this.defaultCurrency, notes: d.notes || '',
                     _expanded: false, _focused: false, _showOptional: false,
-                    _file: null, _preview: null, _fileType: null, _fileName: null,
-                    _uploadProgress: null
+                    _files: []
                 }));
                 if (this.items.length > 0) this.items[0]._expanded = true;
                 return true;
@@ -768,81 +741,130 @@ function newOrderForm(rates, margin, currencyList, maxProducts, defaultCurrency,
             this.showNotify('success', '{{ __('order_form.cleared') }}');
         },
 
-        triggerUpload(idx) {
-            if (!this.isLoggedIn) {
-                this.$wire.openLoginModalForAttach();
-                return;
-            }
-            if (this.items[idx]._file) {
-                this.showNotify('error', '{{ __('order_form.one_file') }}');
-                return;
-            }
-            const totalFiles = this.items.filter(i => i._file).length;
-            if (totalFiles >= 10) {
-                this.showNotify('error', '{{ __('order_form.max_files') }}');
-                return;
-            }
-            this._uploadIdx = idx;
-            this.$refs.fileInput.click();
-        },
+        handleFileSelect(e, idx) {
+            const rawFiles = Array.from(e.target.files || []);
+            if (!rawFiles.length) return;
 
-        handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (!file || this._uploadIdx === null) return;
-            const idx = this._uploadIdx;
-
-            const allowed = ['image/jpeg','image/png','image/gif','application/pdf',
-                'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-            if (!allowed.includes(file.type)) {
-                this.showNotify('error', '{{ __('order_form.invalid_type') }}');
+            let files = this.items[idx]._files || [];
+            if (files.length >= this.maxImagesPerItem) {
+                this.showNotify('error', this.msgMaxPerItem);
                 e.target.value = '';
                 return;
             }
-            if (file.size > 2 * 1024 * 1024) {
-                this.showNotify('error', '{{ __('order_form.file_too_large') }}');
+            if (this.totalFileCount() >= this.maxImagesPerOrder) {
+                this.showNotify('error', this.msgMaxOrder);
                 e.target.value = '';
                 return;
             }
 
-            this.items[idx]._file = file;
-            this.items[idx]._fileName = file.name;
+            const allowed = this.allowedMimeTypes || [];
+            const maxSize = this.maxFileSizeBytes || (2 * 1024 * 1024);
+            const toAdd = [];
+            let skippedInvalid = 0;
+            let canAddItem = this.maxImagesPerItem - files.length;
+            let canAddOrder = this.maxImagesPerOrder - this.totalFileCount();
 
-            if (file.type === 'application/pdf') {
-                this.items[idx]._fileType = 'pdf';
-            } else if (file.type.includes('excel') || file.type.includes('spreadsheetml')) {
-                this.items[idx]._fileType = 'xls';
-            } else {
-                this.items[idx]._fileType = 'img';
-                const reader = new FileReader();
-                reader.onload = (ev) => { this.items[idx]._preview = ev.target.result; };
-                reader.readAsDataURL(file);
+            if (rawFiles.length > canAddItem || rawFiles.length > canAddOrder) {
+                this.showNotify('error', '{{ __('order_form.too_many_selected') }}'.replace(':max', this.maxImagesPerItem).replace(':avail', Math.min(canAddItem, canAddOrder)));
+                e.target.value = '';
+                return;
             }
 
-            this.items[idx]._uploadProgress = 0;
-            this.$wire.upload(
-                'itemFiles.' + idx,
-                file,
-                () => {
-                    this.items[idx]._uploadProgress = null;
-                    this.showNotify('success', '{{ __('order_form.file_attached') }}');
-                },
-                () => {
-                    this.items[idx]._uploadProgress = null;
-                    this.showNotify('error', '{{ __('order_form.upload_failed') }}');
-                },
-                (event) => {
-                    this.items[idx]._uploadProgress = event.detail.progress;
+            for (const file of rawFiles) {
+                if (!allowed.includes(file.type)) {
+                    skippedInvalid++;
+                    continue;
                 }
-            );
+                if (file.size > maxSize) {
+                    skippedInvalid++;
+                    continue;
+                }
+                toAdd.push(file);
+            }
+
+            if (skippedInvalid > 0) {
+                this.showNotify('error', skippedInvalid === 1 ? '{{ __('order_form.invalid_type') }}' : '{{ __('order_form.files_skipped_invalid') }}'.replace(':n', skippedInvalid));
+            }
+
+            if (!toAdd.length) {
+                e.target.value = '';
+                return;
+            }
+
+            if (!this.items[idx]._files) this.items[idx]._files = [];
+            const totalAdding = toAdd.length;
+            let completed = 0;
+            const uploadOne = (file, fileIdx) => {
+                let fileType = 'img';
+                if (file.type === 'application/pdf') fileType = 'pdf';
+                else if (file.type.includes('excel') || file.type.includes('spreadsheetml') || file.type === 'text/csv') fileType = 'xls';
+                else if (file.type.includes('word') || file.type === 'application/msword') fileType = 'doc';
+                else if (file.type.startsWith('image/')) fileType = 'img';
+
+                const entry = { file, preview: null, fileType, fileName: file.name, uploadProgress: 0 };
+                this.items[idx]._files.push(entry);
+                if (fileType === 'img') {
+                    const entryIdx = this.items[idx]._files.length - 1;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        this.items[idx]._files[entryIdx].preview = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+
+                this.$wire.upload(
+                    'itemFiles.' + idx + '.' + fileIdx,
+                    file,
+                    () => {
+                        entry.uploadProgress = null;
+                        completed++;
+                        if (completed === totalAdding) {
+                            this.showNotify('success', totalAdding > 1 ? '{{ __('order_form.files_attached') }}'.replace(':n', String(totalAdding)) : '{{ __('order_form.file_attached') }}');
+                        }
+                    },
+                    () => {
+                        entry.uploadProgress = null;
+                        this.items[idx]._files = this.items[idx]._files.filter(f => f !== entry);
+                        this.showNotify('error', '{{ __('order_form.upload_failed') }}');
+                    },
+                    (event) => {
+                        const p = event.detail.progress;
+                        entry.uploadProgress = p;
+                        if (p >= 100) entry.uploadProgress = null;
+                    }
+                );
+            };
+
+            let fileIdx = files.length;
+            toAdd.forEach((file) => {
+                uploadOne(file, fileIdx);
+                fileIdx++;
+            });
             e.target.value = '';
         },
 
-        removeFile(idx) {
-            this.items[idx]._file = null;
-            this.items[idx]._preview = null;
-            this.items[idx]._fileType = null;
-            this.items[idx]._fileName = null;
-            this.$wire.set('itemFiles.' + idx, null);
+        removeFile(idx, fileIdx) {
+            const files = this.items[idx]._files || [];
+            if (fileIdx < 0 || fileIdx >= files.length) return;
+            this.items[idx]._files.splice(fileIdx, 1);
+            this.$wire.removeItemFile(idx, fileIdx);
+        },
+
+        zoomImage(src) { this.zoomedImage = src; },
+        closeZoom() {
+            if (this.zoomedImage && this.zoomedImage.startsWith('blob:')) {
+                try { URL.revokeObjectURL(this.zoomedImage); } catch (_) {}
+            }
+            this.zoomedImage = null;
+        },
+
+        openFileOrZoom(f) {
+            if (f.fileType === 'img') {
+                const src = f.preview || (f.file ? URL.createObjectURL(f.file) : null);
+                if (src) this.$dispatch('zoom-image', src);
+            } else if ((f.fileType === 'pdf' || f.fileType === 'xls' || f.fileType === 'doc') && f.file) {
+                window.open(URL.createObjectURL(f.file), '_blank');
+            }
         },
 
         async submitOrder() {

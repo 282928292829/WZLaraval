@@ -14,7 +14,7 @@
     $heroShowNameNotice = (bool) \App\Models\Setting::get('hero_show_name_change_notice', true);
     $heroInputRequired = (bool) \App\Models\Setting::get('hero_input_required', false);
 @endphp
-<x-app-layout :minimal-footer="true">
+<x-app-layout>
     {{-- Hero --}}
     <section class="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-amber-50">
         <div class="absolute inset-0 pointer-events-none opacity-40"

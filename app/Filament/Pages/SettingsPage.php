@@ -159,11 +159,13 @@ class SettingsPage extends Page
             'order_new_layout' => '1',
             'orders_per_hour_customer' => '50',
             'orders_per_hour_admin' => '50',
-            'orders_per_day_admin' => '100',
+            'orders_per_day_staff' => '100',
             'orders_per_month_customer' => '500',
             'orders_per_month_admin' => '1000',
             'max_file_size_mb' => '2',
-            'max_orders_per_day' => '200',
+            'max_images_per_item' => '3',
+            'max_images_per_order' => '10',
+            'orders_per_day_customer' => '200',
             'comment_max_files' => '5',
             'comment_max_file_size_mb' => '10',
 
@@ -701,15 +703,15 @@ class SettingsPage extends Page
                             ->numeric()
                             ->helperText(__('Deprecated. Use the two windows above.')),
 
-                        TextInput::make('max_orders_per_day')
+                        TextInput::make('orders_per_day_customer')
                             ->label(__('Orders/day — Customer'))
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(1000)
                             ->helperText(__('Max orders per user per day. 0 = unlimited.')),
 
-                        TextInput::make('orders_per_day_admin')
-                            ->label(__('Orders/day — Admin'))
+                        TextInput::make('orders_per_day_staff')
+                            ->label(__('Orders/day — Staff'))
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(1000)
@@ -751,6 +753,20 @@ class SettingsPage extends Page
                             ->minValue(1)
                             ->maxValue(100)
                             ->helperText(__('Maximum size per uploaded file. Default: 2 MB.')),
+
+                        TextInput::make('max_images_per_item')
+                            ->label(__('settings.max_images_per_item'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(20)
+                            ->helperText(__('settings.max_images_per_item_help')),
+
+                        TextInput::make('max_images_per_order')
+                            ->label(__('settings.max_images_per_order'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(100)
+                            ->helperText(__('settings.max_images_per_order_help')),
 
                         TextInput::make('comment_max_files')
                             ->label(__('Max Files per Comment'))
@@ -1446,11 +1462,13 @@ class SettingsPage extends Page
             'order_new_layout' => 'orders',
             'orders_per_hour_customer' => 'orders',
             'orders_per_hour_admin' => 'orders',
-            'orders_per_day_admin' => 'orders',
+            'orders_per_day_staff' => 'orders',
             'orders_per_month_customer' => 'orders',
             'orders_per_month_admin' => 'orders',
             'max_file_size_mb' => 'orders',
-            'max_orders_per_day' => 'orders',
+            'max_images_per_item' => 'orders',
+            'max_images_per_order' => 'orders',
+            'orders_per_day_customer' => 'orders',
             'comment_max_files' => 'orders',
             'comment_max_file_size_mb' => 'orders',
             'order_form_fields' => 'orders',
@@ -1562,8 +1580,9 @@ class SettingsPage extends Page
             'order_success_redirect_seconds', 'order_success_screen_threshold',
             'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
             'orders_per_hour_customer', 'orders_per_hour_admin',
-            'orders_per_day_admin', 'orders_per_month_customer', 'orders_per_month_admin',
-            'max_file_size_mb', 'max_orders_per_day',
+            'orders_per_day_staff', 'orders_per_month_customer', 'orders_per_month_admin',
+            'max_file_size_mb', 'orders_per_day_customer',
+            'max_images_per_item', 'max_images_per_order',
             'comment_max_files', 'comment_max_file_size_mb',
             'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg',
             'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg',
