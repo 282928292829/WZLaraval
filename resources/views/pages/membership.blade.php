@@ -29,18 +29,12 @@
                     </div>
                 </div>
                 <ul class="space-y-3 flex-1 mb-6">
-                    @foreach(
-                        app()->getLocale() === 'ar' ? [
-                            'خصم 5% على العمولة',
-                            'أولوية في معالجة الطلبات',
-                            'دعم مباشر عبر واتساب',
-                            'تقرير شهري للطلبات',
-                        ] : [
-                            '5% discount on commission',
-                            'Priority order processing',
-                            'Direct WhatsApp support',
-                            'Monthly order report',
-                        ] as $benefit
+                    @foreach([
+                        __('membership.benefit_5_discount'),
+                        __('membership.benefit_priority'),
+                        __('membership.benefit_whatsapp'),
+                        __('membership.benefit_monthly_report'),
+                    ] as $benefit
                     )
                     <li class="flex gap-2.5 text-sm text-gray-700">
                         <span class="text-green-500 font-bold flex-shrink-0">✓</span>
@@ -75,20 +69,13 @@
                     </p>
                 </div>
                 <ul class="space-y-3 flex-1 mb-6">
-                    @foreach(
-                        app()->getLocale() === 'ar' ? [
-                            'خصم 8% على العمولة',
-                            'أعلى أولوية في معالجة الطلبات',
-                            'دعم VIP مباشر عبر واتساب',
-                            'تقارير شهرية وسنوية',
-                            'شهر مجاني عند التجديد',
-                        ] : [
-                            '8% discount on commission',
-                            'Highest priority order processing',
-                            'VIP direct WhatsApp support',
-                            'Monthly & annual reports',
-                            'Free month on renewal',
-                        ] as $benefit
+                    @foreach([
+                        __('membership.benefit_8_discount'),
+                        __('membership.benefit_highest_priority'),
+                        __('membership.benefit_vip_whatsapp'),
+                        __('membership.benefit_reports'),
+                        __('membership.benefit_free_month'),
+                    ] as $benefit
                     )
                     <li class="flex gap-2.5 text-sm text-gray-700">
                         <span class="text-green-500 font-bold flex-shrink-0">✓</span>
@@ -130,21 +117,13 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        @foreach(
-                            app()->getLocale() === 'ar' ? [
-                                ['خصم على العمولة',          '5%',   '8%'],
-                                ['أولوية الطلبات',            '✓',    '✓✓'],
-                                ['دعم واتساب مباشر',          '✓',    '✓'],
-                                ['تقارير الطلبات',            '✓',    '✓'],
-                                ['شهر مجاني عند التجديد',     '—',    '✓'],
-                                ['مدير حساب مخصص',            '—',    '✓'],
-                            ] : [
-                                ['Commission Discount',        '5%',   '8%'],
-                                ['Order Priority',             '✓',    '✓✓'],
-                                ['Direct WhatsApp Support',    '✓',    '✓'],
-                                ['Order Reports',              '✓',    '✓'],
-                                ['Free Month on Renewal',      '—',    '✓'],
-                                ['Dedicated Account Manager',  '—',    '✓'],
+                        @foreach([
+                                [__('membership.feat_commission'),     '5%',   '8%'],
+                                [__('membership.feat_priority'),       '✓',    '✓✓'],
+                                [__('membership.feat_whatsapp'),       '✓',    '✓'],
+                                [__('membership.feat_reports'),        '✓',    '✓'],
+                                [__('membership.feat_free_month'),      '—',    '✓'],
+                                [__('membership.feat_account_manager'), '—',    '✓'],
                             ] as [$feature, $monthly, $yearly]
                         )
                         <tr>
@@ -164,25 +143,11 @@
                 {{ __('membership.membership_faq') }}
             </h2>
             <div class="space-y-3">
-                @foreach(
-                    app()->getLocale() === 'ar' ? [
-                        ['كيف أشترك في العضوية؟',
-                         'تواصل معنا عبر واتساب أو البريد الإلكتروني لإتمام الاشتراك وسداد الرسوم.'],
-                        ['هل يمكن إلغاء الاشتراك؟',
-                         'يمكن إلغاء الاشتراك الشهري في أي وقت. الاشتراك السنوي غير قابل للاسترداد بعد الدفع.'],
-                        ['كيف يتم تطبيق الخصم على العمولة؟',
-                         'يُطبق الخصم تلقائياً على جميع طلباتك طوال فترة الاشتراك.'],
-                        ['هل العضوية متاحة للشركات؟',
-                         'نعم، لدينا خطط مخصصة للشركات والمشترين بكميات كبيرة. تواصل معنا لمزيد من التفاصيل.'],
-                    ] : [
-                        ['How do I subscribe?',
-                         'Contact us via WhatsApp or email to complete your subscription and make payment.'],
-                        ['Can I cancel my subscription?',
-                         'Monthly subscriptions can be cancelled at any time. Yearly subscriptions are non-refundable after payment.'],
-                        ['How is the commission discount applied?',
-                         'The discount is automatically applied to all your orders throughout your subscription period.'],
-                        ['Is membership available for businesses?',
-                         'Yes, we have custom plans for businesses and bulk buyers. Contact us for more details.'],
+                @foreach([
+                        [__('membership.faq_how_subscribe_q'), __('membership.faq_how_subscribe_a')],
+                        [__('membership.faq_cancel_q'), __('membership.faq_cancel_a')],
+                        [__('membership.faq_discount_q'), __('membership.faq_discount_a')],
+                        [__('membership.faq_business_q'), __('membership.faq_business_a')],
                     ] as [$q, $a]
                 )
                 <div class="border border-gray-200 rounded-xl overflow-hidden" x-data="{ open: false }">

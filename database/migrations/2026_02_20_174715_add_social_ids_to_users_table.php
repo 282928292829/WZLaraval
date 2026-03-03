@@ -9,15 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('twitter_id')->nullable()->after('google_id');
-            $table->string('apple_id')->nullable()->after('twitter_id');
+            $table->string('google_id')->nullable();
+            $table->string('twitter_id')->nullable();
+            $table->string('apple_id')->nullable();
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['twitter_id', 'apple_id']);
+            $table->dropColumn(['google_id', 'twitter_id', 'apple_id']);
         });
     }
 };

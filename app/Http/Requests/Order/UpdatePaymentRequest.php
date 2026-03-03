@@ -11,13 +11,20 @@ class UpdatePaymentRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('payment_amount')) {
+            $this->merge(['payment_amount' => to_english_digits($this->input('payment_amount'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'payment_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_date' => ['nullable', 'date'],
             'payment_method' => ['nullable', 'string', 'in:bank_transfer,credit_card,cash,other'],
-            'payment_receipts' => ['sometimes', 'array', 'max:5'],
+            'payment_receipts' => ['sometimes', 'array', 'max:3'],
             'payment_receipts.*' => ['file', 'mimes:'.allowed_upload_mimes(), 'max:10240'],
         ];
     }

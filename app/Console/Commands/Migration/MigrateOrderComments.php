@@ -25,8 +25,10 @@ class MigrateOrderComments extends Command
     protected $description = 'Migrate order comments from legacy WordPress database into order_comments';
 
     private int $inserted = 0;
-    private int $skipped  = 0;
-    private int $errors   = 0;
+
+    private int $skipped = 0;
+
+    private int $errors = 0;
 
     public function handle(): int
     {
@@ -46,18 +48,14 @@ class MigrateOrderComments extends Command
 
         $userMap = DB::table('users')->pluck('id', 'email')->toArray();
 
-        $orderMap = DB::table('orders')->pluck('id', 'order_number')->toArray();
-
         $fallbackUserId = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
             ->where('roles.name', 'admin')
             ->value('model_has_roles.model_id')
             ?? DB::table('users')->min('id');
 
-        // Build WP post_id → Laravel order_id map via order_number.
-        // order_number = postmeta[order_id] for the WP post.
         $this->line('Mapping WP post IDs to Laravel order IDs …');
-        $wpPostToOrderId = $this->buildWpPostToOrderIdMap($orderMap);
+        $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
 
         $total = DB::connection('legacy')
             ->table('wp_comments as c')
@@ -93,6 +91,7 @@ class MigrateOrderComments extends Command
 
                     if (! $orderId) {
                         $this->skipped++;
+
                         continue;
                     }
 
@@ -100,7 +99,7 @@ class MigrateOrderComments extends Command
                     $userId = null;
 
                     if ($comment->user_id > 0) {
-                        $email  = DB::connection('legacy')
+                        $email = DB::connection('legacy')
                             ->table('wp_users')
                             ->where('ID', $comment->user_id)
                             ->value('user_email');
@@ -120,15 +119,16 @@ class MigrateOrderComments extends Command
 
                     if (empty($body)) {
                         $this->skipped++;
+
                         continue;
                     }
 
                     $toInsert[] = [
-                        'order_id'   => $orderId,
-                        'user_id'    => $userId,
-                        'body'       => $body,
+                        'order_id' => $orderId,
+                        'user_id' => $userId,
+                        'body' => $body,
                         'is_internal' => false,
-                        'is_edited'  => false,
+                        'is_edited' => false,
                         'created_at' => $comment->comment_date,
                         'updated_at' => $comment->comment_date,
                     ];
@@ -167,49 +167,14 @@ class MigrateOrderComments extends Command
     }
 
     /**
-     * Build a map of WP post ID → Laravel order ID.
-     *
-     * Reads order_id from wp_postmeta and looks it up in the Laravel orders table.
-     * For posts without order_id meta, falls back to using WP post ID as order_number.
+     * Build wp_post_id → Laravel order_id from orders.wp_post_id (set during migrate:orders).
      */
-    private function buildWpPostToOrderIdMap(array $orderMap): array
+    private function buildWpPostToOrderIdMap(): array
     {
         $map = [];
-
-        // Primary pass: use order_id meta value as the lookup key.
-        DB::connection('legacy')
-            ->table('wp_postmeta as pm')
-            ->join('wp_posts as p', 'p.ID', '=', 'pm.post_id')
-            ->where('p.post_type', 'orders')
-            ->where('pm.meta_key', 'order_id')
-            ->select('pm.post_id', 'pm.meta_value as order_number')
-            ->orderBy('pm.post_id')
-            ->chunk(2000, function ($rows) use (&$map, $orderMap) {
-                foreach ($rows as $row) {
-                    $laravelOrderId = $orderMap[(string) $row->order_number] ?? null;
-                    if ($laravelOrderId) {
-                        $map[(int) $row->post_id] = $laravelOrderId;
-                    }
-                }
-            });
-
-        // Fallback pass (in chunks): for WP posts with no order_id meta, use post.ID as order_number.
-        DB::connection('legacy')
-            ->table('wp_posts')
-            ->where('post_type', 'orders')
-            ->where('post_status', 'publish')
-            ->orderBy('ID')
-            ->chunk(2000, function ($posts) use (&$map, $orderMap) {
-                foreach ($posts as $post) {
-                    $postId = (int) $post->ID;
-                    if (! isset($map[$postId])) {
-                        $laravelOrderId = $orderMap[(string) $postId] ?? null;
-                        if ($laravelOrderId) {
-                            $map[$postId] = $laravelOrderId;
-                        }
-                    }
-                }
-            });
+        foreach (DB::table('orders')->whereNotNull('wp_post_id')->get(['id', 'wp_post_id']) as $order) {
+            $map[(int) $order->wp_post_id] = $order->id;
+        }
 
         return $map;
     }

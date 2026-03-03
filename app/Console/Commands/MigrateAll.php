@@ -8,27 +8,33 @@ use Illuminate\Console\Command;
  * Orchestrator: runs all legacy → Laravel migration commands in the correct order.
  *
  * Order matters:
- *   1. users          (no dependencies)
- *   2. orders         (depends on users for user_id resolution)
- *   3. order-comments (depends on users + orders)
- *   4. order-files    (depends on users + orders + order-comments)
- *   5. posts          (no dependencies; creates post_categories)
- *   6. post-comments  (depends on posts + users)
- *   7. pages          (no dependencies)
- *   8. validate       (integrity report)
+ *   1. ad-campaigns      (no dependencies)
+ *   2. comment-templates (no dependencies)
+ *   3. users             (no dependencies)
+ *   4. addresses         (depends on users)
+ *   5. orders            (depends on users)
+ *   6. order-comments    (depends on users + orders)
+ *   7. timeline          (depends on orders)
+ *   8. fix-merges        (depends on orders)
+ *   9. order-files       (depends on users + orders)
+ *  10. posts             (no dependencies; creates post_categories)
+ *  11. post-comments     (depends on posts + users)
+ *  12. pages             (no dependencies)
+ *  13. assign-superadmins (depends on users)
+ *  14. validate          (integrity report)
  *
  * Usage:
  *   php artisan migrate:all               # incremental (safe to re-run)
- *   php artisan migrate:all --fresh       # truncate all target tables first
- *   php artisan migrate:all --dry-run     # validate only
- *   php artisan migrate:all --skip=files  # skip file migration (faster dry runs)
+ *   php artisan migrate:all --fresh        # truncate all target tables first
+ *   php artisan migrate:all --dry-run      # validate only
+ *   php artisan migrate:all --skip=order-files  # skip file migration (faster dry runs)
  */
 class MigrateAll extends Command
 {
     protected $signature = 'migrate:all
                             {--fresh : Truncate all target tables before migrating}
                             {--dry-run : Run validate only, skip data import}
-                            {--skip= : Comma-separated list of steps to skip: users,orders,order-comments,order-files,posts,post-comments,pages,validate}
+                            {--skip= : Comma-separated list of steps to skip: ad-campaigns,comment-templates,users,addresses,orders,order-comments,timeline,fix-merges,order-files,posts,post-comments,pages,assign-superadmins,validate}
                             {--chunk=500 : Batch size passed to each sub-command}';
 
     protected $description = 'Run all legacy WordPress → Laravel data migration steps in sequence';
@@ -44,19 +50,25 @@ class MigrateAll extends Command
             return $this->runValidate();
         }
 
-        $skip      = array_map('trim', explode(',', $this->option('skip') ?? ''));
-        $fresh     = $this->option('fresh');
-        $chunk     = $this->option('chunk');
+        $skip = array_map('trim', explode(',', $this->option('skip') ?? ''));
+        $fresh = $this->option('fresh');
+        $chunk = $this->option('chunk');
         $startTime = microtime(true);
 
         $steps = [
-            'users'          => fn () => $this->runStep('migrate:users', ['--chunk' => $chunk, '--fresh' => $fresh]),
-            'orders'         => fn () => $this->runStep('migrate:orders', ['--chunk' => $chunk, '--fresh' => $fresh]),
+            'ad-campaigns' => fn () => $this->runStep('migrate:ad-campaigns', ['--fresh' => $fresh]),
+            'comment-templates' => fn () => $this->runStep('migrate:comment-templates'),
+            'users' => fn () => $this->runStep('migrate:users', ['--chunk' => $chunk, '--fresh' => $fresh]),
+            'addresses' => fn () => $this->runStep('migrate:addresses', ['--fresh' => $fresh]),
+            'orders' => fn () => $this->runStep('migrate:orders', ['--chunk' => $chunk, '--fresh' => $fresh]),
             'order-comments' => fn () => $this->runStep('migrate:order-comments', ['--chunk' => $chunk, '--fresh' => $fresh]),
-            'order-files'    => fn () => $this->runStep('migrate:order-files', ['--chunk' => $chunk, '--fresh' => $fresh]),
-            'posts'          => fn () => $this->runStep('migrate:posts', ['--fresh' => $fresh]),
-            'post-comments'  => fn () => $this->runStep('migrate:post-comments', ['--fresh' => $fresh]),
-            'pages'          => fn () => $this->runStep('migrate:pages', ['--fresh' => $fresh]),
+            'timeline' => fn () => $this->runStep('migrate:timeline', ['--fresh' => $fresh]),
+            'fix-merges' => fn () => $this->runStep('migrate:fix-merges'),
+            'order-files' => fn () => $this->runStep('migrate:order-files', ['--chunk' => $chunk, '--fresh' => $fresh]),
+            'posts' => fn () => $this->runStep('migrate:posts', ['--fresh' => $fresh]),
+            'post-comments' => fn () => $this->runStep('migrate:post-comments', ['--fresh' => $fresh]),
+            'pages' => fn () => $this->runStep('migrate:pages', ['--fresh' => $fresh]),
+            'assign-superadmins' => fn () => $this->runStep('migrate:assign-superadmins'),
         ];
 
         $failed = [];
@@ -64,6 +76,7 @@ class MigrateAll extends Command
         foreach ($steps as $name => $runner) {
             if (in_array($name, $skip, true)) {
                 $this->line("  <fg=yellow>SKIP</> {$name}");
+
                 continue;
             }
 
@@ -91,7 +104,8 @@ class MigrateAll extends Command
         $this->info("Migration completed in {$elapsed}s.");
 
         if ($failed) {
-            $this->error('Failed steps: ' . implode(', ', $failed));
+            $this->error('Failed steps: '.implode(', ', $failed));
+
             return self::FAILURE;
         }
 

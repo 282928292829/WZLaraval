@@ -7,11 +7,9 @@ use App\Models\Order;
 
 class OrderMergeController extends Controller
 {
-    public function __invoke(MergeOrdersRequest $request, int $id)
+    public function __invoke(MergeOrdersRequest $request, Order $order)
     {
         $this->authorize('merge-orders');
-
-        $order = Order::findOrFail($id);
         $validated = $request->validated();
 
         $target = Order::with('items')->findOrFail($validated['merge_with']);
@@ -35,6 +33,6 @@ class OrderMergeController extends Controller
             'body' => __('orders.timeline_merged_into', ['number' => $order->order_number]),
         ]);
 
-        return redirect()->route('orders.show', $order->id)->with('success', __('orders.merged'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.merged'));
     }
 }

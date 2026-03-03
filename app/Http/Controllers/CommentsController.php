@@ -12,7 +12,7 @@ class CommentsController extends Controller
     {
         $query = OrderComment::query()
             ->with(['order:id,order_number,user_id,status', 'user:id,name', 'files'])
-            ->when(auth()->user()?->hasAnyRole(['staff', 'admin', 'superadmin']), fn ($q) => $q->withTrashed());
+            ->when(auth()->user()?->isStaffOrAbove(), fn ($q) => $q->withTrashed());
 
         if ($search = trim($request->get('search', ''))) {
             $query->where(function ($q) use ($search) {

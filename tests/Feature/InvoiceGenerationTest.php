@@ -18,7 +18,7 @@ test('customer cannot generate invoice', function (): void {
     $customer = User::where('email', 'customer@wasetzon.test')->first();
     $order = Order::factory()->create(['user_id' => $customer->id]);
 
-    $response = $this->actingAs($customer)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($customer)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::FirstPayment->value,
         'first_items_total' => 100,
         'first_agent_fee' => 10,
@@ -28,11 +28,11 @@ test('customer cannot generate invoice', function (): void {
     $response->assertForbidden();
 });
 
-test('editor can generate first_payment invoice preview', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate first_payment invoice preview', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::FirstPayment->value,
         'first_items_total' => 100,
         'first_agent_fee' => 10,
@@ -45,18 +45,18 @@ test('editor can generate first_payment invoice preview', function (): void {
     expect($response->headers->get('Content-Disposition'))->toContain('.pdf');
 });
 
-test('editor can generate first_payment invoice publish', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate first_payment invoice publish', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::FirstPayment->value,
         'first_items_total' => 100,
         'first_agent_fee' => 10,
         'action' => 'publish',
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
 
     $order->refresh();
@@ -64,11 +64,11 @@ test('editor can generate first_payment invoice publish', function (): void {
     expect($order->files()->where('type', 'invoice')->count())->toBe(1);
 });
 
-test('editor can generate second_final invoice preview', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate second_final invoice preview', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::SecondFinal->value,
         'second_product_value' => 200,
         'second_agent_fee' => 20,
@@ -84,11 +84,11 @@ test('editor can generate second_final invoice preview', function (): void {
     $response->assertHeader('Content-Type', 'application/pdf');
 });
 
-test('editor can generate second_final invoice publish', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate second_final invoice publish', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::SecondFinal->value,
         'second_product_value' => 200,
         'second_agent_fee' => 20,
@@ -98,15 +98,15 @@ test('editor can generate second_final invoice publish', function (): void {
         'action' => 'publish',
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
     $order->refresh();
     expect($order->files()->where('type', 'invoice')->count())->toBe(1);
 });
 
-test('editor can generate items_cost invoice preview', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate items_cost invoice preview', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
     OrderItem::create([
         'order_id' => $order->id,
         'unit_price' => 50,
@@ -115,7 +115,7 @@ test('editor can generate items_cost invoice preview', function (): void {
         'currency' => 'SAR',
     ]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::ItemsCost->value,
         'items' => [
             ['description' => 'Product A', 'qty' => 1, 'unit_price' => 100, 'currency' => 'SAR'],
@@ -128,11 +128,11 @@ test('editor can generate items_cost invoice preview', function (): void {
     $response->assertHeader('Content-Type', 'application/pdf');
 });
 
-test('editor can generate items_cost invoice publish', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate items_cost invoice publish', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::ItemsCost->value,
         'items' => [
             ['description' => 'Product A', 'qty' => 1, 'unit_price' => 100, 'currency' => 'SAR'],
@@ -140,17 +140,17 @@ test('editor can generate items_cost invoice publish', function (): void {
         'action' => 'publish',
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
     $order->refresh();
     expect($order->files()->where('type', 'invoice')->count())->toBe(1);
 });
 
-test('editor can generate general invoice preview', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate general invoice preview', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::General->value,
         'custom_amount' => 500,
         'action' => 'preview',
@@ -160,27 +160,27 @@ test('editor can generate general invoice preview', function (): void {
     $response->assertHeader('Content-Type', 'application/pdf');
 });
 
-test('editor can generate general invoice publish', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate general invoice publish', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::General->value,
         'custom_amount' => 500,
         'action' => 'publish',
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
     $order->refresh();
     expect($order->files()->where('type', 'invoice')->count())->toBe(1);
 });
 
-test('editor can generate invoice with both languages (ar + en)', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate invoice with both languages (ar + en)', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::General->value,
         'custom_amount' => 250,
         'invoice_language' => 'both',
@@ -193,9 +193,9 @@ test('editor can generate invoice with both languages (ar + en)', function (): v
     expect(strlen($content))->toBeGreaterThan(1000);
 });
 
-test('editor can generate second_final invoice with show_order_items and custom_lines', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id]);
+test('staff can generate second_final invoice with show_order_items and custom_lines', function (): void {
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id]);
     OrderItem::create([
         'order_id' => $order->id,
         'url' => 'https://example.com/product-a',
@@ -205,7 +205,7 @@ test('editor can generate second_final invoice with show_order_items and custom_
         'currency' => 'SAR',
     ]);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::SecondFinal->value,
         'second_product_value' => 170,
         'second_agent_fee' => 25,
@@ -227,10 +227,10 @@ test('editor can generate second_final invoice with show_order_items and custom_
 });
 
 test('custom filename override is applied', function (): void {
-    $editor = User::where('email', 'editor@wasetzon.test')->first();
-    $order = Order::factory()->create(['user_id' => $editor->id, 'order_number' => 'ORD-12345']);
+    $staff = User::where('email', 'staff@wasetzon.test')->first();
+    $order = Order::factory()->create(['user_id' => $staff->id, 'order_number' => 'ORD-12345']);
 
-    $response = $this->actingAs($editor)->post(route('orders.invoice.generate', $order->id), [
+    $response = $this->actingAs($staff)->post(route('orders.invoice.generate', $order), [
         'invoice_type' => InvoiceType::General->value,
         'custom_amount' => 100,
         'custom_filename' => 'Custom-Invoice-{order_number}.pdf',

@@ -18,6 +18,7 @@ class BulkUpdateOrdersRequest extends FormRequest
             'order_ids' => ['required', 'array', 'min:1'],
             'order_ids.*' => ['integer', 'exists:orders,id'],
             'new_status' => ['required', 'in:'.implode(',', array_keys(Order::getStatuses()))],
+            'comment' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }

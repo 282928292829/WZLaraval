@@ -10,13 +10,12 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('ad_campaign_id')
-                  ->nullable()
-                  ->after('deletion_requested')
-                  ->constrained('ad_campaigns')
-                  ->nullOnDelete();
+                ->nullable()
+                ->constrained('ad_campaigns')
+                ->nullOnDelete();
 
             $table->string('google_click_id')->nullable()->after('ad_campaign_id')
-                  ->comment('Google Ads gclid parameter');
+                ->comment('Google Ads gclid parameter');
         });
     }
 

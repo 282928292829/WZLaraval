@@ -11,7 +11,7 @@
                 @if($fieldVal > 0) checked @endif
                 class="rounded border-gray-300 text-primary-500 focus:ring-primary-400">
             <label for="include_{{ $field }}" class="text-xs text-gray-600 w-36">{{ __('orders.'.$labelKey) }}</label>
-            <input type="number" step="0.01" min="0" name="fee_{{ $field }}" placeholder="0"
+            <input type="text" inputmode="decimal" name="fee_{{ $field }}" placeholder="0"
                 value="{{ $fieldVal > 0 ? $fieldVal : '' }}"
                 class="w-24 border border-gray-200 rounded-lg px-2 py-1 text-xs">
         </div>

@@ -58,14 +58,21 @@
         }
     }">
 
-        {{-- ── Bulk action bar (visible when rows selected) ──────────────── --}}
+        {{-- ── Bulk action bar (visible when rows selected) — requires bulk-update-orders ── --}}
+        @can('bulk-update-orders')
         <div x-show="selectMode && selected.length > 0"
              x-cloak
              x-transition:enter="transition ease-out duration-150"
              x-transition:enter-start="opacity-0 -translate-y-2"
              x-transition:enter-end="opacity-100 translate-y-0"
              class="sticky top-0 z-30 bg-primary-600 text-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 flex-wrap">
+            <form id="bulk-form" method="POST" action="{{ route('orders.bulk-update') }}" x-ref="bulkForm"
+                  class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 flex-wrap">
+                @csrf
+                <template x-for="id in selected" :key="id">
+                    <input type="hidden" name="order_ids[]" :value="id">
+                </template>
+                <input type="hidden" name="new_status" x-model="bulkStatus">
                 <span class="text-sm font-semibold" x-text="selected.length + ' {{ __('staff.selected') }}'"></span>
                 <div class="flex-1"></div>
                 <span class="text-sm text-primary-200">{{ __('orders.bulk_change_status') }}:</span>
@@ -76,8 +83,13 @@
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
-                <button type="button"
-                        @click="if (bulkStatus && selected.length) { $refs.bulkForm.submit(); }"
+                <div class="flex items-center gap-2" x-show="bulkStatus">
+                    <textarea name="comment"
+                        rows="1"
+                        placeholder="{{ __('orders.bulk_comment_placeholder') }}"
+                        class="text-sm bg-primary-700/50 text-white placeholder-primary-300 border border-primary-500 rounded-lg px-3 py-1.5 min-w-[180px] max-w-[240px] resize-none focus:ring-2 focus:ring-white focus:outline-none"></textarea>
+                </div>
+                <button type="submit"
                         :disabled="!bulkStatus"
                         class="px-4 py-1.5 bg-white text-primary-700 font-semibold text-sm rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     {{ __('orders.bulk_apply') }}
@@ -90,17 +102,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
-            </div>
+            </form>
         </div>
-
-        {{-- Hidden bulk update form --}}
-        <form id="bulk-form" method="POST" action="{{ route('orders.bulk-update') }}" x-ref="bulkForm">
-            @csrf
-            <template x-for="id in selected" :key="id">
-                <input type="hidden" name="order_ids[]" :value="id">
-            </template>
-            <input type="hidden" name="new_status" x-model="bulkStatus">
-        </form>
+        @endcan
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4">
 
@@ -117,8 +121,8 @@
             {{-- ── Search + filter bar ─────────────────────────────────── --}}
             <form method="GET" action="{{ route('orders.all') }}" class="space-y-3">
                 <div class="flex gap-2">
-                    {{-- Selection mode toggle (before search, only when orders exist) --}}
-                    @if (! $orders->isEmpty())
+                    {{-- Selection mode toggle (before search, only when orders exist and user has bulk-update permission) --}}
+                    @if (! $orders->isEmpty() && auth()->user()->can('bulk-update-orders'))
                         <button type="button"
                                 @click="selectMode = !selectMode; if (!selectMode) exitSelectMode();"
                                 :class="selectMode ? 'bg-primary-100 border-primary-300 text-primary-700' : 'bg-white border-gray-200 text-gray-600'"
@@ -297,7 +301,7 @@
                                         };
                                     @endphp
                                     <tr class="hover:bg-gray-50/60 transition-colors cursor-pointer group"
-                                        onclick="if(!event.target.closest('input,a,button')) window.location='{{ route('orders.show', $order->id) }}'">
+                                        onclick="if(!event.target.closest('input,a,button')) window.location='{{ route('orders.show', $order) }}'">
                                         <td class="ps-4 pe-2 py-3" x-show="selectMode" x-cloak onclick="event.stopPropagation()">
                                             <input type="checkbox"
                                                    class="order-checkbox rounded border-gray-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
@@ -350,7 +354,7 @@
                                             @php
                                                 $lastComment = $order->lastComment;
                                                 $lastCommentBy = $lastComment && $lastComment->user
-                                                    ? ($lastComment->user->hasAnyRole(['staff', 'admin', 'superadmin', 'editor']) ? 'team' : 'customer')
+                                                    ? ($lastComment->user->isStaffOrAbove() ? 'team' : 'customer')
                                                     : ($lastComment ? 'team' : null);
                                             @endphp
                                             @if ($lastCommentBy === 'team')
@@ -362,7 +366,7 @@
                                             @endif
                                         </td>
                                         <td class="ps-3 pe-4 py-3">
-                                            <a href="{{ route('orders.show', $order->id) }}"
+                                            <a href="{{ route('orders.show', $order) }}"
                                                class="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
                                                 {{ __('orders.action_open') }}
                                             </a>
@@ -391,7 +395,7 @@
                                 default         => 'bg-gray-100 text-gray-500 ring-gray-200',
                             };
                         @endphp
-                        <a href="{{ route('orders.show', $order->id) }}"
+                        <a href="{{ route('orders.show', $order) }}"
                            class="flex items-start gap-3 px-4 py-4 hover:bg-gray-50 transition-colors group">
                             {{-- Checkbox --}}
                             <div class="pt-0.5 shrink-0" x-show="selectMode" x-cloak onclick="event.preventDefault(); event.stopPropagation();">
@@ -424,7 +428,7 @@
                                     @php
                                         $lastComment = $order->lastComment;
                                         $lastCommentBy = $lastComment && $lastComment->user
-                                            ? ($lastComment->user->hasAnyRole(['staff', 'admin', 'superadmin', 'editor']) ? 'team' : 'customer')
+                                            ? ($lastComment->user->isStaffOrAbove() ? 'team' : 'customer')
                                             : ($lastComment ? 'team' : null);
                                     @endphp
                                     @if ($lastCommentBy)

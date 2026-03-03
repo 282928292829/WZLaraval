@@ -236,10 +236,10 @@
                                         @endif
                                     </div>
                                     <p class="text-xs text-gray-400">
-                                        {{ app()->getLocale() === 'ar' ? 'لم يصلك البريد؟' : "Didn't receive it?" }}
+                                        {{ __('account.didnt_receive_it') }}
                                         <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
                                             class="text-green-600 hover:text-green-700 font-medium underline underline-offset-2 transition">
-                                            {{ app()->getLocale() === 'ar' ? 'تواصل معنا عبر واتساب' : 'Contact us on WhatsApp' }}
+                                            {{ __('account.contact_us_whatsapp') }}
                                         </a>
                                     </p>
                                 </div>
@@ -788,19 +788,20 @@
                                     placeholder="{{ __('account.short_address_placeholder') }}"
                                     class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
                                 <div x-show="open" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5">
+                                    <p class="text-xs text-blue-700 font-medium mb-1">{{ __('account.national_address_ways_intro') }}</p>
                                     <p class="text-xs text-blue-700 leading-relaxed">
-                                        <span class="font-medium">١.</span>
+                                        <span class="font-medium">{{ __('account.step_1') }}</span>
                                         {{ __('account.national_address_tip_whatsapp') }}
                                         &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
                                             class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
-                                        ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
+                                        {{ __('account.national_address_tip_share_location') }}
                                     </p>
                                     <p class="text-xs text-blue-700 leading-relaxed">
-                                        <span class="font-medium">٢.</span>
+                                        <span class="font-medium">{{ __('account.step_2') }}</span>
                                         {{ __('account.national_address_tip_apps') }}
                                     </p>
                                     <p class="text-xs text-blue-700 leading-relaxed">
-                                        <span class="font-medium">٣.</span>
+                                        <span class="font-medium">{{ __('account.step_3') }}</span>
                                         <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
                                             class="underline underline-offset-2 font-semibold hover:text-blue-900 transition">{{ __('account.national_address_tip_us') }}</a>
                                     </p>
@@ -929,7 +930,7 @@
                             <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
                         </label>
                         <input type="text" name="country"
-                            value="{{ old('country', 'السعودية') }}"
+                            value="{{ old('country', __('common.default_country')) }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
                     </div>
                     <div>
@@ -988,19 +989,20 @@
                             placeholder="{{ __('account.short_address_placeholder') }}"
                             class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
                         <div x-show="open" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5">
+                            <p class="text-xs text-blue-700 font-medium mb-1">{{ __('account.national_address_ways_intro') }}</p>
                             <p class="text-xs text-blue-700 leading-relaxed">
-                                <span class="font-medium">١.</span>
+                                <span class="font-medium">{{ __('account.step_1') }}</span>
                                 {{ __('account.national_address_tip_whatsapp') }}
                                 &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
                                     class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
-                                ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
+                                {{ __('account.national_address_tip_share_location') }}
                             </p>
                             <p class="text-xs text-blue-700 leading-relaxed">
-                                <span class="font-medium">٢.</span>
+                                <span class="font-medium">{{ __('account.step_2') }}</span>
                                 {{ __('account.national_address_tip_apps') }}
                             </p>
                             <p class="text-xs text-blue-700 leading-relaxed">
-                                <span class="font-medium">٣.</span>
+                                <span class="font-medium">{{ __('account.step_3') }}</span>
                                 <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
                                     class="underline underline-offset-2 font-semibold hover:text-blue-900 transition">{{ __('account.national_address_tip_us') }}</a>
                             </p>

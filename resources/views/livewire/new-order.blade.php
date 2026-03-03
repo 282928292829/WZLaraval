@@ -10,75 +10,6 @@
 {{-- Single root required for Livewire --}}
 {{-- ============================================================ --}}
 <div>
-{{-- SUCCESS SCREEN — configurable via Settings > Order Success Screen --}}
-@if ($showSuccessScreen)
-@php
-    $seconds = $successRedirectSeconds ?? 45;
-    $titleRaw = trim((string) \App\Models\Setting::get('order_success_title_' . $locale, ''));
-    $title = $titleRaw !== '' ? $titleRaw : __('order.success_title');
-    $subtitleRaw = trim((string) \App\Models\Setting::get('order_success_subtitle_' . $locale, ''));
-    $subtitle = $subtitleRaw !== '' ? str_replace(':number', $createdOrderNumber, $subtitleRaw) : __('order.success_subtitle', ['number' => $createdOrderNumber]);
-    $messageRaw = trim((string) \App\Models\Setting::get('order_success_message_' . $locale, ''));
-    $message = $messageRaw !== '' ? $messageRaw : __('order.success_message');
-    $goToOrderRaw = trim((string) \App\Models\Setting::get('order_success_go_to_order_' . $locale, ''));
-    $goToOrder = $goToOrderRaw !== '' ? $goToOrderRaw : __('order.success_go_to_order');
-    $prefixRaw = trim((string) \App\Models\Setting::get('order_success_redirect_prefix_' . $locale, ''));
-    $prefix = $prefixRaw !== '' ? $prefixRaw : __('order.success_redirect_countdown_prefix');
-    $suffixRaw = trim((string) \App\Models\Setting::get('order_success_redirect_suffix_' . $locale, ''));
-    $suffix = $suffixRaw !== '' ? $suffixRaw : __('order.success_redirect_countdown_suffix');
-@endphp
-<div class="min-h-dvh min-h-screen flex items-start justify-center bg-gradient-to-br from-orange-50 to-orange-100 p-4 pt-12">
-    <div class="text-center max-w-[420px] w-full md:max-w-[560px]">
-        {{-- Checkmark --}}
-        <div class="w-14 h-14 md:w-[72px] md:h-[72px] md:mb-4 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg class="w-7 h-7 md:w-9 md:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-        </div>
-        <h1 class="text-xl md:text-2xl font-bold text-slate-800 mb-1.5 md:mb-2">
-            {{ $title }}
-        </h1>
-        <div class="text-lg md:text-xl font-semibold text-orange-500 mb-2.5 md:mb-3.5">
-            {{ $subtitle }}
-        </div>
-        <p class="text-slate-600 leading-relaxed text-sm md:text-base mb-3.5 md:mb-4 whitespace-pre-line">
-            {{ $message }}
-        </p>
-        <a
-            href="{{ route('orders.show', $createdOrderId) }}"
-            class="inline-block bg-orange-500 text-white font-semibold px-6 py-3 rounded-lg no-underline text-base md:text-lg md:px-7 md:py-3.5 mb-2.5 md:mb-3.5 hover:bg-orange-600 transition-colors"
-        >
-            {{ $goToOrder }}
-        </a>
-        <div class="text-slate-500 text-sm md:text-base">
-            {{ $prefix }}<span id="wz-countdown-seconds">{{ $seconds }}</span>{{ $suffix }}
-        </div>
-    </div>
-    @script
-    <script>
-        (function() {
-            const url = @js(route('orders.show', $createdOrderId));
-            const seconds = @js($seconds);
-            if (seconds <= 0) {
-                window.location.href = url;
-                return;
-            }
-            function start() {
-                const span = document.getElementById('wz-countdown-seconds');
-                if (!span) return setTimeout(start, 50);
-                let s = seconds;
-                const t = setInterval(function() {
-                    s--;
-                    span.textContent = s;
-                    if (s <= 0) { clearInterval(t); window.location.href = url; }
-                }, 1000);
-            }
-            setTimeout(start, 0);
-        })();
-    </script>
-    @endscript
-</div>
-@else
 {{-- ============================================================ --}}
 {{-- ORDER FORM                                                   --}}
 {{-- ============================================================ --}}
@@ -434,7 +365,6 @@
 </div>
 
 </div>
-@endif
 </div>
 
 @push('scripts')

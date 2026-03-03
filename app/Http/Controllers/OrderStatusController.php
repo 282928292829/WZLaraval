@@ -9,18 +9,28 @@ use Illuminate\Http\Request;
 
 class OrderStatusController extends Controller
 {
-    public function update(UpdateOrderStatusRequest $request, int $id)
+    public function update(UpdateOrderStatusRequest $request, Order $order)
     {
         $this->authorize('update-order-status');
-
-        $order = Order::findOrFail($id);
         $validated = $request->validated();
 
         $old = $order->status;
-        $order->update(['status' => $validated['status']]);
+        $order->update([
+            'status' => $validated['status'],
+            'status_changed_at' => now(),
+        ]);
 
         if (in_array($validated['status'], ['cancelled', 'shipped', 'delivered'])) {
             AdCampaign::incrementForOrderStatus($order, $validated['status']);
+        }
+
+        $commentBody = isset($validated['comment']) ? trim($validated['comment']) : null;
+        if ($commentBody !== null && $commentBody !== '') {
+            $order->comments()->create([
+                'user_id' => auth()->id(),
+                'body' => $commentBody,
+                'is_internal' => false,
+            ]);
         }
 
         $order->timeline()->create([
@@ -31,14 +41,12 @@ class OrderStatusController extends Controller
             'body' => null,
         ]);
 
-        return redirect()->route('orders.show', $id)->with('success', __('orders.status_updated'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.status_updated'));
     }
 
-    public function markPaid(Request $request, int $id)
+    public function markPaid(Request $request, Order $order)
     {
         $this->authorize('update-order-status');
-
-        $order = Order::findOrFail($id);
 
         if (! $order->is_paid) {
             $order->update(['is_paid' => true]);
@@ -52,6 +60,6 @@ class OrderStatusController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.show', $id)->with('success', __('orders.marked_as_paid'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.marked_as_paid'));
     }
 }

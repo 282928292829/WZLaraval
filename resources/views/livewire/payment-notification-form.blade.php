@@ -1,6 +1,11 @@
 <div class="bg-white border border-gray-200 rounded-xl p-5 mt-3">
 
     @if($submitted)
+        @if(session('payment_notify_max_exceeded'))
+        <div class="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm" role="alert">
+            {{ session('payment_notify_max_exceeded') }}
+        </div>
+        @endif
         <div class="text-center py-6">
             <div class="text-5xl mb-3">✅</div>
             <h3 class="text-lg font-bold text-green-700 mb-2">{{ __('payment_notify.success_title') }}</h3>
@@ -43,10 +48,9 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.amount_label') }} <span class="text-red-500">*</span></label>
                 <input
-                    type="number"
+                    type="text"
+                    inputmode="decimal"
                     wire:model="amount"
-                    step="0.01"
-                    min="1"
                     placeholder="{{ __('payment_notify.amount_placeholder') }}"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
@@ -68,8 +72,10 @@
                     <option value="samba">{{ __('orders.banks.samba') }}</option>
                     <option value="saib">{{ __('orders.banks.saib') }}</option>
                     <option value="riyad">{{ __('orders.banks.riyad') }}</option>
-                    <option value="credit_card">{{ __('orders.payment_method_credit_card') }}</option>
+                    <option value="visa_mastercard">{{ __('orders.payment_method_visa_mastercard') }}</option>
                     <option value="mada">{{ __('orders.banks.mada') }}</option>
+                    <option value="international_bank_transfer">{{ __('orders.payment_method_international_bank_transfer') }}</option>
+                    <option value="credit_card">{{ __('orders.payment_method_credit_card') }}</option>
                     <option value="paypal">{{ __('orders.payment_method_paypal') }}</option>
                     <option value="other">{{ __('orders.payment_method_other') }}</option>
                 </select>
@@ -116,6 +122,19 @@
                 ></textarea>
                 @error('notes') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
+
+            @if($maxStandaloneFiles > 0)
+            {{-- Attachments --}}
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.attachments_label') }} ({{ __('payment_notify.optional') }})</label>
+                <input type="file" wire:model="receipts" multiple
+                    accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 file:me-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700 file:text-xs file:font-medium"
+                />
+                @error('receipts') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                @error('receipts.*') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+            @endif
 
             {{-- Submit --}}
             <div class="flex gap-3 flex-wrap">

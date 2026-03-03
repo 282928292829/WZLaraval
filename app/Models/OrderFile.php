@@ -10,6 +10,7 @@ class OrderFile extends Model
 {
     protected $fillable = [
         'order_id',
+        'order_item_id',
         'user_id',
         'comment_id',
         'path',
@@ -22,6 +23,11 @@ class OrderFile extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class, 'order_item_id');
     }
 
     public function user(): BelongsTo

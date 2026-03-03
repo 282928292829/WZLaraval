@@ -79,13 +79,21 @@ Write generic, reusable migration scripts:
 
 **Final mapping:** WP 5 (تــم التسليم) → Laravel `delivered`. Laravel `completed` is for closed/finalized orders (use when order is fully done and archived). Migration script maps WP 0–7 to Laravel slugs; keep Order model `getStatuses()` and migration in sync.
 
-## Import Command
+## Import Command (Recommended)
 
 ```bash
-php -d memory_limit=512M artisan wp:import --all
+php -d memory_limit=512M artisan migrate:all
 ```
 
-Or run step-by-step: `--ad-campaigns`, `--comment-templates`, `--users`, `--addresses`, `--orders`, `--items`, `--comments`, `--timeline`.
+Or with fresh truncate: `php artisan migrate:all --fresh`
+
+Or dry-run (validate only): `php artisan migrate:all --dry-run`
+
+Steps run in order: ad-campaigns, comment-templates, users, addresses, orders, order-comments, timeline, fix-merges, order-files, posts, post-comments, pages, assign-superadmins, validate.
+
+**Superadmin assignment:** Set `SUPERADMIN_EMAILS` in `.env` (comma-separated). Default: abdulsgz@hotmail.com, ulgasan491@yahoo.com, aminoos@live.com.
+
+**Legacy:** `php artisan wp:import --all` is deprecated (resets passwords, no role mapping). Use migrate:all.
 
 ## Validation
 

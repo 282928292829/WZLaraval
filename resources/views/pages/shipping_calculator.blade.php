@@ -1,9 +1,8 @@
 @php
     use App\Models\ShippingCompany;
 
-    $isAr        = app()->getLocale() === 'ar';
-    $gramLabel   = $isAr ? 'جرام' : 'gram';
-    $billedLabel = $isAr ? 'يُحسب كـ' : 'billed as';
+    $gramLabel   = __('shipping.gram');
+    $billedLabel = __('shipping.billed_as');
     $kgLabel     = __('shipping.kg');
 
     $calculatorCarriers = ShippingCompany::forCalculator()->get();

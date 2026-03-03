@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  *   0 → pending           (calculating order value)
  *   1 → needs_payment     (value calculated, awaiting payment)
  *   2 → processing        (executing, items en route to warehouse)
- *   3 → needs_payment     (final invoice issued)
+ *   3 → purchasing        (final invoice issued)
  *   4 → shipped
  *   5 → delivered
  *   6 → cancelled
@@ -37,7 +37,7 @@ class MigrateOrders extends Command
         0 => 'pending',
         1 => 'needs_payment',
         2 => 'processing',
-        3 => 'needs_payment',
+        3 => 'purchasing',
         4 => 'shipped',
         5 => 'delivered',
         6 => 'cancelled',
@@ -45,9 +45,12 @@ class MigrateOrders extends Command
     ];
 
     private int $ordersInserted = 0;
-    private int $itemsInserted  = 0;
-    private int $skipped        = 0;
-    private int $errors         = 0;
+
+    private int $itemsInserted = 0;
+
+    private int $skipped = 0;
+
+    private int $errors = 0;
 
     public function handle(): int
     {
@@ -73,7 +76,7 @@ class MigrateOrders extends Command
             ->toArray();
 
         $chunkSize = (int) $this->option('chunk');
-        $limit     = $this->option('limit') ? (int) $this->option('limit') : null;
+        $limit = $this->option('limit') ? (int) $this->option('limit') : null;
 
         $query = DB::connection('legacy')
             ->table('wp_posts')
@@ -91,163 +94,196 @@ class MigrateOrders extends Command
 
         $query->chunk($chunkSize, function ($posts) use ($userMap, $bar, $limit, &$processed) {
             try {
-            $postIds = $posts->pluck('ID')->toArray();
+                $postIds = $posts->pluck('ID')->toArray();
 
-            // Fetch all meta for this batch in one query.
-            $metaRows = DB::connection('legacy')
-                ->table('wp_postmeta')
-                ->whereIn('post_id', $postIds)
-                ->get();
+                // Fetch all meta for this batch in one query.
+                $metaRows = DB::connection('legacy')
+                    ->table('wp_postmeta')
+                    ->whereIn('post_id', $postIds)
+                    ->get();
 
-            // Index: post_id → [meta_key => meta_value]
-            // Note: p_img_N can appear multiple times (duplicate rows) — keep last value.
-            $meta = [];
-            foreach ($metaRows as $row) {
-                $meta[$row->post_id][$row->meta_key] = $row->meta_value;
-            }
-
-            // Batch-fetch author emails for this chunk.
-            $authorIds    = $posts->pluck('post_author')->unique()->toArray();
-            $authorEmails = DB::connection('legacy')
-                ->table('wp_users')
-                ->whereIn('ID', $authorIds)
-                ->pluck('user_email', 'ID')
-                ->toArray(); // wp_user_id → email
-
-            $ordersToInsert = [];
-            $itemsByPostId  = [];
-
-            foreach ($posts as $post) {
-                if ($limit && $processed >= $limit) {
-                    break;
+                // Index: post_id → [meta_key => meta_value]
+                // Note: p_img_N can appear multiple times (duplicate rows) — keep last value.
+                $meta = [];
+                foreach ($metaRows as $row) {
+                    $meta[$row->post_id][$row->meta_key] = $row->meta_value;
                 }
 
-                $bar->advance();
-                $processed++;
+                // Batch-fetch author emails for this chunk.
+                $authorIds = $posts->pluck('post_author')->unique()->toArray();
+                $authorEmails = DB::connection('legacy')
+                    ->table('wp_users')
+                    ->whereIn('ID', $authorIds)
+                    ->pluck('user_email', 'ID')
+                    ->toArray(); // wp_user_id → email
 
-                $postMeta   = $meta[$post->ID] ?? [];
-                $orderNumber = (string) ($postMeta['order_id'] ?? $post->ID);
+                $ordersToInsert = [];
+                $itemsByPostId = [];
+                $usedOrderNumbers = []; // Track within batch to handle duplicate post_name in same chunk
 
-                // Skip if already migrated.
-                if (DB::table('orders')->where('order_number', $orderNumber)->exists()) {
-                    $this->skipped++;
-                    continue;
-                }
-
-                // Resolve user — fall back to system user (first admin) if not found.
-                $authorEmail = $authorEmails[$post->post_author] ?? null;
-                $userId      = $authorEmail ? ($userMap[$authorEmail] ?? null) : null;
-
-                if (! $userId) {
-                    // Orphaned WP user — assign to first admin in Laravel.
-                    static $fallbackUserId = null;
-
-                    if ($fallbackUserId === null) {
-                        $fallbackUserId = DB::table('model_has_roles')
-                            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-                            ->where('roles.name', 'admin')
-                            ->value('model_has_roles.model_id')
-                            ?? DB::table('users')->min('id');
+                foreach ($posts as $post) {
+                    if ($limit && $processed >= $limit) {
+                        break;
                     }
 
-                    $userId = $fallbackUserId;
-                }
+                    $bar->advance();
+                    $processed++;
 
-                $wpStatus    = (int) ($postMeta['order_status'] ?? 0);
-                $laravelStatus = self::STATUS_MAP[$wpStatus] ?? 'pending';
-
-                // Calculate subtotal from all product prices.
-                $subtotal = 0;
-                for ($i = 1; $i <= 30; $i++) {
-                    $price = (float) ($postMeta["p_price_{$i}"] ?? 0);
-                    $qty   = (int)   ($postMeta["p_qty_{$i}"]   ?? 1);
-
-                    if ($price > 0) {
-                        $subtotal += $price * $qty;
+                    $postMeta = $meta[$post->ID] ?? [];
+                    // Use WP post_name as order_number: unique orders = plain number (66610), duplicates = order_id-2, -3 etc.
+                    $orderNumber = $post->post_name ?: (string) ($postMeta['order_id'] ?? $post->ID);
+                    if ($orderNumber === '') {
+                        $orderNumber = (string) $post->ID;
                     }
-                }
-
-                $ordersToInsert[] = [
-                    'order_number' => $orderNumber,
-                    'user_id'      => $userId,
-                    'status'       => $laravelStatus,
-                    'layout_option' => 2,
-                    'subtotal'     => $subtotal > 0 ? $subtotal : null,
-                    'currency'     => 'SAR',
-                    'created_at'   => $post->post_date,
-                    'updated_at'   => $post->post_modified ?? $post->post_date,
-                ];
-
-                // Build order items.
-                $items = $this->extractItems($postMeta, $post->ID);
-                if ($items) {
-                    $itemsByPostId[$orderNumber] = $items;
-                }
-            }
-
-            // Batch insert orders.
-            if ($ordersToInsert) {
-                try {
-                    DB::table('orders')->insert($ordersToInsert);
-                    $this->ordersInserted += count($ordersToInsert);
-                } catch (\Exception $e) {
-                    // Fall back to single inserts to isolate the bad row.
-                    foreach ($ordersToInsert as $row) {
-                        try {
-                            DB::table('orders')->insert($row);
-                            $this->ordersInserted++;
-                        } catch (\Exception $inner) {
-                            $this->errors++;
-                            $this->newLine();
-                            $this->error("Order #{$row['order_number']}: {$inner->getMessage()}");
-                        }
+                    // Fallback: if post_name collides (in DB or within this batch), append post_id
+                    if (isset($usedOrderNumbers[$orderNumber]) || DB::table('orders')->where('order_number', $orderNumber)->exists()) {
+                        $orderNumber = $orderNumber.'-'.$post->ID;
                     }
-                }
-            }
+                    $usedOrderNumbers[$orderNumber] = true;
 
-            // Now insert order items using the newly created order IDs.
-            if ($itemsByPostId) {
-                $orderIds = DB::table('orders')
-                    ->whereIn('order_number', array_keys($itemsByPostId))
-                    ->pluck('id', 'order_number')
-                    ->toArray();
+                    // Skip if already migrated (by wp_post_id).
+                    if (DB::table('orders')->where('wp_post_id', $post->ID)->exists()) {
+                        $this->skipped++;
 
-                $allItems = [];
-
-                foreach ($itemsByPostId as $orderNumber => $items) {
-                    $orderId = $orderIds[$orderNumber] ?? null;
-
-                    if (! $orderId) {
                         continue;
                     }
 
-                    foreach ($items as $item) {
-                        $item['order_id'] = $orderId;
-                        $allItems[] = $item;
+                    // Resolve user — fall back to system user (first admin) if not found.
+                    $authorEmail = $authorEmails[$post->post_author] ?? null;
+                    $userId = $authorEmail ? ($userMap[$authorEmail] ?? null) : null;
+
+                    if (! $userId) {
+                        // Orphaned WP user — assign to first admin in Laravel.
+                        static $fallbackUserId = null;
+
+                        if ($fallbackUserId === null) {
+                            $fallbackUserId = DB::table('model_has_roles')
+                                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                                ->where('roles.name', 'admin')
+                                ->value('model_has_roles.model_id')
+                                ?? DB::table('users')->min('id');
+                        }
+
+                        $userId = $fallbackUserId;
+                    }
+
+                    $wpStatus = (int) ($postMeta['order_status'] ?? 0);
+                    $laravelStatus = self::STATUS_MAP[$wpStatus] ?? 'pending';
+
+                    // Calculate subtotal from all product prices.
+                    $subtotal = 0;
+                    for ($i = 1; $i <= 30; $i++) {
+                        $price = (float) ($postMeta["p_price_{$i}"] ?? 0);
+                        $qty = (int) ($postMeta["p_qty_{$i}"] ?? 1);
+
+                        if ($price > 0) {
+                            $subtotal += $price * $qty;
+                        }
+                    }
+
+                    $paymentAmount = isset($postMeta['payment_amount']) ? (float) $postMeta['payment_amount'] : null;
+                    $isPaid = $paymentAmount && $paymentAmount > 0;
+                    $paymentDate = $this->parseDate($postMeta['payment_date'] ?? null);
+                    $shippingSnapshot = $this->parseJson($postMeta['shipping_address_snapshot'] ?? null);
+
+                    // Cap amounts to fit DECIMAL column (avoids out-of-range from corrupt legacy data)
+                    $maxAmount = 99_999_999.99;
+                    $subtotal = min($subtotal, $maxAmount);
+                    $paymentAmount = $paymentAmount !== null ? min($paymentAmount, $maxAmount) : null;
+
+                    $ordersToInsert[] = [
+                        'order_number' => $orderNumber,
+                        'wp_post_id' => $post->ID,
+                        'user_id' => $userId,
+                        'status' => $laravelStatus,
+                        'layout_option' => 2,
+                        'notes' => $post->post_content ?: null,
+                        'subtotal' => $subtotal > 0 ? $subtotal : null,
+                        'total_amount' => $paymentAmount ?: ($subtotal > 0 ? $subtotal : null),
+                        'payment_amount' => $paymentAmount,
+                        'payment_date' => $paymentDate,
+                        'payment_method' => $postMeta['payment_method'] ?? null,
+                        'payment_receipt' => $postMeta['payment_receipt'] ?? null,
+                        'is_paid' => $isPaid,
+                        'paid_at' => $isPaid ? ($paymentDate ?? $post->post_modified) : null,
+                        'tracking_number' => $postMeta['tracking_number'] ?? null,
+                        'tracking_company' => $postMeta['tracking_company'] ?? null,
+                        'shipping_address_snapshot' => $shippingSnapshot ? json_encode($shippingSnapshot) : null,
+                        'currency' => 'SAR',
+                        'created_at' => $post->post_date,
+                        'updated_at' => $post->post_modified ?? $post->post_date,
+                    ];
+
+                    // Build order items.
+                    $items = $this->extractItems($postMeta, $post->ID);
+                    if ($items) {
+                        $itemsByPostId[$orderNumber] = $items;
                     }
                 }
 
-                if ($allItems) {
+                // Batch insert orders.
+                if ($ordersToInsert) {
                     try {
-                        DB::table('order_items')->insert($allItems);
-                        $this->itemsInserted += count($allItems);
+                        DB::table('orders')->insert($ordersToInsert);
+                        $this->ordersInserted += count($ordersToInsert);
                     } catch (\Exception $e) {
-                        // Fall back to single item inserts.
-                        foreach ($allItems as $item) {
+                        // Fall back to single inserts to isolate the bad row.
+                        foreach ($ordersToInsert as $row) {
                             try {
-                                DB::table('order_items')->insert($item);
-                                $this->itemsInserted++;
-                            } catch (\Exception $ie) {
+                                DB::table('orders')->insert($row);
+                                $this->ordersInserted++;
+                            } catch (\Exception $inner) {
                                 $this->errors++;
+                                $this->newLine();
+                                $this->error("Order #{$row['order_number']}: {$inner->getMessage()}");
                             }
                         }
                     }
                 }
-            }
 
-            if ($limit && $processed >= $limit) {
-                return false; // Stop chunking.
-            }
+                // Now insert order items using the newly created order IDs.
+                if ($itemsByPostId) {
+                    $orderIds = DB::table('orders')
+                        ->whereIn('order_number', array_keys($itemsByPostId))
+                        ->pluck('id', 'order_number')
+                        ->toArray();
+
+                    $allItems = [];
+
+                    foreach ($itemsByPostId as $orderNumber => $items) {
+                        $orderId = $orderIds[$orderNumber] ?? null;
+
+                        if (! $orderId) {
+                            continue;
+                        }
+
+                        foreach ($items as $item) {
+                            $item['order_id'] = $orderId;
+                            $allItems[] = $item;
+                        }
+                    }
+
+                    if ($allItems) {
+                        try {
+                            DB::table('order_items')->insert($allItems);
+                            $this->itemsInserted += count($allItems);
+                        } catch (\Exception $e) {
+                            // Fall back to single item inserts.
+                            foreach ($allItems as $item) {
+                                try {
+                                    DB::table('order_items')->insert($item);
+                                    $this->itemsInserted++;
+                                } catch (\Exception $ie) {
+                                    $this->errors++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($limit && $processed >= $limit) {
+                    return false; // Stop chunking.
+                }
             } catch (\Exception $e) {
                 $this->errors++;
                 $this->newLine();
@@ -280,7 +316,7 @@ class MigrateOrders extends Command
         for ($i = 1; $i <= 30; $i++) {
             // A product slot exists when p_N key is present or p_url_N is non-empty.
             $slotKey = "p_{$i}";
-            $urlKey  = "p_url_{$i}";
+            $urlKey = "p_url_{$i}";
 
             $hasSlot = array_key_exists($slotKey, $meta) || array_key_exists($urlKey, $meta);
 
@@ -302,7 +338,7 @@ class MigrateOrders extends Command
 
             $isUrl = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
 
-            $qty   = max(1, (int) ($meta["p_qty_{$i}"] ?? 1));
+            $qty = max(1, (int) ($meta["p_qty_{$i}"] ?? 1));
             $price = (float) ($meta["p_price_{$i}"] ?? 0);
 
             $imagePath = null;
@@ -312,14 +348,14 @@ class MigrateOrders extends Command
             }
 
             $items[] = [
-                'url'        => $url,
-                'is_url'     => $isUrl,
-                'qty'        => $qty,
-                'color'      => $this->truncate($meta["p_color_{$i}"] ?? null, 100),
-                'size'       => $this->truncate($meta["p_size_{$i}"]  ?? null, 100),
-                'notes'      => $meta["p_info_{$i}"] ?? null,
+                'url' => $url,
+                'is_url' => $isUrl,
+                'qty' => $qty,
+                'color' => $this->truncate($meta["p_color_{$i}"] ?? null, 100),
+                'size' => $this->truncate($meta["p_size_{$i}"] ?? null, 100),
+                'notes' => $meta["p_info_{$i}"] ?? null,
                 'image_path' => $imagePath,
-                'currency'   => null,
+                'currency' => null,
                 'unit_price' => $price > 0 ? $price : null,
                 'sort_order' => $i,
                 'created_at' => now(),
@@ -354,7 +390,7 @@ class MigrateOrders extends Command
         }
 
         if (preg_match('#/uploads/(.+)$#', $guid, $m)) {
-            return $cache[$attachmentId] = 'orders/attachments/' . $m[1];
+            return $cache[$attachmentId] = 'orders/attachments/'.$m[1];
         }
 
         return $cache[$attachmentId] = null;
@@ -367,5 +403,27 @@ class MigrateOrders extends Command
         }
 
         return mb_substr($value, 0, $max);
+    }
+
+    private function parseDate(?string $v): ?string
+    {
+        if (! $v || $v === '0000-00-00' || str_starts_with((string) $v, '0000-00-00')) {
+            return null;
+        }
+
+        return $v;
+    }
+
+    private function parseJson(mixed $v): mixed
+    {
+        if ($v === null || $v === '') {
+            return null;
+        }
+        if (is_array($v)) {
+            return $v;
+        }
+        $d = json_decode((string) $v, true);
+
+        return json_last_error() === JSON_ERROR_NONE ? $d : null;
     }
 }

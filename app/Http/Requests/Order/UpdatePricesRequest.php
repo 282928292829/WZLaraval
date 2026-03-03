@@ -11,6 +11,25 @@ class UpdatePricesRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items', []);
+        foreach ($items as $i => $item) {
+            $converted = [];
+            foreach (['unit_price', 'commission', 'shipping', 'final_price'] as $key) {
+                if (isset($item[$key]) && $item[$key] !== '' && $item[$key] !== null) {
+                    $converted[$key] = to_english_digits((string) $item[$key]);
+                }
+            }
+            if (! empty($converted)) {
+                $items[$i] = array_merge($item, $converted);
+            }
+        }
+        if (! empty($items)) {
+            $this->merge(['items' => $items]);
+        }
+    }
+
     public function rules(): array
     {
         return [

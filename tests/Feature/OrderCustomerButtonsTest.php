@@ -14,7 +14,7 @@ test('customer can view own order page', function (): void {
     $user->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->get(route('orders.show', $order->id));
+    $response = $this->actingAs($user)->get(route('orders.show', $order));
 
     $response->assertOk();
 });
@@ -26,7 +26,7 @@ test('non-owner cannot view order page', function (): void {
     $other->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $owner->id]);
 
-    $response = $this->actingAs($other)->get(route('orders.show', $order->id));
+    $response = $this->actingAs($other)->get(route('orders.show', $order));
 
     $response->assertForbidden();
 });
@@ -36,13 +36,13 @@ test('customer can submit payment notify', function (): void {
     $user->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('orders.payment-notify', $order->id), [
+    $response = $this->actingAs($user)->post(route('orders.payment-notify', $order), [
         'transfer_amount' => '100.50',
         'transfer_bank' => 'Test Bank',
         'transfer_notes' => 'Ref 123',
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
     expect($order->comments()->count())->toBe(1);
 });
@@ -52,7 +52,7 @@ test('non-owner cannot submit payment notify', function (): void {
     $other = User::factory()->create();
     $order = Order::factory()->create(['user_id' => $owner->id]);
 
-    $response = $this->actingAs($other)->post(route('orders.payment-notify', $order->id), [
+    $response = $this->actingAs($other)->post(route('orders.payment-notify', $order), [
         'transfer_amount' => '100',
         'transfer_bank' => 'Bank',
     ]);
@@ -74,11 +74,11 @@ test('customer can update shipping address', function (): void {
         'address' => 'Street 1',
     ]);
 
-    $response = $this->actingAs($user)->patch(route('orders.shipping-address.update', $order->id), [
+    $response = $this->actingAs($user)->patch(route('orders.shipping-address.update', $order), [
         'shipping_address_id' => $address->id,
     ]);
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $order->refresh();
     expect($order->shipping_address_id)->toBe($address->id);
     expect($order->timeline()->where('type', 'note')->count())->toBeGreaterThan(0);
@@ -89,9 +89,9 @@ test('customer can cancel order when pending', function (): void {
     $user->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
 
-    $response = $this->actingAs($user)->post(route('orders.cancel', $order->id));
+    $response = $this->actingAs($user)->post(route('orders.cancel', $order));
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('success');
     $order->refresh();
     expect($order->status)->toBe('cancelled');
@@ -103,9 +103,9 @@ test('customer cannot cancel order when not cancellable', function (): void {
     $user->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $user->id, 'status' => 'processing']);
 
-    $response = $this->actingAs($user)->post(route('orders.cancel', $order->id));
+    $response = $this->actingAs($user)->post(route('orders.cancel', $order));
 
-    $response->assertRedirect(route('orders.show', $order->id));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('error');
     $order->refresh();
     expect($order->status)->toBe('processing');
@@ -117,11 +117,11 @@ test('customer can request customer merge', function (): void {
     $orderA = Order::factory()->create(['user_id' => $user->id]);
     $orderB = Order::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('orders.customer-merge', $orderA->id), [
+    $response = $this->actingAs($user)->post(route('orders.customer-merge', $orderA), [
         'merge_with_order' => $orderB->id,
     ]);
 
-    $response->assertRedirect(route('orders.show', $orderA->id));
+    $response->assertRedirect(route('orders.show', $orderA));
     $response->assertSessionHas('success');
     expect($orderA->comments()->count())->toBe(1);
     expect($orderA->timeline()->where('type', 'merge')->count())->toBe(1);
@@ -133,7 +133,7 @@ test('non-owner cannot request customer merge', function (): void {
     $order = Order::factory()->create(['user_id' => $owner->id]);
     $otherOrder = Order::factory()->create(['user_id' => $other->id]);
 
-    $response = $this->actingAs($other)->post(route('orders.customer-merge', $order->id), [
+    $response = $this->actingAs($other)->post(route('orders.customer-merge', $order), [
         'merge_with_order' => $otherOrder->id,
     ]);
 

@@ -13,6 +13,15 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order): void {
+            if ($order->status_changed_at === null && $order->status !== null) {
+                $order->status_changed_at = now();
+            }
+        });
+    }
+
     protected $fillable = [
         'order_number',
         'user_id',
@@ -43,11 +52,13 @@ class Order extends Model
         'payment_date',
         'payment_method',
         'payment_receipt',
+        'status_changed_at',
     ];
 
     protected $casts = [
         'is_paid' => 'boolean',
         'paid_at' => 'datetime',
+        'status_changed_at' => 'datetime',
         'can_edit_until' => 'datetime',
         'merged_at' => 'datetime',
         'subtotal' => 'decimal:2',
@@ -100,6 +111,19 @@ class Order extends Model
     public function mergedInto(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'merged_into');
+    }
+
+    /**
+     * Route key for URL slugs (e.g. /orders/42548-85580).
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'order_number';
+    }
+
+    public function automationLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusAutomationLog::class);
     }
 
     public function statusLabel(): string

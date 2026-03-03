@@ -8,7 +8,6 @@ use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\OrderCommentController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\OrderFileController;
 use App\Http\Controllers\OrderMergeController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PageController;
@@ -49,6 +48,10 @@ Route::get('/offline', function () {
 
 Route::get('/go/{slug}', GoController::class)->name('go');
 
+// Legacy: redirect /order/{slug} → /orders/{slug} (WordPress used /order/; nginx should handle this too)
+Route::get('/order/{order}', fn (string $order) => redirect()->route('orders.show', $order, 301))
+    ->name('orders.show.legacy');
+
 // Public blog
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
@@ -74,36 +77,37 @@ Route::middleware('auth')->group(function () {
         ->name('orders.list-variant');
     Route::post('/orders/bulk', [OrderController::class, 'bulkUpdate'])->name('orders.bulk-update');
 
-    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{id}/comments', [OrderCommentController::class, 'store'])->name('orders.comments.store');
-    Route::patch('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'update'])->name('orders.comments.update');
-    Route::post('/orders/{orderId}/comments/{commentId}/attach-files', [OrderCommentController::class, 'attachFiles'])->name('orders.comments.attach-files');
-    Route::delete('/orders/{orderId}/comments/{commentId}', [OrderCommentController::class, 'destroy'])->name('orders.comments.destroy');
-    Route::post('/orders/{id}/status', [OrderStatusController::class, 'update'])->name('orders.status.update');
-    Route::post('/orders/{id}/mark-paid', [OrderStatusController::class, 'markPaid'])->name('orders.mark-paid');
-    Route::post('/orders/{id}/files', [OrderFileController::class, 'store'])->name('orders.files.store');
-    Route::post('/orders/{id}/prices', [OrderController::class, 'updatePrices'])->name('orders.prices.update');
-    Route::post('/orders/{id}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
-    Route::post('/orders/{id}/merge', OrderMergeController::class)->name('orders.merge');
-    Route::post('/orders/{orderId}/comments/{commentId}/notify', [OrderCommentController::class, 'sendNotification'])->name('orders.comments.notify');
-    Route::post('/orders/{orderId}/comments/{commentId}/log-whatsapp', [OrderCommentController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
-    Route::post('/orders/{orderId}/comments/mark-read', [OrderCommentController::class, 'markRead'])->name('orders.comments.mark-read');
-    Route::post('/orders/{id}/timeline/{timelineId}/add-as-comment', [OrderCommentController::class, 'addTimelineAsComment'])->name('orders.timeline.add-as-comment');
-    Route::patch('/orders/{id}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
-    Route::post('/orders/{id}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
+    Route::get('/orders/{order}/success', [OrderController::class, 'success'])->name('orders.success');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/comments', [OrderCommentController::class, 'store'])->name('orders.comments.store');
+    Route::patch('/orders/{order}/comments/{commentId}', [OrderCommentController::class, 'update'])->name('orders.comments.update');
+    Route::post('/orders/{order}/comments/{commentId}/attach-files', [OrderCommentController::class, 'attachFiles'])->name('orders.comments.attach-files');
+    Route::delete('/orders/{order}/comments/{commentId}', [OrderCommentController::class, 'destroy'])->name('orders.comments.destroy');
+    Route::post('/orders/{order}/status', [OrderStatusController::class, 'update'])->name('orders.status.update');
+    Route::post('/orders/{order}/mark-paid', [OrderStatusController::class, 'markPaid'])->name('orders.mark-paid');
+    Route::post('/orders/{order}/prices', [OrderController::class, 'updatePrices'])->name('orders.prices.update');
+    Route::post('/orders/{order}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
+    Route::post('/orders/{order}/merge', OrderMergeController::class)->name('orders.merge');
+    Route::post('/orders/{order}/comments/{commentId}/notify', [OrderCommentController::class, 'sendNotification'])->name('orders.comments.notify');
+    Route::post('/orders/{order}/comments/{commentId}/log-whatsapp', [OrderCommentController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
+    Route::post('/orders/{order}/comments/mark-read', [OrderCommentController::class, 'markRead'])->name('orders.comments.mark-read');
+    Route::post('/orders/{order}/timeline/{timelineId}/add-as-comment', [OrderCommentController::class, 'addTimelineAsComment'])->name('orders.timeline.add-as-comment');
+    Route::patch('/orders/{order}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.shipping-address.update');
+    Route::post('/orders/{order}/send-email', [OrderController::class, 'sendEmail'])->name('orders.send-email');
 
     // Customer quick actions
-    Route::post('/orders/{id}/payment-notify', [OrderController::class, 'paymentNotify'])->name('orders.payment-notify');
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
-    Route::post('/orders/{id}/customer-merge', [OrderController::class, 'customerMerge'])->name('orders.customer-merge');
+    Route::post('/orders/{order}/payment-notify', [OrderController::class, 'paymentNotify'])->name('orders.payment-notify');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::post('/orders/{order}/customer-merge', [OrderController::class, 'customerMerge'])->name('orders.customer-merge');
 
     // Staff quick actions
-    Route::post('/orders/{id}/transfer', [OrderController::class, 'transferOrder'])->name('orders.transfer');
-    Route::post('/orders/{id}/shipping-tracking', [OrderController::class, 'updateShippingTracking'])->name('orders.shipping-tracking');
-    Route::post('/orders/{id}/update-payment', [OrderController::class, 'updatePayment'])->name('orders.update-payment');
-    Route::patch('/orders/{id}/staff-notes', [OrderController::class, 'updateStaffNotes'])->name('orders.staff-notes.update');
-    Route::delete('/orders/{orderId}/product-image', [OrderController::class, 'deleteProductImage'])->name('orders.product-image.delete');
-    Route::get('/orders/{id}/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export-excel');
+    Route::post('/orders/{order}/transfer', [OrderController::class, 'transferOrder'])->name('orders.transfer');
+    Route::post('/orders/{order}/shipping-tracking', [OrderController::class, 'updateShippingTracking'])->name('orders.shipping-tracking');
+    Route::post('/orders/{order}/update-payment', [OrderController::class, 'updatePayment'])->name('orders.update-payment');
+    Route::patch('/orders/{order}/staff-notes', [OrderController::class, 'updateStaffNotes'])->name('orders.staff-notes.update');
+    Route::delete('/orders/{order}/product-image', [OrderController::class, 'deleteProductImage'])->name('orders.product-image.delete');
+    Route::post('/orders/{order}/items/{itemId}/files', [OrderController::class, 'storeItemFiles'])->name('orders.items.files.store');
+    Route::get('/orders/{order}/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export-excel');
 });
 
 Route::middleware('auth')->group(function () {
@@ -126,6 +130,7 @@ Route::middleware(['auth', 'can:view-all-orders'])->group(function () {
     Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
     Route::post('/inbox/mark-all-read', [InboxController::class, 'markAllRead'])->name('inbox.mark-all-read');
     Route::post('/inbox/{activity}/mark-read', [InboxController::class, 'markRead'])->name('inbox.mark-read');
+    Route::get('/activity-files/{activityFile}/download', [\App\Http\Controllers\ActivityFileController::class, 'download'])->name('activity-files.download');
 });
 
 Route::middleware('auth')->group(function () {

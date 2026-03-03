@@ -13,6 +13,53 @@ class GenerateInvoiceRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $numericKeys = [
+            'first_items_total', 'first_agent_fee', 'first_other_amount', 'first_total',
+            'second_product_value', 'second_agent_fee', 'second_shipping_cost',
+            'second_first_payment', 'second_remaining',
+            'custom_amount', 'fee_agent_fee', 'fee_local_shipping', 'fee_international_shipping',
+            'fee_photo_fee', 'fee_extra_packing',
+        ];
+        $merged = [];
+        foreach ($numericKeys as $key) {
+            if ($this->filled($key)) {
+                $merged[$key] = to_english_digits($this->input($key));
+            }
+        }
+        if (! empty($merged)) {
+            $this->merge($merged);
+        }
+
+        foreach (['first_extras', 'custom_lines', 'general_lines'] as $arrayKey) {
+            $arr = $this->input($arrayKey, []);
+            if (! is_array($arr)) {
+                continue;
+            }
+            $changed = false;
+            foreach ($arr as $i => $row) {
+                if (isset($row['amount']) && $row['amount'] !== '' && $row['amount'] !== null) {
+                    $arr[$i]['amount'] = to_english_digits((string) $row['amount']);
+                    $changed = true;
+                }
+            }
+            if ($changed) {
+                $this->merge([$arrayKey => $arr]);
+            }
+        }
+
+        $items = $this->input('items', []);
+        if (is_array($items)) {
+            foreach ($items as $i => $row) {
+                if (isset($row['unit_price']) && $row['unit_price'] !== '' && $row['unit_price'] !== null) {
+                    $items[$i]['unit_price'] = to_english_digits((string) $row['unit_price']);
+                }
+            }
+            $this->merge(['items' => $items]);
+        }
+    }
+
     public function rules(): array
     {
         $types = array_map(fn ($c) => $c->value, InvoiceType::cases());

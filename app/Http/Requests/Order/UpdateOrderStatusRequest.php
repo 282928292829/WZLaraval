@@ -16,6 +16,7 @@ class UpdateOrderStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', 'in:'.implode(',', array_keys(Order::getStatuses()))],
+            'comment' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }

@@ -12,18 +12,18 @@ use App\Models\OrderComment;
 use App\Models\OrderCommentRead;
 use App\Models\OrderTimeline;
 use App\Models\Setting;
+use App\Services\ImageConversionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 class OrderCommentController extends Controller
 {
-    public function store(StoreOrderCommentRequest $request, int $id)
+    public function store(StoreOrderCommentRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         if (! $isOwner && ! $isStaff) {
             abort(403);
@@ -39,19 +39,19 @@ class OrderCommentController extends Controller
 
         $comment = $order->comments()->create([
             'user_id' => $user->id,
-            'body' => $validated['body'],
+            'body' => $validated['body'] ?? '',
             'is_internal' => $isInternal,
         ]);
 
         foreach ($request->file('files', []) as $file) {
-            $path = $file->store('order-files/'.$order->id, 'public');
+            $stored = app(ImageConversionService::class)->storeForDisplay($file, 'order-files/'.$order->id, 'public');
             $order->files()->create([
                 'user_id' => $user->id,
                 'comment_id' => $comment->id,
-                'path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
+                'path' => $stored['path'],
+                'original_name' => $stored['original_name'],
+                'mime_type' => $stored['mime_type'],
+                'size' => $stored['size'],
                 'type' => 'comment',
             ]);
         }
@@ -70,27 +70,26 @@ class OrderCommentController extends Controller
                 'causer_id' => $user->id,
                 'data' => [
                     'order_number' => $order->order_number,
-                    'note' => \Illuminate\Support\Str::limit($validated['body'], 100),
+                    'note' => \Illuminate\Support\Str::limit($validated['body'] ?? '', 100),
                 ],
                 'created_at' => now(),
             ]);
         }
 
-        return redirect()->route('orders.show', $order->id)->with('success', __('orders.comment_added'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.comment_added'));
     }
 
-    public function update(UpdateOrderCommentRequest $request, int $orderId, int $commentId)
+    public function update(UpdateOrderCommentRequest $request, Order $order, int $commentId)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($orderId);
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
 
         if ($comment->is_system) {
             abort(403, __('orders.cannot_edit_system_comment'));
         }
 
         $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
         $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
 
         if (! $canEdit) {
@@ -112,14 +111,14 @@ class OrderCommentController extends Controller
         ]);
 
         foreach ($request->file('files', []) as $file) {
-            $path = $file->store('order-files/'.$order->id, 'public');
+            $stored = app(ImageConversionService::class)->storeForDisplay($file, 'order-files/'.$order->id, 'public');
             $order->files()->create([
                 'user_id' => $user->id,
                 'comment_id' => $comment->id,
-                'path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
+                'path' => $stored['path'],
+                'original_name' => $stored['original_name'],
+                'mime_type' => $stored['mime_type'],
+                'size' => $stored['size'],
                 'type' => 'comment',
             ]);
         }
@@ -133,21 +132,20 @@ class OrderCommentController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.comment_updated'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.comment_updated'));
     }
 
-    public function attachFiles(AttachCommentFilesRequest $request, int $orderId, int $commentId)
+    public function attachFiles(AttachCommentFilesRequest $request, Order $order, int $commentId)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($orderId);
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
 
         if ($comment->is_system) {
             abort(403, __('orders.cannot_edit_system_comment'));
         }
 
         $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
         $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
 
         if (! $canEdit) {
@@ -172,14 +170,14 @@ class OrderCommentController extends Controller
         $uploaded = [];
 
         foreach ($request->file('files', []) as $file) {
-            $path = $file->store('order-files/'.$order->id, 'public');
+            $stored = app(ImageConversionService::class)->storeForDisplay($file, 'order-files/'.$order->id, 'public');
             $orderFile = $order->files()->create([
                 'user_id' => $user->id,
                 'comment_id' => $comment->id,
-                'path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
+                'path' => $stored['path'],
+                'original_name' => $stored['original_name'],
+                'mime_type' => $stored['mime_type'],
+                'size' => $stored['size'],
                 'type' => 'comment',
             ]);
             $uploaded[] = [
@@ -208,13 +206,13 @@ class OrderCommentController extends Controller
         return redirect()->back()->with('success', $message);
     }
 
-    public function destroy(Request $request, int $orderId, int $commentId)
+    public function destroy(Request $request, Order $order, int $commentId)
     {
         $user = auth()->user();
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
 
         $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         if (! $isOwner && ! ($isStaff && $user->can('delete-any-comment'))) {
             abort(403);
@@ -223,23 +221,22 @@ class OrderCommentController extends Controller
         $comment->update(['deleted_by' => $user->id]);
         $comment->delete();
 
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.comment_deleted'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.comment_deleted'));
     }
 
-    public function sendNotification(Request $request, int $orderId, int $commentId)
+    public function sendNotification(Request $request, Order $order, int $commentId)
     {
         $this->authorize('send-comment-notification');
 
-        $comment = OrderComment::where('order_id', $orderId)->with('order.user')->findOrFail($commentId);
-        $order = $comment->order;
+        $comment = OrderComment::where('order_id', $order->id)->with('order.user')->findOrFail($commentId);
 
         if (! Setting::get('email_enabled', false)) {
-            return redirect()->route('orders.show', $orderId)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.notification_email_disabled'));
         }
 
         if (! $order->user || ! $order->user->email) {
-            return redirect()->route('orders.show', $orderId)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.notification_no_recipient'));
         }
 
@@ -249,7 +246,7 @@ class OrderCommentController extends Controller
                 ->queue(new \App\Mail\CommentNotification($comment));
 
             \App\Models\OrderCommentNotificationLog::create([
-                'order_id' => $orderId,
+                'order_id' => $order->id,
                 'comment_id' => $commentId,
                 'user_id' => auth()->id(),
                 'channel' => 'email',
@@ -262,30 +259,29 @@ class OrderCommentController extends Controller
                 'body' => __('orders.timeline_notification_sent', ['email' => $order->user->email]),
             ]);
 
-            return redirect()->route('orders.show', $orderId)
+            return redirect()->route('orders.show', $order)
                 ->with('success', __('orders.notification_queued'));
         } catch (\Throwable $e) {
-            return redirect()->route('orders.show', $orderId)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.notification_failed').': '.$e->getMessage());
         }
     }
 
-    public function logWhatsAppSend(Request $request, int $orderId, int $commentId): \Illuminate\Http\JsonResponse
+    public function logWhatsAppSend(Request $request, Order $order, int $commentId): \Illuminate\Http\JsonResponse
     {
         $this->authorize('send-comment-notification');
 
-        $comment = OrderComment::where('order_id', $orderId)->findOrFail($commentId);
+        $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
         if ($comment->is_internal) {
             return response()->json(['success' => false, 'message' => __('orders.cannot_notify_internal')], 422);
         }
 
-        $order = $comment->order;
         if (! $order->user || ! preg_match('/[0-9]/', (string) $order->user->phone)) {
             return response()->json(['success' => false, 'message' => __('orders.whatsapp_no_phone')], 422);
         }
 
         \App\Models\OrderCommentNotificationLog::create([
-            'order_id' => $orderId,
+            'order_id' => $order->id,
             'comment_id' => $commentId,
             'user_id' => auth()->id(),
             'channel' => 'whatsapp',
@@ -295,14 +291,13 @@ class OrderCommentController extends Controller
         return response()->json(['success' => true, 'message' => __('orders.whatsapp_send_logged')]);
     }
 
-    public function addTimelineAsComment(Request $request, int $orderId, int $timelineId)
+    public function addTimelineAsComment(Request $request, Order $order, int $timelineId)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
-        $order = Order::findOrFail($orderId);
         $entry = $order->timeline()->findOrFail($timelineId);
 
         $body = $this->formatTimelineEntryAsCommentText($entry);
@@ -313,15 +308,15 @@ class OrderCommentController extends Controller
             'is_internal' => false,
         ]);
 
-        return redirect()->route('orders.show', $orderId)->with('success', __('orders.timeline_added_as_comment'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.timeline_added_as_comment'));
     }
 
-    public function markRead(Request $request, int $orderId): \Illuminate\Http\JsonResponse
+    public function markRead(Request $request, Order $order): \Illuminate\Http\JsonResponse
     {
         $user = auth()->user();
-        $order = Order::with('comments')->findOrFail($orderId);
+        $order->load('comments');
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
         if (! $isOwner && ! $isStaff) {
             return response()->json(['success' => false], 403);
         }
