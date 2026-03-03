@@ -268,3 +268,32 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - IMPORTANT: Activate `tailwindcss-development` every time you're working with a Tailwind CSS or styling-related task.
 
 </laravel-boost-guidelines>
+
+## Cursor Cloud specific instructions
+
+### Product overview
+
+Wasetzon is a bilingual (Arabic/English) e-commerce order management platform rebuilt from WordPress to Laravel 12 (TALL stack). The Filament 4 admin panel is at `/admin`.
+
+### Services
+
+| Service | Command | Notes |
+|---------|---------|-------|
+| PHP dev server | `php artisan serve --host=0.0.0.0 --port=8000` | Or use `composer run dev` for server + queue + pail + vite concurrently |
+| Vite (frontend HMR) | `npm run dev` | Required for live CSS/JS changes |
+| Queue worker | `php artisan queue:listen --tries=1 --timeout=0` | Included in `composer run dev` |
+| Tests | `php artisan test --compact` | Pest 4; 1 pre-existing failure in `OrderControllerAuthTest` (CSV export content-type mismatch) |
+| Lint | `vendor/bin/pint --dirty --format agent` | Fix style issues before committing |
+| Build assets | `npm run build` | Run after CSS/JS changes if not using `npm run dev` |
+
+### Database
+
+Dev uses **SQLite** (`database/database.sqlite`). No MySQL/Redis needed locally. After fresh migration, run `php artisan db:seed` to seed roles, permissions, settings, currencies, shipping companies, and pages.
+
+### Non-obvious caveats
+
+- The `.env.example` defaults to `DB_CONNECTION=sqlite` with `database` driver for cache/queue/session. No external services required for dev.
+- The `composer run setup` script handles full setup: composer install, .env copy, key:generate, migrate, npm install, npm run build.
+- The Herd rules in AGENTS.md reference Laravel Herd (local Mac dev tool) which is irrelevant in Cloud environments. Use `php artisan serve` instead.
+- The registration form has no name field (only email, password, password confirmation).
+- The test suite has a known pre-existing failure: `OrderControllerAuthTest > editor can export orders` (content-type assertion mismatch). This is not caused by environment setup.
