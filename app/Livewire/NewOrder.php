@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserActivityLog;
 use App\Services\CommissionCalculator;
+use App\Services\ImageConversionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
@@ -55,16 +56,6 @@ class NewOrder extends Component
 
     /** Set by ?product_url=... — pre-fills the first item's URL field */
     public string $productUrl = '';
-
-    /** Triggers full-page success screen after order creation */
-    public bool $showSuccessScreen = false;
-
-    public ?int $createdOrderId = null;
-
-    public string $createdOrderNumber = '';
-
-    /** Seconds before auto-redirect on success screen (clamped 0–120) */
-    public int $successRedirectSeconds = 45;
 
     // Guest login modal
     public bool $showLoginModal = false;
@@ -177,7 +168,8 @@ class NewOrder extends Component
     private function redirectToOrderWithError(int $orderId, string $message): void
     {
         session()->flash('error', $message);
-        $this->redirect(route('orders.show', $orderId));
+        $order = Order::find($orderId);
+        $this->redirect($order ? route('orders.show', $order) : route('orders.index'));
     }
 
     /**
@@ -186,7 +178,7 @@ class NewOrder extends Component
     private function prefillFromDuplicate(int $orderId): void
     {
         $user = Auth::user();
-        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         $order = Order::with('items')
             ->where('id', $orderId)
@@ -309,7 +301,7 @@ class NewOrder extends Component
         }
 
         $user = Auth::user();
-        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         // Per-hour limit
         $hourlyLimit = $isStaff
@@ -466,21 +458,19 @@ class NewOrder extends Component
                     if (! $file) {
                         continue;
                     }
-                    $path = $file->store("orders/{$order->id}", 'public');
-                    $origName = $file->getClientOriginalName();
-                    $mime = $file->getMimeType();
-                    $size = $file->getSize();
+                    $stored = app(ImageConversionService::class)->storeForDisplay($file, "orders/{$order->id}", 'public');
                     if ($firstPath === null) {
-                        $firstPath = $path;
-                        $orderItem->update(['image_path' => $path]);
+                        $firstPath = $stored['path'];
+                        $orderItem->update(['image_path' => $stored['path']]);
                     }
                     OrderFile::create([
                         'order_id' => $order->id,
+                        'order_item_id' => $orderItem->id,
                         'user_id' => Auth::id(),
-                        'path' => $path,
-                        'original_name' => $origName,
-                        'mime_type' => $mime,
-                        'size' => $size,
+                        'path' => $stored['path'],
+                        'original_name' => $stored['original_name'],
+                        'mime_type' => $stored['mime_type'],
+                        'size' => $stored['size'],
                         'type' => 'product_image',
                     ]);
                 }
@@ -539,22 +529,20 @@ class NewOrder extends Component
                 ],
             ]);
 
-            $this->createdOrderId = $createdOrder->id;
-            $this->createdOrderNumber = $createdOrder->order_number;
-
-            // Count total orders for this user (to decide success screen vs toast)
+            // Redirect: success page (first N orders) or direct to order page
+            $enabled = (bool) Setting::get('order_success_screen_enabled', true);
+            $threshold = max(0, (int) Setting::get('order_success_screen_threshold', 10));
             $totalOrders = Order::where('user_id', Auth::id())->count();
-            $threshold = max(0, (int) Setting::get('order_success_screen_threshold', 1000));
 
-            if ($totalOrders <= $threshold) {
-                $this->showSuccessScreen = true;
-                $this->successRedirectSeconds = max(0, min(120, (int) Setting::get('order_success_redirect_seconds', 45)));
+            $showSuccessPage = $enabled && $totalOrders <= $threshold;
+
+            if ($showSuccessPage) {
+                $this->redirectRoute('orders.success', $createdOrder);
             } else {
-                // Toast + immediate redirect for experienced users
                 session()->flash('success', __('order.created_successfully', [
                     'number' => $createdOrder->order_number,
                 ]));
-                $this->redirectRoute('orders.show', $createdOrder->id);
+                $this->redirectRoute('orders.show', $createdOrder);
             }
         }
     }
@@ -642,21 +630,19 @@ class NewOrder extends Component
                     if (! $file) {
                         continue;
                     }
-                    $path = $file->store("orders/{$order->id}", 'public');
-                    $origName = $file->getClientOriginalName();
-                    $mime = $file->getMimeType();
-                    $size = $file->getSize();
+                    $stored = app(ImageConversionService::class)->storeForDisplay($file, "orders/{$order->id}", 'public');
                     if ($firstPath === null) {
-                        $firstPath = $path;
-                        $orderItem->update(['image_path' => $path]);
+                        $firstPath = $stored['path'];
+                        $orderItem->update(['image_path' => $stored['path']]);
                     }
                     OrderFile::create([
                         'order_id' => $order->id,
+                        'order_item_id' => $orderItem->id,
                         'user_id' => Auth::id(),
-                        'path' => $path,
-                        'original_name' => $origName,
-                        'mime_type' => $mime,
-                        'size' => $size,
+                        'path' => $stored['path'],
+                        'original_name' => $stored['original_name'],
+                        'mime_type' => $stored['mime_type'],
+                        'size' => $stored['size'],
                         'type' => 'product_image',
                     ]);
                 }
@@ -687,7 +673,7 @@ class NewOrder extends Component
         });
 
         session()->flash('success', __('orders.edit_saved_successfully', ['number' => $order->order_number]));
-        $this->redirect(route('orders.show', $order->id));
+        $this->redirect(route('orders.show', $order));
     }
 
     /**

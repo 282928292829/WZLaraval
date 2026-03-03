@@ -8,6 +8,7 @@ use App\Http\Requests\Order\BulkUpdateOrdersRequest;
 use App\Http\Requests\Order\CustomerMergeRequestRequest;
 use App\Http\Requests\Order\GenerateInvoiceRequest;
 use App\Http\Requests\Order\PaymentNotifyRequest;
+use App\Http\Requests\Order\StoreOrderItemFilesRequest;
 use App\Http\Requests\Order\TransferOrderRequest;
 use App\Http\Requests\Order\UpdatePaymentRequest;
 use App\Http\Requests\Order\UpdatePricesRequest;
@@ -24,6 +25,7 @@ use App\Models\Setting;
 use App\Models\UserActivityLog;
 use App\Models\UserAddress;
 use App\Services\CommissionCalculator;
+use App\Services\ImageConversionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -33,24 +35,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
-    public function show(Request $request, int $id)
+    public function show(Request $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::with([
+        $order->loadMissing([
             'user',
+            'mergedInto',
             'items' => fn ($q) => $q->orderBy('sort_order'),
             'files' => fn ($q) => $q->orderBy('created_at'),
             'timeline' => fn ($q) => $q->with('user')->orderBy('created_at'),
             'comments' => fn ($q) => $q
                 ->with(['user', 'edits.editor', 'reads.user', 'notificationLogs.user'])
-                ->when(auth()->user()?->hasAnyRole(['staff', 'admin', 'superadmin']), fn ($q) => $q->withTrashed())
+                ->when(auth()->user()?->isStaffOrAbove(), fn ($q) => $q->withTrashed())
                 ->orderBy('created_at'),
-        ])->findOrFail($id);
+        ]);
 
         $this->authorize('view', $order);
 
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         // Read state is recorded by viewport-based tracking (JS), not on page load (matches WordPress).
 
@@ -117,13 +120,51 @@ class OrderController extends Controller
         ));
     }
 
+    /**
+     * Order success page — shown after new order submission for first N orders per customer.
+     * Configurable via Settings: enable/disable, threshold (N), countdown seconds, and all text.
+     */
+    public function success(Order $order)
+    {
+        $this->authorize('view', $order);
+
+        $locale = app()->getLocale();
+        $seconds = max(0, min(120, (int) Setting::get('order_success_redirect_seconds', 30)));
+
+        $titleRaw = trim((string) Setting::get('order_success_title_'.$locale, ''));
+        $title = $titleRaw !== '' ? $titleRaw : __('order.success_title');
+
+        $subtitleRaw = trim((string) Setting::get('order_success_subtitle_'.$locale, ''));
+        $subtitle = $subtitleRaw !== ''
+            ? str_replace([':number', ':order_number'], $order->order_number, $subtitleRaw)
+            : __('order.success_subtitle', ['number' => $order->order_number]);
+
+        $messageRaw = trim((string) Setting::get('order_success_message_'.$locale, ''));
+        $message = $messageRaw !== ''
+            ? str_replace([':number', ':order_number'], $order->order_number, $messageRaw)
+            : __('order.success_message');
+
+        $goToOrderRaw = trim((string) Setting::get('order_success_go_to_order_'.$locale, ''));
+        $goToOrder = $goToOrderRaw !== '' ? $goToOrderRaw : __('order.success_go_to_order');
+
+        $prefixRaw = trim((string) Setting::get('order_success_redirect_prefix_'.$locale, ''));
+        $prefix = $prefixRaw !== '' ? $prefixRaw : __('order.success_redirect_countdown_prefix');
+
+        $suffixRaw = trim((string) Setting::get('order_success_redirect_suffix_'.$locale, ''));
+        $suffix = $suffixRaw !== '' ? $suffixRaw : __('order.success_redirect_countdown_suffix');
+
+        return view('orders.success', compact(
+            'order', 'title', 'subtitle', 'message', 'goToOrder', 'prefix', 'suffix', 'seconds'
+        ));
+    }
+
     // ─── Staff: update prices on items ───────────────────────────────────
 
-    public function updatePrices(UpdatePricesRequest $request, int $id)
+    public function updatePrices(UpdatePricesRequest $request, Order $order)
     {
         $this->authorize('edit-prices');
 
-        $order = Order::with('items')->findOrFail($id);
+        $order->load('items');
         $validated = $request->validated();
 
         foreach ($validated['items'] as $itemData) {
@@ -145,16 +186,23 @@ class OrderController extends Controller
             'body' => __('orders.timeline_prices_updated'),
         ]);
 
-        return redirect()->route('orders.show', $id)->with('success', __('orders.prices_updated'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.prices_updated'));
     }
 
     // ─── Staff: generate invoice (PDF attached to comment) ─────────────────
 
-    public function generateInvoice(GenerateInvoiceRequest $request, int $id)
+    /**
+     * Generate an invoice PDF and optionally attach it to a comment.
+     *
+     * Note: PDF is built synchronously. For heavy invoices (Items Cost / General with many
+     * lines, or 'both' language), consider queueing PDF generation to avoid request timeouts.
+     * A queued job would need to notify staff when ready (e.g. via comment or download link).
+     */
+    public function generateInvoice(GenerateInvoiceRequest $request, Order $order)
     {
         $this->authorize('generate-pdf-invoice');
 
-        $order = Order::with(['items', 'user'])->findOrFail($id);
+        $order->load(['items', 'user']);
         $validated = $request->validated();
         $action = $validated['action'] ?? 'publish';
 
@@ -212,7 +260,7 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('orders.show', $id)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.invoice_generation_failed'));
         }
 
@@ -288,7 +336,7 @@ class OrderController extends Controller
             }
         }
 
-        return redirect()->route('orders.show', $id)->with('success', __('orders.invoice_generated'));
+        return redirect()->route('orders.show', $order)->with('success', __('orders.invoice_generated'));
     }
 
     /** @return array<string, mixed> */
@@ -767,13 +815,12 @@ class OrderController extends Controller
 
     // ─── Update shipping address on order ────────────────────────────────
 
-    public function updateShippingAddress(UpdateShippingAddressRequest $request, int $id)
+    public function updateShippingAddress(UpdateShippingAddressRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
         $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->hasAnyRole(['staff', 'admin', 'superadmin']);
+        $isStaff = $user->isStaffOrAbove();
 
         if (! $isOwner && ! $isStaff) {
             abort(403);
@@ -782,7 +829,7 @@ class OrderController extends Controller
         // Only allow change while order is in an editable state
         $editableStatuses = ['pending', 'needs_payment', 'on_hold'];
         if (! in_array($order->status, $editableStatuses)) {
-            return redirect()->route('orders.show', $id)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.address_change_not_allowed'));
         }
 
@@ -810,7 +857,7 @@ class OrderController extends Controller
             ]),
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.address_updated'));
     }
 
@@ -823,7 +870,7 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
@@ -837,7 +884,7 @@ class OrderController extends Controller
     public function indexVariant(Request $request, string $variant)
     {
         $user = auth()->user();
-        if ($user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if ($user->isStaffOrAbove()) {
             return redirect()->route('orders.index');
         }
 
@@ -949,15 +996,40 @@ class OrderController extends Controller
         $validated = $request->validated();
 
         $count = count($validated['order_ids']);
+        $orders = Order::whereIn('id', $validated['order_ids'])->with('user')->get();
 
         if (in_array($validated['new_status'], ['cancelled', 'shipped', 'delivered'])) {
-            $orders = Order::whereIn('id', $validated['order_ids'])->with('user')->get();
             foreach ($orders as $order) {
                 \App\Models\AdCampaign::incrementForOrderStatus($order, $validated['new_status']);
             }
         }
 
-        Order::whereIn('id', $validated['order_ids'])->update(['status' => $validated['new_status']]);
+        $commentBody = isset($validated['comment']) ? trim($validated['comment']) : null;
+        $hasComment = $commentBody !== null && $commentBody !== '';
+
+        foreach ($orders as $order) {
+            $oldStatus = $order->status;
+            $order->update([
+                'status' => $validated['new_status'],
+                'status_changed_at' => now(),
+            ]);
+
+            if ($hasComment) {
+                $order->comments()->create([
+                    'user_id' => auth()->id(),
+                    'body' => $commentBody,
+                    'is_internal' => false,
+                ]);
+            }
+
+            $order->timeline()->create([
+                'user_id' => auth()->id(),
+                'type' => 'status_change',
+                'status_from' => $oldStatus,
+                'status_to' => $validated['new_status'],
+                'body' => null,
+            ]);
+        }
 
         return back()->with('success', __('orders.bulk_status_updated', ['count' => $count]));
     }
@@ -1019,15 +1091,15 @@ class OrderController extends Controller
      * POST /orders/{id}/send-email
      * Staff-only: manually send an order confirmation email for a given order.
      */
-    public function sendEmail(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function sendEmail(Request $request, Order $order): \Illuminate\Http\JsonResponse
     {
         $staff = auth()->user();
 
-        if (! $staff->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $staff->isStaffOrAbove()) {
             abort(403);
         }
 
-        $order = Order::with('user', 'items')->findOrFail($id);
+        $order->load(['user', 'items']);
 
         if (! $order->user || ! $order->user->email) {
             return response()->json([
@@ -1086,10 +1158,9 @@ class OrderController extends Controller
     // ─── Customer quick actions ───────────────────────────────────────────────
 
     /** Customer: report a bank transfer / payment notification → creates a comment */
-    public function paymentNotify(PaymentNotifyRequest $request, int $id)
+    public function paymentNotify(PaymentNotifyRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
         if ($order->user_id !== $user->id) {
             abort(403);
@@ -1097,9 +1168,12 @@ class OrderController extends Controller
 
         $validated = $request->validated();
 
-        $bankLabel = $validated['transfer_bank'] === 'other'
-            ? __('orders.bank_other')
-            : __('orders.banks.'.$validated['transfer_bank']);
+        $bankLabel = match ($validated['transfer_bank']) {
+            'other' => __('orders.bank_other'),
+            'visa_mastercard' => __('orders.payment_method_visa_mastercard'),
+            'international_bank_transfer' => __('orders.payment_method_international_bank_transfer'),
+            default => __('orders.banks.'.$validated['transfer_bank']),
+        };
 
         $body = __('orders.payment_notify_comment', [
             'amount' => $validated['transfer_amount'],
@@ -1110,11 +1184,33 @@ class OrderController extends Controller
             $body .= "\n".__('orders.payment_notify_notes').': '.$validated['transfer_notes'];
         }
 
-        $order->comments()->create([
+        $comment = $order->comments()->create([
             'user_id' => $user->id,
             'body' => $body,
             'is_internal' => false,
         ]);
+
+        $maxFiles = max(0, (int) Setting::get('payment_notify_order_max_files', 5));
+        $receiptFiles = $request->file('receipts', []);
+        if (count($receiptFiles) > $maxFiles) {
+            $receiptFiles = array_slice($receiptFiles, 0, $maxFiles);
+            session()->flash('payment_notify_max_exceeded', __('payment_notify.max_files_exceeded'));
+        }
+        if (count($receiptFiles) > 0) {
+            $imageService = app(ImageConversionService::class);
+            foreach ($receiptFiles as $file) {
+                $stored = $imageService->storeForDisplay($file, 'order-files/'.$order->id, 'public');
+                $order->files()->create([
+                    'user_id' => $user->id,
+                    'comment_id' => $comment->id,
+                    'path' => $stored['path'],
+                    'original_name' => $stored['original_name'],
+                    'mime_type' => $stored['mime_type'],
+                    'size' => $stored['size'],
+                    'type' => 'receipt',
+                ]);
+            }
+        }
 
         $order->timeline()->create([
             'user_id' => $user->id,
@@ -1122,27 +1218,29 @@ class OrderController extends Controller
             'body' => __('orders.timeline_payment_notify', ['amount' => $validated['transfer_amount']]),
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.payment_notify_sent'));
     }
 
     /** Customer: cancel own order (only when pending or needs_payment) */
-    public function cancelOrder(Request $request, int $id)
+    public function cancelOrder(Request $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
         if ($order->user_id !== $user->id) {
             abort(403);
         }
 
         if (! $order->isCancellable()) {
-            return redirect()->route('orders.show', $id)
+            return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.cancel_not_allowed'));
         }
 
         $oldStatus = $order->status;
-        $order->update(['status' => 'cancelled']);
+        $order->update([
+            'status' => 'cancelled',
+            'status_changed_at' => now(),
+        ]);
 
         \App\Models\AdCampaign::incrementCancelledForOrder($order);
 
@@ -1153,15 +1251,14 @@ class OrderController extends Controller
             'status_to' => 'cancelled',
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.cancelled_by_customer'));
     }
 
     /** Customer: request merge with another of their own orders → posts a comment */
-    public function customerMerge(CustomerMergeRequestRequest $request, int $id)
+    public function customerMerge(CustomerMergeRequestRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
         if ($order->user_id !== $user->id) {
             abort(403);
@@ -1187,19 +1284,19 @@ class OrderController extends Controller
             'body' => __('orders.timeline_customer_merge_request', ['number' => $targetOrder->order_number]),
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.customer_merge_sent'));
     }
 
     // ─── Staff quick actions ──────────────────────────────────────────────────
 
     /** Staff: transfer order ownership to another customer by email */
-    public function transferOrder(TransferOrderRequest $request, int $id)
+    public function transferOrder(TransferOrderRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::with('user')->findOrFail($id);
+        $order->load('user');
 
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
@@ -1241,7 +1338,7 @@ class OrderController extends Controller
                 ]),
             ]);
 
-            return redirect()->route('orders.show', $id)
+            return redirect()->route('orders.show', $order)
                 ->with('transfer_new_user', ['email' => $validated['transfer_email'], 'password' => $tempPass]);
         }
 
@@ -1257,17 +1354,16 @@ class OrderController extends Controller
             ]),
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.order_transferred'));
     }
 
     /** Staff: update tracking number and shipping company */
-    public function updateShippingTracking(UpdateTrackingRequest $request, int $id)
+    public function updateShippingTracking(UpdateTrackingRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
@@ -1283,17 +1379,16 @@ class OrderController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.tracking_updated'));
     }
 
     /** Staff: record payment details (amount, date, method, receipt) */
-    public function updatePayment(UpdatePaymentRequest $request, int $id)
+    public function updatePayment(UpdatePaymentRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
@@ -1301,17 +1396,28 @@ class OrderController extends Controller
 
         $data = collect($validated)->except('payment_receipts')->toArray();
 
-        foreach ($request->file('payment_receipts', []) as $file) {
-            $path = $file->store('payment-receipts', 'public');
-            $order->files()->create([
+        $receiptFiles = $request->file('payment_receipts', []);
+
+        if (count($receiptFiles) > 0) {
+            $comment = $order->comments()->create([
                 'user_id' => $user->id,
-                'comment_id' => null,
-                'path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'type' => 'payment_receipt',
+                'body' => __('orders.payment_receipt_comment'),
+                'is_internal' => false,
             ]);
+
+            $imageService = app(ImageConversionService::class);
+            foreach ($receiptFiles as $file) {
+                $stored = $imageService->storeForDisplay($file, 'order-files/'.$order->id, 'public');
+                $order->files()->create([
+                    'user_id' => $user->id,
+                    'comment_id' => $comment->id,
+                    'path' => $stored['path'],
+                    'original_name' => $stored['original_name'],
+                    'mime_type' => $stored['mime_type'],
+                    'size' => $stored['size'],
+                    'type' => 'receipt',
+                ]);
+            }
         }
 
         $order->update($data);
@@ -1324,17 +1430,16 @@ class OrderController extends Controller
             ]),
         ]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.payment_updated'));
     }
 
     /** Staff: update internal notes about this order/customer */
-    public function updateStaffNotes(UpdateStaffNotesRequest $request, int $id)
+    public function updateStaffNotes(UpdateStaffNotesRequest $request, Order $order)
     {
         $user = auth()->user();
-        $order = Order::findOrFail($id);
 
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
@@ -1342,52 +1447,118 @@ class OrderController extends Controller
 
         $order->update(['staff_notes' => $validated['staff_notes'] ?? null]);
 
-        return redirect()->route('orders.show', $id)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.staff_notes_saved'));
     }
 
-    /** Staff: delete product image (from order_items.image_path or order_files) */
-    public function deleteProductImage(Request $request, int $orderId)
+    /** Staff or customer (if allowed): add files to an order item */
+    public function storeItemFiles(StoreOrderItemFilesRequest $request, Order $order, int $itemId)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
-            abort(403);
+        $this->authorize('view', $order);
+
+        $item = OrderItem::where('order_id', $order->id)->findOrFail($itemId);
+
+        $isStaff = $user->isStaffOrAbove();
+        $isOwner = $order->user_id === $user->id;
+        $customerCanAdd = (bool) Setting::get('customer_can_add_files_after_submit', false);
+
+        $wantsJson = $request->expectsJson() || $request->ajax();
+
+        if (! $isStaff && ! ($isOwner && $customerCanAdd)) {
+            $msg = __('orders.item_files_upload_failed');
+
+            return $wantsJson
+                ? response()->json(['success' => false, 'message' => $msg], 403)
+                : redirect()->route('orders.show', $order)->with('error', $msg);
         }
 
-        $order = Order::findOrFail($orderId);
+        $maxPerItem = max(1, (int) Setting::get('max_files_per_item_after_submit', 5));
+        $currentCount = ($item->image_path ? 1 : 0) + $order->files()->where('order_item_id', $itemId)->count();
+        $newCount = count($request->file('files', []));
+
+        if ($currentCount + $newCount > $maxPerItem) {
+            $msg = __('orders.item_file_limit_reached', ['max' => $maxPerItem]);
+
+            return $wantsJson
+                ? response()->json(['success' => false, 'message' => $msg], 422)
+                : redirect()->route('orders.show', $order)->with('error', $msg);
+        }
+
+        try {
+            foreach ($request->file('files', []) as $file) {
+                $stored = app(\App\Services\ImageConversionService::class)->storeForDisplay($file, "orders/{$order->id}", 'public');
+                $order->files()->create([
+                    'order_id' => $order->id,
+                    'order_item_id' => $item->id,
+                    'user_id' => $user->id,
+                    'comment_id' => null,
+                    'path' => $stored['path'],
+                    'original_name' => $stored['original_name'],
+                    'mime_type' => $stored['mime_type'],
+                    'size' => $stored['size'],
+                    'type' => 'product_image',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Order item file upload failed', ['order_id' => $order->id, 'item_id' => $itemId, 'error' => $e->getMessage()]);
+            $msg = __('orders.item_files_upload_failed');
+
+            return $wantsJson
+                ? response()->json(['success' => false, 'message' => $msg], 500)
+                : redirect()->route('orders.show', $order)->with('error', $msg);
+        }
+
+        $msg = __('orders.item_files_uploaded');
+
+        return $wantsJson
+            ? response()->json(['success' => true, 'message' => $msg])
+            : redirect()->route('orders.show', $order)->with('success', $msg);
+    }
+
+    /** Staff: delete product image (from order_items.image_path or order_files) */
+    public function deleteProductImage(Request $request, Order $order)
+    {
+        $user = auth()->user();
+        if (! $user->isStaffOrAbove()) {
+            abort(403);
+        }
 
         $itemId = $request->input('item_id');
         $fileId = $request->input('file_id');
 
         if ($itemId) {
-            $item = OrderItem::where('order_id', $orderId)->findOrFail($itemId);
+            $item = OrderItem::where('order_id', $order->id)->findOrFail($itemId);
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
                 $item->update(['image_path' => null]);
             }
         } elseif ($fileId) {
-            $file = OrderFile::where('order_id', $orderId)
+            $file = OrderFile::where('order_id', $order->id)
                 ->where('type', 'product_image')
                 ->findOrFail($fileId);
             Storage::disk('public')->delete($file->path);
+            OrderItem::where('order_id', $order->id)
+                ->where('image_path', $file->path)
+                ->update(['image_path' => null]);
             $file->delete();
         } else {
             abort(400, __('orders.delete_image_param_required'));
         }
 
-        return redirect()->route('orders.show', $orderId)
+        return redirect()->route('orders.show', $order)
             ->with('success', __('orders.product_image_deleted'));
     }
 
     /** Staff: export single order to Excel (links, specs, image URLs) */
-    public function exportExcel(int $id)
+    public function exportExcel(Order $order)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['staff', 'admin', 'superadmin'])) {
+        if (! $user->isStaffOrAbove()) {
             abort(403);
         }
 
-        $order = Order::with(['items' => fn ($q) => $q->orderBy('sort_order'), 'files'])->findOrFail($id);
+        $order->load(['items' => fn ($q) => $q->orderBy('sort_order'), 'files']);
         $this->authorize('view', $order);
 
         $filename = 'order-'.$order->order_number.'-'.now()->format('Y-m-d').'.xlsx';

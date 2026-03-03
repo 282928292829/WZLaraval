@@ -70,7 +70,7 @@ test('edit param redirects when order edit disabled', function (): void {
 
     Livewire::actingAs($user)
         ->test(NewOrder::class, ['edit' => $order->id])
-        ->assertRedirect(route('orders.show', $order->id));
+        ->assertRedirect(route('orders.show', $order));
 });
 
 test('edit param redirects when order is paid', function (): void {
@@ -84,7 +84,7 @@ test('edit param redirects when order is paid', function (): void {
 
     Livewire::actingAs($user)
         ->test(NewOrder::class, ['edit' => $order->id])
-        ->assertRedirect(route('orders.show', $order->id));
+        ->assertRedirect(route('orders.show', $order));
 });
 
 test('edit param redirects when not owner', function (): void {
@@ -96,7 +96,7 @@ test('edit param redirects when not owner', function (): void {
 
     Livewire::actingAs($other)
         ->test(NewOrder::class, ['edit' => $order->id])
-        ->assertRedirect(route('orders.show', $order->id));
+        ->assertRedirect(route('orders.show', $order));
 });
 
 test('edit param redirects when click window expired', function (): void {
@@ -110,7 +110,7 @@ test('edit param redirects when click window expired', function (): void {
 
     Livewire::actingAs($user)
         ->test(NewOrder::class, ['edit' => $order->id])
-        ->assertRedirect(route('orders.show', $order->id));
+        ->assertRedirect(route('orders.show', $order));
 });
 
 test('submitOrder updates existing order when editing', function (): void {
@@ -150,7 +150,7 @@ test('submitOrder updates existing order when editing', function (): void {
         ]])
         ->call('submitOrder');
 
-    $component->assertRedirect(route('orders.show', $order->id));
+    $component->assertRedirect(route('orders.show', $order));
 
     $order->refresh();
     expect($order->notes)->toBe('Updated notes');
@@ -192,7 +192,7 @@ test('order show page displays edit link when within click window', function ():
         'created_at' => now(),
     ]);
 
-    $response = $this->actingAs($user)->get(route('orders.show', $order->id));
+    $response = $this->actingAs($user)->get(route('orders.show', $order));
 
     $response->assertOk();
     $response->assertSee(__('orders.edit_items'));
@@ -206,7 +206,7 @@ test('order show page hides edit link when order edit disabled', function (): vo
     $user->assignRole('customer');
     $order = Order::factory()->create(['user_id' => $user->id, 'is_paid' => false, 'created_at' => now()]);
 
-    $response = $this->actingAs($user)->get(route('orders.show', $order->id));
+    $response = $this->actingAs($user)->get(route('orders.show', $order));
 
     $response->assertOk();
     $response->assertDontSee(__('orders.edit_items'));
@@ -221,7 +221,7 @@ test('order show page hides edit link when click window expired', function (): v
         'created_at' => now()->subMinutes(15),
     ]);
 
-    $response = $this->actingAs($user)->get(route('orders.show', $order->id));
+    $response = $this->actingAs($user)->get(route('orders.show', $order));
 
     $response->assertOk();
     $response->assertDontSee(__('orders.edit_items'));

@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Use migrate:all instead. This command resets passwords and lacks role mapping.
+ * Kept for reference only. Will be removed in a future release.
+ */
 class ImportFromWordPress extends Command
 {
     protected $signature = 'wp:import

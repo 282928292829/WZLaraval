@@ -68,7 +68,7 @@ test('order cancelled increments campaign orders_cancelled', function (): void {
         'status' => 'pending',
     ]);
 
-    $this->actingAs($user)->post(route('orders.cancel', $order->id));
+    $this->actingAs($user)->post(route('orders.cancel', $order));
 
     expect($campaign->fresh()->orders_cancelled)->toBe(1);
 });

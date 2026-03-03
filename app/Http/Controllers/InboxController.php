@@ -16,7 +16,7 @@ class InboxController extends Controller
             $filter = 'all';
         }
 
-        $query = Activity::with('causer')->orderByDesc('created_at');
+        $query = Activity::with(['causer', 'files'])->orderByDesc('created_at');
 
         if ($filter !== 'all') {
             if ($filter === 'payment') {

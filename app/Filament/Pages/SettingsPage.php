@@ -25,6 +25,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
 
 class SettingsPage extends Page
 {
@@ -135,6 +137,7 @@ class SettingsPage extends Page
             'auto_comment_no_price' => '',
 
             // Order success screen (after new order submission)
+            'order_success_screen_enabled' => true,
             'order_success_title_ar' => '',
             'order_success_title_en' => '',
             'order_success_subtitle_ar' => '',
@@ -147,8 +150,8 @@ class SettingsPage extends Page
             'order_success_redirect_prefix_en' => '',
             'order_success_redirect_suffix_ar' => '',
             'order_success_redirect_suffix_en' => '',
-            'order_success_redirect_seconds' => '45',
-            'order_success_screen_threshold' => '1000',
+            'order_success_redirect_seconds' => '30',
+            'order_success_screen_threshold' => '10',
 
             // Order rules
             'max_products_per_order' => '30',
@@ -165,9 +168,13 @@ class SettingsPage extends Page
             'max_file_size_mb' => '2',
             'max_images_per_item' => '3',
             'max_images_per_order' => '10',
+            'max_files_per_item_after_submit' => '5',
+            'customer_can_add_files_after_submit' => '0',
             'orders_per_day_customer' => '200',
             'comment_max_files' => '10',
             'comment_max_file_size_mb' => '10',
+            'payment_notify_order_max_files' => '5',
+            'payment_notify_standalone_max_files' => '5',
 
             // Email (disabled by default, SMTP not configured)
             'email_enabled' => '0',
@@ -626,6 +633,13 @@ class SettingsPage extends Page
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->description(__('settings.order_success_screen_desc'))
                     ->schema([
+                        Toggle::make('order_success_screen_enabled')
+                            ->label(__('settings.order_success_screen_enabled'))
+                            ->helperText(__('settings.order_success_screen_enabled_help'))
+                            ->default(true)
+                            ->onColor('success')
+                            ->columnSpanFull(),
+
                         TextInput::make('order_success_title_ar')
                             ->label(__('settings.order_success_title_ar'))
                             ->maxLength(500)
@@ -650,12 +664,14 @@ class SettingsPage extends Page
 
                         Textarea::make('order_success_message_ar')
                             ->label(__('settings.order_success_message_ar'))
+                            ->helperText(__('settings.order_success_message_help'))
                             ->rows(4)
                             ->maxLength(2000)
                             ->columnSpanFull(),
 
                         Textarea::make('order_success_message_en')
                             ->label(__('settings.order_success_message_en'))
+                            ->helperText(__('settings.order_success_message_help'))
                             ->rows(4)
                             ->maxLength(2000)
                             ->columnSpanFull(),
@@ -801,6 +817,17 @@ class SettingsPage extends Page
                             ->maxValue(100)
                             ->helperText(__('settings.max_images_per_order_help')),
 
+                        TextInput::make('max_files_per_item_after_submit')
+                            ->label(__('settings.max_files_per_item_after_submit'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(20)
+                            ->helperText(__('settings.max_files_per_item_after_submit_help')),
+
+                        Toggle::make('customer_can_add_files_after_submit')
+                            ->label(__('settings.customer_can_add_files_after_submit'))
+                            ->helperText(__('settings.customer_can_add_files_after_submit_help')),
+
                         TextInput::make('comment_max_files')
                             ->label(__('settings.comment_max_files'))
                             ->numeric()
@@ -814,6 +841,20 @@ class SettingsPage extends Page
                             ->minValue(1)
                             ->maxValue(100)
                             ->helperText(__('settings.comment_max_file_size_mb_help')),
+
+                        TextInput::make('payment_notify_order_max_files')
+                            ->label(__('settings.payment_notify_order_max_files'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(20)
+                            ->helperText(__('settings.payment_notify_order_max_files_help')),
+
+                        TextInput::make('payment_notify_standalone_max_files')
+                            ->label(__('settings.payment_notify_standalone_max_files'))
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(20)
+                            ->helperText(__('settings.payment_notify_standalone_max_files_help')),
 
                     ])
                     ->columns(3),
@@ -1158,6 +1199,85 @@ class SettingsPage extends Page
                     ->icon(Heroicon::OutlinedEnvelope)
                     ->description(__('Leave disabled until SMTP is configured. Use the Test button to verify.'))
                     ->schema([
+                        SchemaActions::make([
+                            Action::make('sendTestEmail')
+                                ->label(__('Send Test Email'))
+                                ->icon(Heroicon::OutlinedPaperAirplane)
+                                ->color('info')
+                                ->action(function (): void {
+                                    $data = $this->form->getState();
+                                    $host = trim((string) ($data['smtp_host'] ?? ''));
+                                    $port = (int) ($data['smtp_port'] ?? 587);
+                                    $username = trim((string) ($data['smtp_username'] ?? ''));
+                                    $password = (string) ($data['smtp_password'] ?? '');
+                                    $encryption = trim((string) ($data['smtp_encryption'] ?? 'tls'));
+                                    $fromName = trim((string) ($data['email_from_name'] ?? 'Wasetzon'));
+                                    $fromAddress = trim((string) ($data['email_from_address'] ?? ''));
+
+                                    if ($host === '') {
+                                        Notification::make()
+                                            ->title(__('settings.test_email_configure_first'))
+                                            ->warning()
+                                            ->send();
+
+                                        return;
+                                    }
+
+                                    $recipient = auth()->user()?->email;
+                                    if (! $recipient) {
+                                        Notification::make()
+                                            ->title(__('settings.test_email_no_recipient'))
+                                            ->warning()
+                                            ->send();
+
+                                        return;
+                                    }
+
+                                    $originalHost = config('mail.mailers.smtp.host');
+                                    $originalPort = config('mail.mailers.smtp.port');
+                                    $originalUsername = config('mail.mailers.smtp.username');
+                                    $originalPassword = config('mail.mailers.smtp.password');
+                                    $originalEncryption = config('mail.mailers.smtp.encryption');
+                                    $originalFrom = config('mail.from');
+
+                                    try {
+                                        Config::set('mail.mailers.smtp.host', $host);
+                                        Config::set('mail.mailers.smtp.port', $port);
+                                        Config::set('mail.mailers.smtp.username', $username ?: null);
+                                        Config::set('mail.mailers.smtp.password', $password ?: null);
+                                        Config::set('mail.mailers.smtp.encryption', $encryption !== '' ? $encryption : null);
+                                        Config::set('mail.from', [
+                                            'address' => $fromAddress ?: 'noreply@'.(parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com'),
+                                            'name' => $fromName ?: config('app.name'),
+                                        ]);
+
+                                        Mail::mailer('smtp')
+                                            ->raw(__('settings.test_email_body'), function ($message) use ($recipient): void {
+                                                $message->to($recipient)
+                                                    ->subject(__('settings.test_email_subject'));
+                                            });
+
+                                        Notification::make()
+                                            ->title(__('settings.test_email_sent', ['email' => $recipient]))
+                                            ->success()
+                                            ->send();
+                                    } catch (\Throwable $e) {
+                                        Notification::make()
+                                            ->title(__('settings.test_email_failed'))
+                                            ->body($e->getMessage())
+                                            ->danger()
+                                            ->send();
+                                    } finally {
+                                        Config::set('mail.mailers.smtp.host', $originalHost);
+                                        Config::set('mail.mailers.smtp.port', $originalPort);
+                                        Config::set('mail.mailers.smtp.username', $originalUsername);
+                                        Config::set('mail.mailers.smtp.password', $originalPassword);
+                                        Config::set('mail.mailers.smtp.encryption', $originalEncryption);
+                                        Config::set('mail.from', $originalFrom);
+                                    }
+                                }),
+                        ]),
+
                         Toggle::make('email_enabled')
                             ->label(__('Enable Email Sending'))
                             ->onColor('success')
@@ -1475,6 +1595,7 @@ class SettingsPage extends Page
             'hero_show_name_change_notice' => 'hero',
             'auto_comment_with_price' => 'orders',
             'auto_comment_no_price' => 'orders',
+            'order_success_screen_enabled' => 'orders',
             'order_success_title_ar' => 'orders',
             'order_success_title_en' => 'orders',
             'order_success_subtitle_ar' => 'orders',
@@ -1503,9 +1624,13 @@ class SettingsPage extends Page
             'max_file_size_mb' => 'orders',
             'max_images_per_item' => 'orders',
             'max_images_per_order' => 'orders',
+            'max_files_per_item_after_submit' => 'orders',
+            'customer_can_add_files_after_submit' => 'orders',
             'orders_per_day_customer' => 'orders',
             'comment_max_files' => 'orders',
             'comment_max_file_size_mb' => 'orders',
+            'payment_notify_order_max_files' => 'orders',
+            'payment_notify_standalone_max_files' => 'orders',
             'order_form_fields' => 'orders',
             'email_enabled' => 'email',
             'email_from_name' => 'email',
@@ -1602,6 +1727,8 @@ class SettingsPage extends Page
             'qa_shipping_tracking', 'qa_team_merge',
             'qa_mark_paid', 'qa_mark_shipped', 'qa_request_info', 'qa_cancel_order',
             'order_edit_enabled',
+            'order_success_screen_enabled',
+            'customer_can_add_files_after_submit',
             'blog_comments_enabled',
             'hero_input_required',
             'hero_show_whatsapp',
@@ -1619,7 +1746,9 @@ class SettingsPage extends Page
             'orders_per_day_staff', 'orders_per_month_customer', 'orders_per_month_admin',
             'max_file_size_mb', 'orders_per_day_customer',
             'max_images_per_item', 'max_images_per_order',
+            'max_files_per_item_after_submit',
             'comment_max_files', 'comment_max_file_size_mb',
+            'payment_notify_order_max_files', 'payment_notify_standalone_max_files',
             'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg',
             'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg',
             'domestic_first_half_kg', 'domestic_rest_half_kg',

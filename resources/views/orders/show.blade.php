@@ -1,18 +1,17 @@
 @php
     // Build the gallery array for the lightbox (all image URLs on this page)
     $lightboxImages = [];
-    // Order-level product_image files (for items that have no image_path — e.g. attach on submit)
-    $productImageFiles = $order->files->whereNull('comment_id')->where('type', 'product_image')->filter(fn ($f) => str_starts_with($f->mime_type ?? '', 'image/'))->values();
-    $productImageIndex = 0;
     foreach ($order->items as $item) {
         if ($item->image_path) {
             $lightboxImages[] = Storage::disk('public')->url($item->image_path);
-        } elseif ($productImageFiles->has($productImageIndex)) {
-            $lightboxImages[] = $productImageFiles[$productImageIndex]->url();
-            $productImageIndex++;
+        }
+        foreach ($order->files->where('order_item_id', $item->id) as $f) {
+            if ($f->isImage()) {
+                $lightboxImages[] = $f->url();
+            }
         }
     }
-    foreach ($order->files->whereNull('comment_id') as $file) {
+    foreach ($order->files->whereNull('comment_id')->whereNull('order_item_id') as $file) {
         if ($file->isImage()) {
             $lightboxImages[] = $file->url();
         }
@@ -25,10 +24,23 @@
             }
         }
     }
+    $maxFilesPerItemAfterSubmit = max(1, (int) \App\Models\Setting::get('max_files_per_item_after_submit', 5));
+    $customerCanAddFiles = (bool) \App\Models\Setting::get('customer_can_add_files_after_submit', false);
 @endphp
 
+@php
+    $orderShowToastMessages = [
+        'required' => __('orders.item_files_required'),
+        'uploaded' => __('orders.item_files_uploaded'),
+        'failed' => __('orders.item_files_upload_failed'),
+        'uploading' => __('orders.uploading'),
+        'upload' => __('orders.upload'),
+        'max_files_exceeded' => __('payment_notify.max_files_exceeded'),
+    ];
+@endphp
 @push('scripts')
 <script>window.orderLightboxImages = @json($lightboxImages);</script>
+<script>window.orderShowToastMessages = @json($orderShowToastMessages);</script>
 @endpush
 
 @php
@@ -75,18 +87,74 @@
 
 <x-app-layout :minimal-footer="true">
 
+{{-- Toast container for file uploads etc. (reuses #toast-container styles from app.css) --}}
+<div x-data="orderShowToasts()" @order-toast.window="showToast($event.detail.type, $event.detail.message)">
+    <div x-ref="toasts" id="toast-container"></div>
+</div>
+
+{{-- Image lightbox — listens for open-lightbox, supports gallery nav — }}
+<div
+    x-data="orderLightbox()"
+    @open-lightbox.window="open($event.detail.src, $event.detail.gallery)"
+    @keydown.escape.window="if (visible) close()"
+    @keydown.arrow-left.window="if (visible && gallery.length > 1) prev()"
+    @keydown.arrow-right.window="if (visible && gallery.length > 1) next()"
+    x-show="visible"
+    x-cloak
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="{{ __('orders.lightbox_label') }}"
+    :aria-hidden="!visible">
+    <div class="absolute inset-0" @click="close()" aria-hidden="true"></div>
+    <button type="button" @click="close()"
+        class="absolute top-4 end-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+        :aria-label="'{{ __('orders.close') }}'">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <button x-show="gallery.length > 1" x-transition
+        type="button" @click="prev()"
+        class="absolute start-2 sm:start-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+        :aria-label="'{{ __('orders.prev') }}'">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <button x-show="gallery.length > 1" x-transition
+        type="button" @click="next()"
+        class="absolute end-2 sm:end-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+        :aria-label="'{{ __('orders.next') }}'">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </button>
+    <div class="relative z-10 max-w-[90vw] max-h-[85vh] flex items-center justify-center">
+        <img x-show="currentSrc" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            :src="currentSrc" :alt="'{{ __('orders.lightbox_label') }}'" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            @click.stop>
+    </div>
+</div>
+
 {{-- ── Page header ──────────────────────────────────────────────────────────── --}}
 <div class="max-w-4xl mx-auto px-4 py-4 space-y-5">
 
-    {{-- Flash --}}
+    {{-- Flash banners (toasts) — always visible to avoid silent issues --}}
     @if (session('success'))
-        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm" role="alert">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ session('success') }}
         </div>
     @endif
+    @if (session('payment_notify_max_exceeded'))
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm" role="alert">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            {{ session('payment_notify_max_exceeded') }}
+        </div>
+    @endif
     @if (session('error'))
-        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5h2v2h-2v-2zm0-8h2v6h-2V5z" clip-rule="evenodd"/></svg>
             {{ session('error') }}
         </div>
@@ -254,7 +322,7 @@
             <div class="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-sm">
                 <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                 {{ __('orders.merged_into') }}
-                <a href="{{ route('orders.show', $order->merged_into) }}" class="font-semibold text-primary-600 hover:underline">
+                <a href="{{ route('orders.show', $order->mergedInto) }}" class="font-semibold text-primary-600 hover:underline">
                     {{ __('orders.view_merged_order') }}
                 </a>
             </div>
@@ -270,13 +338,19 @@
                                       ? $order->user->addresses()->orderByDesc('is_default')->get()
                                       : collect();
             $snap                   = $order->shipping_address_snapshot;
-            $showAddressBlock       = $isStaff || $showAddressToCustomer;
+            $showAddressBlock       = $isStaff || $showAddressToCustomer || $canChangeAddress;
         @endphp
 
         @if ($showAddressBlock && ($snap || $canChangeAddress || $isStaff))
-            <div class="mt-3 pt-3 border-t border-gray-100">
+            @php
+                $addressBlockClickable = $canChangeAddress && $orderUserAddresses->isNotEmpty();
+            @endphp
+            <div class="mt-3 pt-3 border-t border-gray-100" id="order-shipping-address"
+                @if ($addressBlockClickable) x-data="{ open: false }" @endif>
                 <div class="flex items-start justify-between gap-3 flex-wrap">
-                    <div class="space-y-0.5 flex-1 min-w-0">
+                    <div class="space-y-0.5 flex-1 min-w-0
+                        @if ($addressBlockClickable) cursor-pointer rounded-lg -ms-1 me-1 -mt-0.5 mb-0.5 ps-1 pe-1 pt-0.5 pb-0.5 hover:bg-gray-50 transition-colors select-none @endif"
+                        @if ($addressBlockClickable) role="button" tabindex="0" data-open-address @click="open = !open" @keydown.enter="open = !open" @keydown.space.prevent="open = !open" @endif>
                         <p class="text-xs font-semibold text-gray-500">{{ __('orders.shipping_address') }}</p>
                         @if ($snap)
                             <p class="text-sm text-gray-700 font-medium">
@@ -298,9 +372,9 @@
                                 </span>
                             @endif
                         @elseif ($isOwner)
-                            {{-- Customer has no address: show prompt + open modal --}}
-                            <div x-data="{ open: false }" class="mt-1">
-                                <button type="button" @click="open = true" data-open-address
+                            {{-- Customer has no address: show prompt + opens shared add-address modal --}}
+                            <div x-data class="mt-1">
+                                <button type="button" @click.stop="$dispatch('open-add-address')" data-open-address
                                     class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors">
                                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
@@ -309,156 +383,6 @@
                                     {{ __('orders.no_address_prompt') }}
                                 </button>
                                 <p class="mt-1 text-xs text-gray-400">{{ __('orders.no_address_hint') }}</p>
-
-                                {{-- Add address modal --}}
-                                <div x-show="open" x-cloak
-                                    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
-                                    @keydown.escape.window="open = false">
-                                    <div @click.outside="open = false"
-                                        class="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-
-                                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                                            <h3 class="text-sm font-semibold text-gray-900">{{ __('orders.add_address_modal_title') }}</h3>
-                                            <button @click="open = false" class="text-gray-400 hover:text-gray-600 transition-colors">
-                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        <div class="overflow-y-auto flex-1">
-                                            @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000')); @endphp
-                                            <form method="POST" action="{{ route('account.addresses.store') }}"
-                                                class="px-5 py-5 space-y-3">
-                                                @csrf
-                                                <input type="hidden" name="_form" value="add_address">
-                                                <input type="hidden" name="_order_id" value="{{ $order->id }}">
-                                                <input type="hidden" name="_redirect_back" value="{{ route('orders.show', $order->id) }}">
-
-                                                {{-- Label + Recipient --}}
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address_label') }}</label>
-                                                        <input type="text" name="label" value="{{ old('label') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                                            placeholder="{{ __('account.label_placeholder') }}">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
-                                                        <input type="text" name="recipient_name" required value="{{ old('recipient_name', auth()->user()->name) }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                </div>
-
-                                                {{-- Country + City --}}
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.country') }}
-                                                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                                                        </label>
-                                                        <input type="text" name="country" value="{{ old('country', 'السعودية') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.city') }} <span class="text-red-400">*</span>
-                                                        </label>
-                                                        <input type="text" name="city" required value="{{ old('city') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                </div>
-
-                                                {{-- Street + District --}}
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.street') }}
-                                                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                                                        </label>
-                                                        <input type="text" name="street" value="{{ old('street') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.district') }}
-                                                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                                                        </label>
-                                                        <input type="text" name="district" value="{{ old('district') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                </div>
-
-                                                {{-- Short address + Address details --}}
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div x-data="{ open: false }">
-                                                        <label class="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.short_address') }}
-                                                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                                                            <button type="button" @click="open = !open" class="text-blue-400 hover:text-blue-600 transition-colors">
-                                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                                </svg>
-                                                            </button>
-                                                        </label>
-                                                        <input type="text" name="short_address" value="{{ old('short_address') }}"
-                                                            maxlength="20"
-                                                            placeholder="{{ __('account.short_address_placeholder') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                        <div x-show="open" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5">
-                                                            <p class="text-xs text-blue-700 leading-relaxed">
-                                                                <span class="font-medium">١.</span>
-                                                                {{ __('account.national_address_tip_whatsapp') }}
-                                                                &nbsp;<a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener"
-                                                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition" dir="ltr">{{ __('account.whatsapp_number') }}</a>
-                                                                ثم شارك موقعك الجغرافي وسيُرسَل إليك الرمز.
-                                                            </p>
-                                                            <p class="text-xs text-blue-700 leading-relaxed">
-                                                                <span class="font-medium">٢.</span>
-                                                                {{ __('account.national_address_tip_apps') }}
-                                                            </p>
-                                                            <p class="text-xs text-blue-700 leading-relaxed">
-                                                                <span class="font-medium">٣.</span>
-                                                                <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener"
-                                                                    class="underline underline-offset-2 font-semibold hover:text-blue-900 transition">{{ __('account.national_address_tip_us') }}</a>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                            {{ __('account.address') }}
-                                                            <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
-                                                        </label>
-                                                        <input type="text" name="address" value="{{ old('address') }}"
-                                                            placeholder="{{ __('account.address_placeholder') }}"
-                                                            class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                    </div>
-                                                </div>
-
-                                                {{-- Phone --}}
-                                                <div>
-                                                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.mobile') }} <span class="text-red-400">*</span></label>
-                                                    <input type="tel" name="phone" required
-                                                        value="{{ old('phone', auth()->user()->phone) }}"
-                                                        placeholder="{{ __('account.mobile_placeholder') }}"
-                                                        inputmode="numeric" pattern="[0-9]*"
-                                                        class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
-                                                </div>
-
-                                                <div class="flex items-center gap-3 pt-1">
-                                                    <button type="submit"
-                                                        class="flex-1 sm:flex-none px-5 py-2 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors">
-                                                        {{ __('account.save_address') }}
-                                                    </button>
-                                                    <button type="button" @click="open = false"
-                                                        class="flex-1 sm:flex-none px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                                                        {{ __('orders.cancel') }}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         @else
                             {{-- Staff view: no address set --}}
@@ -467,7 +391,7 @@
                     </div>
 
                     @if ($canChangeAddress && $orderUserAddresses->isNotEmpty())
-                        <div x-data="{ open: false }" class="relative shrink-0">
+                        <div class="relative shrink-0">
                             <button type="button" @click="open = !open" data-open-address
                                 class="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 border border-primary-200 rounded-xl px-3 py-1.5 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -481,7 +405,7 @@
                                 </p>
                                 <div class="divide-y divide-gray-50 max-h-60 overflow-y-auto">
                                     @foreach ($orderUserAddresses as $addr)
-                                        <form action="{{ route('orders.shipping-address.update', $order->id) }}" method="POST">
+                                        <form action="{{ route('orders.shipping-address.update', $order) }}" method="POST">
                                             @csrf
                                             @method('PATCH')
                                             <input type="hidden" name="shipping_address_id" value="{{ $addr->id }}">
@@ -499,6 +423,17 @@
                                         </form>
                                     @endforeach
                                 </div>
+                                @if ($isOwner)
+                                    <div class="border-t border-gray-100 px-3 py-2">
+                                        <button type="button" @click="open = false; $dispatch('open-add-address')"
+                                            class="w-full text-start px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium transition-colors flex items-center gap-2">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                            {{ __('account.add_address') }}
+                                        </button>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -506,6 +441,110 @@
             </div>
         @endif
     </div>
+
+    {{-- Shared Add Address Modal (customer, when address can be changed) — opened by open-add-address event --}}
+    @if ($isOwner && $canChangeAddress)
+        @php $waNum = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000')); @endphp
+        <div
+            x-data="{ show: false }"
+            @open-add-address.window="show = true"
+            x-show="show" x-cloak
+            :class="{ 'pointer-events-none': !show }"
+            class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
+            @keydown.escape.window="show = false">
+            <div @click.outside="show = false"
+                class="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                    <h3 class="text-sm font-semibold text-gray-900">{{ __('orders.add_address_modal_title') }}</h3>
+                    <button @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="overflow-y-auto flex-1">
+                    <form method="POST" action="{{ route('account.addresses.store') }}" class="px-5 py-5 space-y-3">
+                        @csrf
+                        <input type="hidden" name="_form" value="add_address">
+                        <input type="hidden" name="_order_id" value="{{ $order->id }}">
+                        <input type="hidden" name="_redirect_back" value="{{ route('orders.show', $order) }}">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address_label') }}</label>
+                                <input type="text" name="label" value="{{ old('label') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                                    placeholder="{{ __('account.label_placeholder') }}">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.recipient_name') }} <span class="text-red-400">*</span></label>
+                                <input type="text" name="recipient_name" required value="{{ old('recipient_name', auth()->user()->name) }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.country') }} <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span></label>
+                                <input type="text" name="country" value="{{ old('country', __('common.default_country')) }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.city') }} <span class="text-red-400">*</span></label>
+                                <input type="text" name="city" required value="{{ old('city') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.street') }} <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span></label>
+                                <input type="text" name="street" value="{{ old('street') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.district') }} <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span></label>
+                                <input type="text" name="district" value="{{ old('district') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div x-data="{ tipOpen: false }">
+                                <label class="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
+                                    {{ __('account.short_address') }} <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span>
+                                    <button type="button" @click="tipOpen = !tipOpen" class="text-blue-400 hover:text-blue-600 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </button>
+                                </label>
+                                <input type="text" name="short_address" value="{{ old('short_address') }}" maxlength="20"
+                                    placeholder="{{ __('account.short_address_placeholder') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                                <div x-show="tipOpen" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5 text-xs text-blue-700">
+                                    <p class="font-medium mb-1">{{ __('account.national_address_ways_intro') }}</p>
+                                    <p><span class="font-medium">{{ __('account.step_1') }}</span> {{ __('account.national_address_tip_whatsapp') }}
+                                        <a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener" class="underline font-semibold" dir="ltr">{{ __('account.whatsapp_number') }}</a></p>
+                                    <p><span class="font-medium">{{ __('account.step_2') }}</span> {{ __('account.national_address_tip_apps') }}</p>
+                                    <p><span class="font-medium">{{ __('account.step_3') }}</span> <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener" class="underline font-semibold">{{ __('account.national_address_tip_us') }}</a></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.address') }} <span class="text-gray-400 font-normal">({{ __('order.optional') }})</span></label>
+                                <input type="text" name="address" value="{{ old('address') }}"
+                                    placeholder="{{ __('account.address_placeholder') }}"
+                                    class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('account.mobile') }} <span class="text-red-400">*</span></label>
+                            <input type="tel" name="phone" required value="{{ old('phone', auth()->user()->phone) }}"
+                                placeholder="{{ __('account.mobile_placeholder') }}"
+                                inputmode="numeric" pattern="[0-9]*"
+                                class="block w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                        </div>
+                        <div class="flex items-center gap-3 pt-1">
+                            <button type="submit" class="flex-1 sm:flex-none px-5 py-2 text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors">{{ __('account.save_address') }}</button>
+                            <button type="button" @click="show = false" class="flex-1 sm:flex-none px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">{{ __('orders.cancel') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ── Order Items (منتجات الطلب) — directly under order header ──────────── --}}
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -516,7 +555,7 @@
             </h2>
             <div class="flex items-center gap-3">
                 @if ($isStaff)
-                    <a href="{{ route('orders.export-excel', $order->id) }}"
+                    <a href="{{ route('orders.export-excel', $order) }}"
                         class="inline-flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium"
                         title="{{ __('orders.export_excel') }}">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -548,27 +587,23 @@
                         @endif
                         <th class="px-4 py-2 font-medium text-start hidden md:table-cell">{{ __('orders.notes') }}</th>
                         <th class="px-4 py-2 font-medium text-center w-14">{{ __('orders.image') }}</th>
+                        <th class="px-4 py-2 font-medium text-center w-28">{{ __('orders.attach') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
-                    @php
-                        $productImageFilesForItems = $order->files->whereNull('comment_id')->where('type', 'product_image')->filter(fn ($f) => str_starts_with($f->mime_type ?? '', 'image/'))->values();
-                        $productImageIdx = 0;
-                        $itemDisplayImageData = [];
-                        foreach ($order->items as $it) {
-                            if ($it->image_path) {
-                                $itemDisplayImageData[] = ['url' => Storage::disk('public')->url($it->image_path), 'source' => 'item', 'id' => $it->id];
-                            } elseif ($productImageFilesForItems->has($productImageIdx)) {
-                                $file = $productImageFilesForItems[$productImageIdx];
-                                $itemDisplayImageData[] = ['url' => $file->url(), 'source' => 'file', 'id' => $file->id];
-                                $productImageIdx++;
-                            } else {
-                                $itemDisplayImageData[] = null;
-                            }
-                        }
-                    @endphp
                     @forelse ($order->items as $i => $item)
-                        @php $itemImg = $itemDisplayImageData[$i] ?? ($item->image_path ? ['url' => Storage::disk('public')->url($item->image_path), 'source' => 'item', 'id' => $item->id] : null); @endphp
+                        @php
+                            $itemAllFiles = collect();
+                            if ($item->image_path) {
+                                $itemAllFiles->push(['url' => Storage::disk('public')->url($item->image_path), 'source' => 'item', 'id' => $item->id, 'is_image' => true, 'name' => '']);
+                            }
+                            foreach ($order->files->where('order_item_id', $item->id) as $f) {
+                                $itemAllFiles->push(['url' => $f->url(), 'source' => 'file', 'id' => $f->id, 'is_image' => $f->isImage(), 'name' => $f->original_name]);
+                            }
+                            $itemFileCount = $itemAllFiles->count();
+                            $canAddFiles = $isStaff || ($isOwner && $customerCanAddFiles);
+                            $slotsLeft = max(0, $maxFilesPerItemAfterSubmit - $itemFileCount);
+                        @endphp
                         <tr class="hover:bg-gray-50/50 transition-colors">
 
                             {{-- # --}}
@@ -682,41 +717,115 @@
                                     {{ $item->notes ?: '—' }}
                                 </div>
                             </td>
-                            {{-- Image (last column) --}}
-                            <td class="px-4 py-3 align-middle text-center">
-                                @if ($itemImg)
-                                    <div class="flex flex-col items-center gap-1">
-                                        <button type="button"
-                                            @click="$dispatch('open-lightbox', { src: '{{ $itemImg['url'] }}', gallery: window.orderLightboxImages })"
-                                            class="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                            <img src="{{ $itemImg['url'] }}" alt=""
-                                                class="w-10 h-10 rounded-lg object-cover border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
-                                        </button>
-                                        @if ($isStaff)
-                                            <form action="{{ route('orders.product-image.delete', $order->id) }}" method="POST" class="inline-block"
-                                                x-data x-on:submit="if (!confirm($el.getAttribute('data-confirm'))) $event.preventDefault()"
-                                                data-confirm="{{ __('orders.delete_image_confirm') }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                @if ($itemImg['source'] === 'item')
-                                                    <input type="hidden" name="item_id" value="{{ $itemImg['id'] }}">
+                            {{-- Image column: show all images/files per item --}}
+                            <td class="px-4 py-3 align-middle">
+                                @if ($itemAllFiles->isNotEmpty())
+                                    <div class="flex flex-wrap gap-1 justify-center">
+                                        @foreach ($itemAllFiles as $itemFile)
+                                            <div class="relative group">
+                                                @if ($itemFile['is_image'] ?? true)
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ $itemFile['url'] }}', gallery: window.orderLightboxImages })"
+                                                        class="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 block">
+                                                        <img src="{{ $itemFile['url'] }}" alt=""
+                                                            class="w-10 h-10 rounded-lg object-cover border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
+                                                    </button>
                                                 @else
-                                                    <input type="hidden" name="file_id" value="{{ $itemImg['id'] }}">
+                                                    <a href="{{ $itemFile['url'] }}" target="_blank" class="shrink-0 w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-100 block"
+                                                        title="{{ $itemFile['name'] ?? '' }}">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                    </a>
                                                 @endif
-                                                <button type="submit" class="text-xs text-red-600 hover:text-red-800 hover:underline" title="{{ __('orders.delete_image') }}">
-                                                    {{ __('orders.delete') }}
-                                                </button>
-                                            </form>
-                                        @endif
+                                                @if ($isStaff)
+                                                    <form action="{{ route('orders.product-image.delete', $order) }}" method="POST" class="absolute -top-1 -end-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        x-data x-on:submit="if (!confirm($el.getAttribute('data-confirm'))) $event.preventDefault()"
+                                                        data-confirm="{{ __('orders.delete_image_confirm') }}">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        @if (($itemFile['source'] ?? '') === 'item')
+                                                            <input type="hidden" name="item_id" value="{{ $itemFile['id'] }}">
+                                                        @else
+                                                            <input type="hidden" name="file_id" value="{{ $itemFile['id'] }}">
+                                                        @endif
+                                                        <button type="submit" class="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs leading-none hover:bg-red-600" title="{{ __('orders.delete_image') }}">✕</button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        @endforeach
                                     </div>
                                 @else
                                     <span class="text-xs text-gray-300">—</span>
                                 @endif
                             </td>
+                            {{-- Attach column: per-row Add files (images, PDF, Excel, Word — up to configurable max) --}}
+                            <td class="px-4 py-3 align-middle">
+                                @if ($canAddFiles)
+                                    <div x-data="{ open: false, uploading: false }"
+                                         class="flex flex-col items-center gap-1">
+                                        <span class="text-xs text-gray-500">{{ $itemFileCount }}/{{ $maxFilesPerItemAfterSubmit }}</span>
+                                        @if ($slotsLeft > 0)
+                                            <button type="button" @click="open = !open"
+                                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                                + {{ __('orders.add_files') }}
+                                            </button>
+                                            <form x-show="open" x-collapse
+                                                @submit.prevent="
+                                                    const form = $el;
+                                                    const m = window.orderShowToastMessages || {};
+                                                    const filesInput = form.querySelector('input[type=file]');
+                                                    if (!filesInput || !filesInput.files || filesInput.files.length === 0) {
+                                                        $dispatch('order-toast', { type: 'error', message: m.required || 'Please select at least one file.' });
+                                                        return;
+                                                    }
+                                                    uploading = true;
+                                                    const fd = new FormData(form);
+                                                    fetch(form.action, {
+                                                        method: 'POST',
+                                                        body: fd,
+                                                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                                                    })
+                                                    .then(r => r.json().catch(() => ({})))
+                                                    .then(data => {
+                                                        uploading = false;
+                                                        if (data.success) {
+                                                            $dispatch('order-toast', { type: 'success', message: data.message || m.uploaded });
+                                                            form.reset();
+                                                            open = false;
+                                                            window.location.reload();
+                                                        } else {
+                                                            const errMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(' ') : null) || m.failed;
+                                                            $dispatch('order-toast', { type: 'error', message: errMsg });
+                                                        }
+                                                    })
+                                                    .catch(() => {
+                                                        uploading = false;
+                                                        $dispatch('order-toast', { type: 'error', message: m.failed });
+                                                    });
+                                                "
+                                                action="{{ route('orders.items.files.store', [$order, $item->id]) }}"
+                                                method="POST" enctype="multipart/form-data"
+                                                class="mt-1 flex flex-col items-center gap-1">
+                                                @csrf
+                                                <input type="file" name="files[]" multiple
+                                                    accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
+                                                    class="text-xs w-28">
+                                                <button type="submit" :disabled="uploading"
+                                                    class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                                                    <span x-text="uploading ? (window.orderShowToastMessages?.uploading || 'Uploading…') : (window.orderShowToastMessages?.upload || 'Upload')"></span>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs text-gray-400">{{ __('orders.max_reached') }}</span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $isStaff ? 10 : 9 }}" class="px-4 py-8 text-center text-sm text-gray-400">{{ __('orders.no_items') }}</td>
+                            <td colspan="{{ $isStaff ? 11 : 10 }}" class="px-4 py-8 text-center text-sm text-gray-400">{{ __('orders.no_items') }}</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -744,14 +853,14 @@
                         <h2 class="text-sm font-semibold text-gray-700">{{ __('orders.edit_prices') }}</h2>
                         <button @click="open = false" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
                     </div>
-                    <form action="{{ route('orders.prices.update', $order->id) }}" method="POST" class="px-4 py-4 space-y-3">
+                    <form action="{{ route('orders.prices.update', $order) }}" method="POST" class="px-4 py-4 space-y-3">
                         @csrf @method('POST')
                         @foreach ($order->items as $i => $item)
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                                 <input type="hidden" name="items[{{ $i }}][id]" value="{{ $item->id }}">
                                 <div>
                                     <label class="text-gray-500 mb-0.5 block">{{ __('orders.item') }} #{{ $i + 1 }} {{ __('orders.unit_price') }}</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="text" inputmode="decimal"
                                         name="items[{{ $i }}][unit_price]"
                                         value="{{ $item->unit_price }}"
                                         placeholder="{{ __('placeholder.amount') }}"
@@ -759,7 +868,7 @@
                                 </div>
                                 <div>
                                     <label class="text-gray-500 mb-0.5 block">{{ __('orders.commission') }}</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="text" inputmode="decimal"
                                         name="items[{{ $i }}][commission]"
                                         value="{{ $item->commission }}"
                                         placeholder="{{ __('placeholder.amount') }}"
@@ -767,7 +876,7 @@
                                 </div>
                                 <div>
                                     <label class="text-gray-500 mb-0.5 block">{{ __('orders.shipping') }}</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="text" inputmode="decimal"
                                         name="items[{{ $i }}][shipping]"
                                         value="{{ $item->shipping }}"
                                         placeholder="{{ __('placeholder.amount') }}"
@@ -775,7 +884,7 @@
                                 </div>
                                 <div>
                                     <label class="text-gray-500 mb-0.5 block">{{ __('orders.final_price') }}</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="text" inputmode="decimal"
                                         name="items[{{ $i }}][final_price]"
                                         value="{{ $item->final_price }}"
                                         placeholder="{{ __('placeholder.amount') }}"
@@ -817,7 +926,7 @@
             <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div x-show="open" x-collapse>
-            <form action="{{ route('orders.staff-notes.update', $order->id) }}" method="POST" class="px-4 py-3 space-y-3 border-t border-amber-100">
+            <form action="{{ route('orders.staff-notes.update', $order) }}" method="POST" class="px-4 py-3 space-y-3 border-t border-amber-100">
                 @csrf @method('PATCH')
                 <textarea name="staff_notes" rows="4"
                     class="w-full text-sm px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition resize-none"
@@ -869,7 +978,7 @@
                                     @endif
                                 </div>
                                 @if ($isStaff)
-                                    <form action="{{ route('orders.timeline.add-as-comment', [$order->id, $entry->id]) }}" method="POST" class="shrink-0">
+                                    <form action="{{ route('orders.timeline.add-as-comment', [$order, $entry->id]) }}" method="POST" class="shrink-0">
                                         @csrf
                                         <button type="submit" class="text-xs text-gray-400 hover:text-primary-600 transition-colors whitespace-nowrap">
                                             {{ __('orders.add_as_comment') }}
@@ -1035,7 +1144,7 @@
                             $showStaffCancel = (bool) \App\Models\Setting::get('qa_cancel_order', true);
                         @endphp
                         @if ($showMarkPaid)
-                            <form action="{{ route('orders.mark-paid', $order->id) }}" method="POST">
+                            <form action="{{ route('orders.mark-paid', $order) }}" method="POST">
                                 @csrf
                                 <button type="submit"
                                     @if ($order->is_paid) disabled title="{{ __('orders.already_paid') }}" @endif
@@ -1047,7 +1156,7 @@
                             </form>
                         @endif
                         @if ($showMarkShipped)
-                            <form action="{{ route('orders.status.update', $order->id) }}" method="POST">
+                            <form action="{{ route('orders.status.update', $order) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="status" value="shipped">
                                 <button type="submit"
@@ -1060,7 +1169,7 @@
                             </form>
                         @endif
                         @if ($showRequestInfo)
-                            <form action="{{ route('orders.status.update', $order->id) }}" method="POST">
+                            <form action="{{ route('orders.status.update', $order) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="status" value="on_hold">
                                 <button type="submit"
@@ -1073,7 +1182,7 @@
                             </form>
                         @endif
                         @if ($showStaffCancel)
-                            <form action="{{ route('orders.status.update', $order->id) }}" method="POST"
+                            <form action="{{ route('orders.status.update', $order) }}" method="POST"
                                 x-data
                                 @submit.prevent="if (confirm('{{ addslashes(__('orders.confirm_cancel')) }}')) $el.submit()">
                                 @csrf
@@ -1135,7 +1244,7 @@
                         <button type="button"
                             :disabled="sending || done"
                             @click="sending = true; err = '';
-                                fetch('{{ route('orders.send-email', $order->id) }}', {
+                                fetch('{{ route('orders.send-email', $order) }}', {
                                     method: 'POST',
                                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
                                 }).then(r => r.json()).then(d => {
@@ -1176,24 +1285,36 @@
                                     @php
                                         $paymentReceipts = [];
                                         if ($order->payment_receipt) {
-                                            $paymentReceipts[] = ['url' => \Illuminate\Support\Facades\Storage::disk('public')->url($order->payment_receipt), 'name' => __('orders.view_receipt')];
+                                            $payReceiptUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($order->payment_receipt);
+                                            $paymentReceipts[] = ['url' => $payReceiptUrl, 'name' => __('orders.view_receipt'), 'is_image' => false];
                                         }
-                                        foreach ($order->files->where('type', 'payment_receipt') as $f) {
-                                            $paymentReceipts[] = ['url' => $f->url(), 'name' => $f->original_name];
+                                        foreach ($order->files->where('type', 'receipt') as $f) {
+                                            $paymentReceipts[] = ['url' => $f->url(), 'name' => $f->original_name, 'is_image' => $f->isImage()];
                                         }
                                     @endphp
                                     @foreach ($paymentReceipts as $receipt)
-                                        <div><a href="{{ $receipt['url'] }}" target="_blank" class="text-primary-600 hover:underline font-medium">📄 {{ $receipt['name'] }}</a></div>
+                                        <div>
+                                            @if ($receipt['is_image'])
+                                                <button type="button"
+                                                    @click="$dispatch('open-lightbox', { src: '{{ $receipt['url'] }}', gallery: window.orderLightboxImages })"
+                                                    class="inline-flex items-center gap-1.5 text-primary-600 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-primary-400 rounded">
+                                                    <img src="{{ $receipt['url'] }}" alt="" class="w-8 h-8 rounded object-cover border border-gray-200">
+                                                    {{ Str::limit($receipt['name'], 20) }}
+                                                </button>
+                                            @else
+                                                <a href="{{ $receipt['url'] }}" target="_blank" class="inline-flex items-center gap-1.5 text-primary-600 hover:underline font-medium">📄 {{ $receipt['name'] }}</a>
+                                            @endif
+                                        </div>
                                     @endforeach
                                 </div>
                             @endif
 
-                            <form action="{{ route('orders.update-payment', $order->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                            <form action="{{ route('orders.update-payment', $order) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
                                 @csrf
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.payment_amount') }} ({{ __('orders.sar') }})</label>
-                                        <input type="number" name="payment_amount" step="0.01" min="0"
+                                        <input type="text" inputmode="decimal" name="payment_amount"
                                             value="{{ $order->payment_amount }}" placeholder="{{ __('placeholder.amount') }}"
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
@@ -1215,7 +1336,7 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">{{ __('orders.payment_receipt_file') }} ({{ __('orders.max_5_files') }})</label>
+                                        <label class="block text-xs text-gray-500 mb-1">{{ __('orders.payment_receipt_file') }} ({{ __('orders.max_3_files') }})</label>
                                         <input type="file" name="payment_receipts[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
                                             class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
@@ -1288,7 +1409,7 @@
                             }
                         }">
                             <h4 class="text-xs font-semibold text-gray-700 mb-3">📄 {{ __('orders.generate_invoice') }}</h4>
-                            <form action="{{ route('orders.invoice.generate', $order->id) }}" method="POST" class="space-y-3">
+                            <form action="{{ route('orders.invoice.generate', $order) }}" method="POST" class="space-y-3">
                                 @csrf
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
@@ -1312,7 +1433,7 @@
                                     </div>
                                     <div x-show="invoiceType !== 'second_final' && invoiceType !== 'first_payment'">
                                         <label class="block text-xs text-gray-500 mb-1">{{ __('orders.invoice_custom_amount') }}</label>
-                                        <input type="number" step="0.01" min="0" name="custom_amount" placeholder="{{ __('placeholder.amount') }}"
+                                        <input type="text" inputmode="decimal" name="custom_amount" placeholder="{{ __('placeholder.amount') }}"
                                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                     </div>
                                 </div>
@@ -1321,19 +1442,19 @@
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_items_total') }}</label>
-                                            <input type="number" step="0.01" min="0" name="first_items_total" x-model.number="firstItemsTotal" @input="recalcFirstPayment()"
+                                            <input type="text" inputmode="decimal" name="first_items_total" x-model="firstItemsTotal" @input="recalcFirstPayment()"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.fee_agent_fee') }}</label>
-                                            <input type="number" step="0.01" min="0" name="first_agent_fee" x-model.number="firstAgentFee" @input="recalcFirstPayment()"
+                                            <input type="text" inputmode="decimal" name="first_agent_fee" x-model="firstAgentFee" @input="recalcFirstPayment()"
                                                 :readonly="!firstCommissionOverridden"
                                                 :class="firstCommissionOverridden ? 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400' : 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-gray-50'">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_total') }}</label>
                                             <input type="hidden" name="first_total" :value="firstTotal">
-                                            <input type="number" step="0.01" min="0" x-model.number="firstTotal"
+                                            <input type="text" inputmode="decimal" x-model="firstTotal"
                                                 :readonly="!firstTotalOverridden"
                                                 :class="firstTotalOverridden ? 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400' : 'w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-gray-50'"
                                                 x-show="firstTotalOverridden">
@@ -1360,8 +1481,8 @@
                                                 <input type="text" name="first_other_label" x-model="firstOtherLabel" @input="recalcFirstPayment()"
                                                     placeholder="{{ __('orders.invoice_other_label_placeholder') }}"
                                                     class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                                <input type="number" step="0.01" min="0" name="first_other_amount" x-model.number="firstOtherAmount" @input="recalcFirstPayment()"
-                                                    placeholder="0"
+                                                <input type="text" inputmode="decimal" name="first_other_amount" x-model="firstOtherAmount" @input="recalcFirstPayment()"
+                                                    placeholder="{{ __('placeholder.zero') }}"
                                                     class="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                             </div>
                                             <p class="text-xs text-gray-400 mt-1">{{ __('orders.invoice_other_help') }}</p>
@@ -1380,32 +1501,32 @@
                                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_product_value') }}</label>
-                                            <input type="number" step="0.01" min="0" name="second_product_value" x-model.number="productValue" @input="recalcRemaining()"
+                                            <input type="text" inputmode="decimal" name="second_product_value" x-model="productValue" @input="recalcRemaining()"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.fee_agent_fee') }}</label>
-                                            <input type="number" step="0.01" min="0" name="second_agent_fee" x-model.number="agentFee" @input="recalcRemaining()"
+                                            <input type="text" inputmode="decimal" name="second_agent_fee" x-model="agentFee" @input="recalcRemaining()"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_shipping_cost') }}</label>
-                                            <input type="number" step="0.01" min="0" name="second_shipping_cost" x-model.number="shippingCost" @input="recalcRemaining()"
+                                            <input type="text" inputmode="decimal" name="second_shipping_cost" x-model="shippingCost" @input="recalcRemaining()"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_first_payment') }}</label>
-                                            <input type="number" step="0.01" min="0" name="second_first_payment" x-model.number="firstPayment" @input="recalcRemaining()"
+                                            <input type="text" inputmode="decimal" name="second_first_payment" x-model="firstPayment" @input="recalcRemaining()"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_remaining') }}</label>
-                                            <input type="number" step="0.01" min="0" name="second_remaining" x-model.number="remaining"
+                                            <input type="text" inputmode="decimal" name="second_remaining" x-model="remaining"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50">
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-0.5">{{ __('orders.invoice_weight') }}</label>
-                                            <input type="text" name="second_weight" x-model="weight" placeholder="e.g. 1.5 kg"
+                                            <input type="text" name="second_weight" x-model="weight" placeholder="{{ __('placeholder.weight') }}"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         </div>
                                         <div class="sm:col-span-2">
@@ -1434,7 +1555,7 @@
                                             <div class="flex flex-wrap items-center gap-2 mb-1.5">
                                                 <input type="text" :name="'custom_lines[' + i + '][label]'" x-model="line.label" placeholder="{{ __('orders.invoice_line_label') }}"
                                                     class="flex-1 min-w-20 border border-gray-200 rounded px-2 py-1 text-xs">
-                                                <input type="number" step="0.01" min="0" :name="'custom_lines[' + i + '][amount]'" x-model="line.amount" placeholder="0"
+                                                <input type="text" inputmode="decimal" :name="'custom_lines[' + i + '][amount]'" x-model="line.amount" placeholder="{{ __('placeholder.zero') }}"
                                                     class="w-16 border border-gray-200 rounded px-2 py-1 text-xs">
                                                 <input type="hidden" :name="'custom_lines[' + i + '][visible]'" :value="line.visible ? 1 : 0">
                                                 <label class="flex items-center gap-1 text-xs shrink-0">
@@ -1500,7 +1621,7 @@
                                     @if ($order->tracking_company)<span class="text-gray-400">({{ $order->tracking_company }})</span>@endif
                                 </div>
                             @endif
-                            <form action="{{ route('orders.shipping-tracking', $order->id) }}" method="POST" class="flex flex-wrap gap-3 items-end">
+                            <form action="{{ route('orders.shipping-tracking', $order) }}" method="POST" class="flex flex-wrap gap-3 items-end">
                                 @csrf
                                 <div class="flex-1 min-w-32">
                                     <label class="block text-xs text-gray-500 mb-1">{{ __('orders.tracking_number') }}</label>
@@ -1534,19 +1655,25 @@
                     <div x-show="openPanel === 'status'" x-collapse class="mt-4">
                         <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
                             <h4 class="text-xs font-semibold text-gray-700 mb-3">📋 {{ __('orders.change_status') }}</h4>
-                            <form action="{{ route('orders.status.update', $order->id) }}" method="POST"
-                                class="flex items-center gap-2 flex-wrap">
+                            <form action="{{ route('orders.status.update', $order) }}" method="POST"
+                                class="space-y-3">
                                 @csrf
-                                <select name="status"
-                                    class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                    @foreach (App\Models\Order::getStatuses() as $key => $label)
-                                        <option value="{{ $key }}" @selected($order->status === $key)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                <button type="submit"
-                                    class="shrink-0 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 px-4 rounded-xl transition-colors">
-                                    {{ __('orders.update') }}
-                                </button>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <select name="status"
+                                        class="flex-1 min-w-[120px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                        @foreach (App\Models\Order::getStatuses() as $key => $label)
+                                            <option value="{{ $key }}" @selected($order->status === $key)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit"
+                                        class="shrink-0 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 px-4 rounded-xl transition-colors">
+                                        {{ __('orders.update') }}
+                                    </button>
+                                </div>
+                                <textarea name="comment"
+                                    rows="2"
+                                    placeholder="{{ __('orders.status_change_comment_placeholder') }}"
+                                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"></textarea>
                             </form>
                         </div>
                     </div>
@@ -1558,7 +1685,7 @@
                         <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
                             <h4 class="text-xs font-semibold text-gray-700 mb-2">🔗 {{ __('orders.merge_orders') }}</h4>
                             <p class="text-xs text-gray-500 mb-3">{{ __('orders.merge_description') }}</p>
-                            <form action="{{ route('orders.merge', $order->id) }}" method="POST"
+                            <form action="{{ route('orders.merge', $order) }}" method="POST"
                                 x-data
                                 @submit.prevent="if (confirm('{{ __('orders.confirm_merge') }}')) $el.submit()">
                                 @csrf
@@ -1589,80 +1716,6 @@
             </div>
         @endif
     @endif
-
-    {{-- ── Files ─────────────────────────────────────────────────────────── --}}
-    <div id="files" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-         x-data="{
-             open: (() => { try { return localStorage.getItem('order_files_{{ $order->id }}') !== '0'; } catch(e) { return true; } })(),
-             toggle() { this.open = !this.open; try { localStorage.setItem('order_files_{{ $order->id }}', this.open ? '1' : '0'); } catch(e) {} }
-         }">
-        <button type="button" @click="toggle()"
-            class="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100">
-            <span>
-                {{ __('orders.files') }}
-                @if ($order->files->count())
-                    <span class="ms-1 text-xs font-normal text-gray-400">({{ $order->files->count() }})</span>
-                @endif
-            </span>
-            <svg class="w-4 h-4 text-gray-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-            </svg>
-        </button>
-        <div x-show="open" x-collapse>
-        @if ($order->files->count())
-            <div class="divide-y divide-gray-50">
-                @foreach ($order->files->whereNull('comment_id') as $file)
-                    <div class="flex items-center gap-3 px-4 py-3">
-                        @if ($file->isImage())
-                            <button type="button"
-                                @click="$dispatch('open-lightbox', { src: '{{ $file->url() }}', gallery: window.orderLightboxImages })"
-                                class="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                <img src="{{ $file->url() }}" alt="" class="w-10 h-10 object-cover rounded-lg border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
-                            </button>
-                        @else
-                            <div class="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            </div>
-                        @endif
-                        <div class="flex-1 min-w-0">
-                            <a href="{{ $file->url() }}" target="_blank" class="text-sm text-gray-800 hover:text-primary-600 truncate block">
-                                {{ $file->original_name }}
-                            </a>
-                            <p class="text-xs text-gray-400">{{ $file->humanSize() }} · {{ format_datetime_for_display($file->created_at, 'Y/m/d') }}</p>
-                        </div>
-                        <a href="{{ $file->url() }}" target="_blank" download
-                            class="shrink-0 text-xs text-gray-400 hover:text-primary-500 border border-gray-200 rounded-lg px-2 py-1 transition-colors">
-                            ↓
-                        </a>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="px-4 py-6 text-center text-sm text-gray-400">{{ __('orders.no_files') }}</p>
-        @endif
-
-        {{-- Upload file (staff only) --}}
-        @can('reply-to-comments')
-            <div class="border-t border-gray-100 px-4 py-3" x-data="{ open: false }">
-                <button type="button" @click="open = !open"
-                    class="text-xs font-medium text-primary-600 hover:text-primary-700">
-                    + {{ __('orders.upload_file') }}
-                </button>
-                <div x-show="open" x-collapse class="mt-2">
-                    <form action="{{ route('orders.files.store', $order->id) }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2 flex-wrap">
-                        @csrf
-                        <input type="file" name="files[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
-                            class="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400">
-                        <button type="submit"
-                            class="shrink-0 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
-                            {{ __('orders.upload') }}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        @endcan
-        </div>
-    </div>
 
     {{-- ── Device / IP metadata (staff only) ─────────────────────────────── --}}
     @if ($isStaff && $orderCreationLog)
@@ -1721,7 +1774,7 @@
     @endif
 
     {{-- ── Comments & conversation ────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm order-comments-section" id="comments" data-order-id="{{ $order->id }}" data-mark-read-url="{{ route('orders.comments.mark-read', $order->id) }}">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm order-comments-section" id="comments" data-order-id="{{ $order->id }}" data-mark-read-url="{{ route('orders.comments.mark-read', $order) }}">
         <div class="px-4 py-3 border-b border-gray-100">
             <h2 class="text-sm font-semibold text-gray-700">
                 {{ __('orders.comments') }}
@@ -1736,9 +1789,9 @@
             @forelse ($visibleComments as $comment)
                 @php
                     $isMine   = $comment->user_id === auth()->id();
-                    $isStaffComment = optional($comment->user)->hasAnyRole(['staff', 'admin', 'superadmin']);
+                    $isStaffComment = optional($comment->user)->isStaffOrAbove();
                     $customerReads = $comment->reads->filter(fn ($r) => $r->user_id === $order->user_id); // order owner = customer for read receipts
-                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->hasAnyRole(['staff', 'admin', 'superadmin']) && $r->user_id !== $order->user_id);
+                    $staffReads    = $comment->reads->filter(fn ($r) => optional($r->user)->isStaffOrAbove() && $r->user_id !== $order->user_id);
                 @endphp
 
                 {{-- System / automated comments get a distinct teal-tinted treatment --}}
@@ -1753,11 +1806,11 @@
                             <div class="flex items-center justify-between gap-2 flex-wrap">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm font-medium text-teal-800">{{ __('orders.system_comment_label') }}</span>
-                                    <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">auto</span>
+                                    <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">{{ __('orders.auto_label') }}</span>
                                 </div>
                                 <span class="text-xs text-gray-400 tabular-nums">{{ __('orders.comment_date') }} {{ format_datetime_for_display($comment->created_at, 'Y/m/d') }} {{ __('orders.comment_time') }} {{ format_datetime_for_display($comment->created_at, 'H:i') }}</span>
                             </div>
-                            <div class="text-sm text-teal-900 leading-relaxed whitespace-pre-wrap break-words">{!! comment_body_safe($comment->body) !!}</div>
+                            <div class="text-sm text-teal-900 leading-relaxed break-words" dir="{{ comment_text_direction($comment->body) }}">{!! comment_body_safe($comment->body) !!}</div>
                         </div>
                     </div>
                 </div>
@@ -1828,7 +1881,7 @@
                     @if ($comment->deleted_at)
                         <p class="text-sm text-gray-400 italic">{{ __('orders.comment_deleted_placeholder') }}</p>
                     @else
-                        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{!! comment_body_safe($comment->body) !!}</div>
+                        <div class="text-sm text-gray-700 leading-relaxed break-words" dir="{{ comment_text_direction($comment->body) }}">{!! comment_body_safe($comment->body) !!}</div>
 
                         {{-- Attached files --}}
                         @php $commentFiles = $order->files->where('comment_id', $comment->id); @endphp
@@ -1837,9 +1890,11 @@
                                 @foreach ($commentFiles as $commentFile)
                                     @if ($commentFile->isImage())
                                         <button type="button"
-                                            @click="$dispatch('open-lightbox', { src: '{{ $commentFile->url() }}', gallery: window.orderLightboxImages })"
-                                            class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                            <img src="{{ $commentFile->url() }}" alt="" class="h-16 rounded-lg border border-gray-100 object-cover cursor-zoom-in hover:opacity-90 transition-opacity">
+                                            x-data
+                                            data-src="{{ $commentFile->url() }}"
+                                            @click="$dispatch('open-lightbox', { src: $el.dataset.src, gallery: window.orderLightboxImages })"
+                                            class="rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-1 cursor-zoom-in">
+                                            <img src="{{ $commentFile->url() }}" alt="" class="h-16 w-auto rounded-lg border border-gray-100 object-cover hover:opacity-90 transition-opacity pointer-events-none" loading="lazy">
                                         </button>
                                     @else
                                         <a href="{{ $commentFile->url() }}" target="_blank"
@@ -1880,7 +1935,7 @@
                                 @can('send-comment-notification')
                                     @php $emailLogs = $comment->notificationLogs->where('channel', 'email'); @endphp
                                     <span class="inline-flex items-center gap-1">
-                                        <form action="{{ route('orders.comments.notify', [$order->id, $comment->id]) }}" method="POST" class="inline">
+                                        <form action="{{ route('orders.comments.notify', [$order, $comment->id]) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="text-xs text-gray-400 hover:text-blue-500 transition-colors">
                                                 {{ __('orders.send_notification') }}
@@ -1915,7 +1970,7 @@
                                         $waUrl = $customerPhone && preg_match('/[0-9]/', (string) $customerPhone)
                                             ? 'https://wa.me/' . preg_replace('/\D/', '', $customerPhone) . '?text=' . rawurlencode($waText)
                                             : null;
-                                        $waLogUrl = route('orders.comments.log-whatsapp', [$order->id, $comment->id]);
+                                        $waLogUrl = route('orders.comments.log-whatsapp', [$order, $comment->id]);
                                         $waLogs = $comment->notificationLogs->where('channel', 'whatsapp');
                                     @endphp
                                     @if ($waUrl)
@@ -1961,7 +2016,7 @@
 
                             {{-- Delete --}}
                             @if ($comment->canBeDeletedBy(auth()->user()))
-                                <form action="{{ route('orders.comments.destroy', [$order->id, $comment->id]) }}" method="POST"
+                                <form action="{{ route('orders.comments.destroy', [$order, $comment->id]) }}" method="POST"
                                     x-data
                                     @submit.prevent="if (confirm('{{ __('orders.confirm_delete_comment') }}')) $el.submit()">
                                     @csrf @method('DELETE')
@@ -1984,7 +2039,7 @@
         {{-- ── Add comment ──────────────────────────────────────────────── --}}
         @php $maxCommentFiles = (int) \App\Models\Setting::get('comment_max_files', 5); @endphp
         <div class="border-t border-gray-100 px-4 py-4">
-            <form action="{{ route('orders.comments.store', $order->id) }}" method="POST"
+            <form action="{{ route('orders.comments.store', $order) }}" method="POST"
                 enctype="multipart/form-data" class="space-y-3"
                 x-data="{
                     body: '{{ old('body') }}',
@@ -2004,6 +2059,13 @@
                         return '{{ __('orders.files_selected', ['count' => '']) }}' + this.pickedFiles.length;
                     },
                     submitForm(e) {
+                        const hasBody = (this.body || '').trim().length > 0;
+                        const hasFiles = this.pickedFiles.length > 0;
+                        if (!hasBody && !hasFiles) {
+                            e.preventDefault();
+                            $dispatch('order-toast', { type: 'error', message: '{{ __('orders.comment_or_file_required') }}' });
+                            return;
+                        }
                         if (this.pickedFiles.length > 0) {
                             const dt = new DataTransfer();
                             this.pickedFiles.forEach(f => dt.items.add(f));
@@ -2046,8 +2108,7 @@
                     name="body"
                     rows="3"
                     x-model="body"
-                    placeholder="{{ __('orders.write_comment') }}"
-                    required
+                    placeholder="{{ __('orders.write_comment_or_attach') }}"
                     class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none leading-relaxed"></textarea>
 
                 <div class="flex items-center gap-3 flex-wrap">
@@ -2122,7 +2183,7 @@
         @endphp
 
         @if ($hasCustomerQA)
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
+            <div x-data class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ __('orders.customer_quick_actions') }}</h3>
                 <div class="flex flex-wrap gap-2">
 
@@ -2232,7 +2293,7 @@
             <h3 class="font-semibold text-gray-800">{{ __('orders.edit_comment') }}</h3>
             <button @click="show = false" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form :action="`{{ url('/orders/' . $order->id . '/comments') }}/${commentId}`" method="POST"
+        <form :action="`{{ url('/orders/' . $order->order_number . '/comments') }}/${commentId}`" method="POST"
             enctype="multipart/form-data"
             @submit="submitForm($event)">
             @csrf
@@ -2365,10 +2426,10 @@
     x-data="{
         show: false,
         commentId: null,
-        orderId: {{ $order->id }},
+        orderSlug: @js($order->order_number),
         edits: [],
         updateUrl(commentId) {
-            return `{{ url('/orders') }}/${this.orderId}/comments/${commentId}`;
+            return `{{ url('/orders') }}/${this.orderSlug}/comments/${commentId}`;
         },
         init() {
             window.addEventListener('view-history', e => {
@@ -2433,11 +2494,14 @@
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <form action="{{ route('orders.payment-notify', $order->id) }}" method="POST" class="px-5 py-5 space-y-4">
+        @php
+            $paymentNotifyMaxFiles = max(0, (int) \App\Models\Setting::get('payment_notify_order_max_files', 5));
+        @endphp
+        <form action="{{ route('orders.payment-notify', $order) }}" method="POST" enctype="multipart/form-data" class="px-5 py-5 space-y-4">
             @csrf
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('orders.transfer_amount') }} <span class="text-red-400">*</span></label>
-                <input type="number" name="transfer_amount" step="0.01" min="0.01" required
+                <input type="text" inputmode="decimal" name="transfer_amount" required
                     placeholder="{{ __('orders.transfer_amount_placeholder') }}"
                     class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
             </div>
@@ -2457,6 +2521,8 @@
                     <option value="arabi">{{ __('orders.banks.arabi') }}</option>
                     <option value="stc_pay">{{ __('orders.banks.stc_pay') }}</option>
                     <option value="mada">{{ __('orders.banks.mada') }}</option>
+                    <option value="visa_mastercard">{{ __('orders.payment_method_visa_mastercard') }}</option>
+                    <option value="international_bank_transfer">{{ __('orders.payment_method_international_bank_transfer') }}</option>
                     <option value="other">{{ __('orders.bank_other') }}</option>
                 </select>
             </div>
@@ -2466,6 +2532,25 @@
                     placeholder="{{ __('orders.transfer_notes_placeholder') }}"
                     class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition resize-none"></textarea>
             </div>
+            @if ($paymentNotifyMaxFiles > 0)
+            <div x-data="{
+                maxFiles: {{ $paymentNotifyMaxFiles }},
+                onReceiptsChange(e) {
+                    const input = e.target;
+                    if (input.files.length > this.maxFiles) {
+                        const dt = new DataTransfer();
+                        for (let i = 0; i < this.maxFiles; i++) dt.items.add(input.files[i]);
+                        input.files = dt.files;
+                        $dispatch('order-toast', { type: 'info', message: window.orderShowToastMessages?.max_files_exceeded || '{{ __('payment_notify.max_files_exceeded') }}' });
+                    }
+                }
+            }">
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('orders.payment_notify_attachments') }} ({{ __('payment_notify.optional') }})</label>
+                <input type="file" name="receipts[]" accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic" multiple
+                    @change="onReceiptsChange($event)"
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition file:me-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700 file:text-xs file:font-medium">
+            </div>
+            @endif
             <div class="flex gap-2">
                 <button type="submit"
                     class="flex-1 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">
@@ -2486,7 +2571,9 @@
 <script>
 window.addEventListener('open-address-selector', () => {
     const btn = document.querySelector('[data-open-address]');
-    if (btn) { btn.click(); btn.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    const block = document.getElementById('order-shipping-address');
+    if (btn) { btn.click(); }
+    if (block) { block.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 });
 </script>
 @endpush
@@ -2555,7 +2642,7 @@ window.addEventListener('open-address-selector', () => {
         </div>
         <div class="px-5 py-5">
             <p class="text-sm text-gray-500 mb-4">{{ __('orders.customer_merge_desc') }}</p>
-            <form action="{{ route('orders.customer-merge', $order->id) }}" method="POST">
+            <form action="{{ route('orders.customer-merge', $order) }}" method="POST">
                 @csrf
                 <div class="border border-gray-100 rounded-xl divide-y divide-gray-50 max-h-64 overflow-y-auto mb-4">
                     @foreach ($customerRecentOrders as $ro)
@@ -2602,7 +2689,7 @@ window.addEventListener('open-address-selector', () => {
             <h3 class="text-base font-semibold text-gray-900">{{ __('orders.confirm_cancel_title') }}</h3>
             <p class="text-sm text-gray-500">{{ __('orders.confirm_cancel_desc') }}</p>
             <div class="flex gap-2 pt-1">
-                <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="flex-1">
+                <form action="{{ route('orders.cancel', $order) }}" method="POST" class="flex-1">
                     @csrf
                     <button type="submit"
                         class="w-full bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">
@@ -2650,7 +2737,7 @@ window.addEventListener('open-address-selector', () => {
                     <li>{{ __('orders.transfer_note4') }}</li>
                 </ul>
             </div>
-            <form action="{{ route('orders.transfer', $order->id) }}" method="POST" class="space-y-3">
+            <form action="{{ route('orders.transfer', $order) }}" method="POST" class="space-y-3">
                 @csrf
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('orders.transfer_email_label') }} <span class="text-red-400">*</span></label>
@@ -2767,6 +2854,65 @@ window.addEventListener('open-address-selector', () => {
 @endif {{-- end $isStaff --}}
 
 @push('scripts')
+<script>
+document.addEventListener('alpine:init', function() {
+  Alpine.data('orderShowToasts', function() {
+    return {
+      showToast(type, msg, duration) {
+        const c = this.$refs.toasts;
+        if (!c) return;
+        const t = document.createElement('div');
+        t.className = 'toast ' + (type || 'success');
+        const icon = type === 'error'
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981;flex-shrink:0"><path d="M20 6L9 17l-5-5"/></svg>';
+        const dur = duration ?? (type === 'error' ? 5000 : 3000);
+        const closeLabel = {{ Js::from(__('Close')) }};
+        t.innerHTML = icon + '<span style="flex:1">' + (msg || '') + '</span><button type="button" class="toast-close" aria-label="' + closeLabel + '">×</button>';
+        c.appendChild(t);
+        const closeToast = function() {
+          t.style.animation = 'toastOut 0.4s ease forwards';
+          setTimeout(function() { t.remove(); }, 400);
+        };
+        t.querySelector('.toast-close').addEventListener('click', function(e) { e.stopPropagation(); closeToast(); });
+        t.addEventListener('click', closeToast);
+        setTimeout(closeToast, dur);
+      }
+    };
+  });
+
+  Alpine.data('orderLightbox', function() {
+    return {
+      visible: false,
+      currentSrc: '',
+      gallery: [],
+      index: 0,
+      open(src, gallery) {
+        this.gallery = Array.isArray(gallery) ? gallery : (window.orderLightboxImages || []);
+        var idx = this.gallery.indexOf(src);
+        this.index = idx >= 0 ? idx : 0;
+        this.currentSrc = this.gallery[this.index] || src;
+        this.visible = true;
+        document.body.style.overflow = 'hidden';
+      },
+      close() {
+        this.visible = false;
+        document.body.style.overflow = '';
+      },
+      prev() {
+        if (this.gallery.length <= 1) return;
+        this.index = (this.index - 1 + this.gallery.length) % this.gallery.length;
+        this.currentSrc = this.gallery[this.index];
+      },
+      next() {
+        if (this.gallery.length <= 1) return;
+        this.index = (this.index + 1) % this.gallery.length;
+        this.currentSrc = this.gallery[this.index];
+      }
+    };
+  });
+});
+</script>
 <script>
 (function() {
   var commentsSection = document.querySelector('.order-comments-section');

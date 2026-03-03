@@ -99,7 +99,10 @@ test('product_url pre-fills first item url', function (): void {
 
 // ─── success screen ──────────────────────────────────────────────────────────
 
-test('success screen is shown for user first order', function (): void {
+test('success page is shown for user first order — redirects to orders.success', function (): void {
+    Setting::set('order_success_screen_enabled', true, 'boolean', 'orders');
+    Setting::set('order_success_screen_threshold', 3, 'integer', 'orders');
+
     $user = User::factory()->create();
     $user->assignRole('customer');
 
@@ -112,11 +115,13 @@ test('success screen is shown for user first order', function (): void {
         ]])
         ->call('submitOrder');
 
-    expect($component->get('showSuccessScreen'))->toBeTrue();
-    expect($component->get('createdOrderNumber'))->not->toBeEmpty();
+    $order = Order::where('user_id', $user->id)->orderByDesc('id')->first();
+    expect($order)->not->toBeNull();
+    $component->assertRedirect(route('orders.success', $order));
 });
 
-test('success screen is NOT shown for 4th order — redirects instead', function (): void {
+test('success page is NOT shown for 4th order — redirects to orders.show', function (): void {
+    Setting::set('order_success_screen_enabled', true, 'boolean', 'orders');
     Setting::set('order_success_screen_threshold', 3, 'integer', 'orders');
 
     $user = User::factory()->create();
@@ -133,6 +138,28 @@ test('success screen is NOT shown for 4th order — redirects instead', function
         ]])
         ->call('submitOrder');
 
-    expect($component->get('showSuccessScreen'))->toBeFalse();
-    $component->assertRedirect();
+    $order = Order::where('user_id', $user->id)->orderByDesc('id')->first();
+    expect($order)->not->toBeNull();
+    $component->assertRedirect(route('orders.show', $order));
+});
+
+test('when success screen disabled, all orders redirect to orders.show', function (): void {
+    Setting::set('order_success_screen_enabled', false, 'boolean', 'orders');
+    Setting::set('order_success_screen_threshold', 3, 'integer', 'orders');
+
+    $user = User::factory()->create();
+    $user->assignRole('customer');
+
+    // First order — would normally get success page, but disabled
+    $component = Livewire::actingAs($user)
+        ->test(NewOrder::class)
+        ->set('items', [[
+            'url' => 'https://example.com/product',
+            'qty' => '1', 'color' => '', 'size' => '', 'price' => '', 'currency' => 'USD', 'notes' => '',
+        ]])
+        ->call('submitOrder');
+
+    $order = Order::where('user_id', $user->id)->orderByDesc('id')->first();
+    expect($order)->not->toBeNull();
+    $component->assertRedirect(route('orders.show', $order));
 });

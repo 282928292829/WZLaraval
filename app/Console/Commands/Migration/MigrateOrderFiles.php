@@ -115,8 +115,7 @@ class MigrateOrderFiles extends Command
             )
             ->get();
 
-        // Load order_number → Laravel order_id map.
-        $orderMap = $this->buildOrderMap();
+        $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
 
         $this->line("Found {$attachmentIds->count()} product image meta rows");
 
@@ -169,14 +168,8 @@ class MigrateOrderFiles extends Command
                 }
             }
 
-            // Resolve order and item.
-            $orderNumber = DB::connection('legacy')
-                ->table('wp_postmeta')
-                ->where('post_id', $row->post_id)
-                ->where('meta_key', 'order_id')
-                ->value('meta_value');
-
-            $orderId = $orderMap[(string) $orderNumber] ?? null;
+            // Resolve order by wp post_id.
+            $orderId = $wpPostToOrderId[(int) $row->post_id] ?? null;
 
             if (! $orderId) {
                 $this->copied++;
@@ -184,15 +177,23 @@ class MigrateOrderFiles extends Command
                 continue;
             }
 
-            // Update order_items.image_path.
+            // Update order_items.image_path and resolve order_item_id.
             preg_match('/p_img_(\d+)/', $row->meta_key, $m);
             $itemIndex = (int) ($m[1] ?? 0);
+            $orderItemId = null;
 
             if ($itemIndex > 0 && ! $this->dryRun) {
-                DB::table('order_items')
+                $orderItem = DB::table('order_items')
                     ->where('order_id', $orderId)
                     ->where('sort_order', $itemIndex)
-                    ->update(['image_path' => $destPath]);
+                    ->first();
+
+                if ($orderItem) {
+                    $orderItemId = $orderItem->id;
+                    DB::table('order_items')
+                        ->where('id', $orderItemId)
+                        ->update(['image_path' => $destPath]);
+                }
             }
 
             // Resolve uploader user.
@@ -208,6 +209,7 @@ class MigrateOrderFiles extends Command
             if (! $this->dryRun) {
                 DB::table('order_files')->insertOrIgnore([
                     'order_id' => $orderId,
+                    'order_item_id' => $orderItemId,
                     'user_id' => $userId,
                     'comment_id' => null,
                     'path' => $destPath,
@@ -236,9 +238,8 @@ class MigrateOrderFiles extends Command
         $this->line('');
         $this->line('--- Comment attachments (wp_commentmeta) ---');
 
-        $orderMap = $this->buildOrderMap();
         $userMap = DB::table('users')->pluck('id', 'email')->toArray();
-        $wpPostToOrderId = $this->buildWpPostToOrderIdMap($orderMap);
+        $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
         $fallbackUserId = DB::table('users')->min('id');
 
         $baseQuery = DB::connection('legacy')
@@ -372,30 +373,15 @@ class MigrateOrderFiles extends Command
         return basename($guid);
     }
 
-    private function buildOrderMap(): array
-    {
-        return DB::table('orders')->pluck('id', 'order_number')->toArray();
-    }
-
-    private function buildWpPostToOrderIdMap(array $orderMap): array
+    /**
+     * Build wp_post_id → Laravel order_id from orders.wp_post_id (set during migrate:orders).
+     */
+    private function buildWpPostToOrderIdMap(): array
     {
         $map = [];
-
-        DB::connection('legacy')
-            ->table('wp_postmeta as pm')
-            ->join('wp_posts as p', 'p.ID', '=', 'pm.post_id')
-            ->where('p.post_type', 'orders')
-            ->where('pm.meta_key', 'order_id')
-            ->select('pm.post_id', 'pm.meta_value as order_number')
-            ->orderBy('pm.post_id')
-            ->chunk(2000, function ($rows) use (&$map, $orderMap) {
-                foreach ($rows as $row) {
-                    $laravelOrderId = $orderMap[(string) $row->order_number] ?? null;
-                    if ($laravelOrderId) {
-                        $map[(int) $row->post_id] = $laravelOrderId;
-                    }
-                }
-            });
+        foreach (DB::table('orders')->whereNotNull('wp_post_id')->get(['id', 'wp_post_id']) as $order) {
+            $map[(int) $order->wp_post_id] = $order->id;
+        }
 
         return $map;
     }

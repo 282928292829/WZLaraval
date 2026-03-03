@@ -155,6 +155,24 @@
                                         @if (!empty($activity->data['note']))
                                             <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $activity->data['note'] }}</p>
                                         @endif
+                                        @if ($activity->type === 'payment_notification' && !empty($activity->data['amount']))
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                {{ $activity->data['amount'] }} {{ __('orders.sar') }}
+                                                @if (!empty($activity->data['payment_method_label']))
+                                                    · {{ $activity->data['payment_method_label'] }}
+                                                @endif
+                                            </p>
+                                        @endif
+                                        @if ($activity->files->isNotEmpty())
+                                            <div class="flex flex-wrap gap-1 mt-2">
+                                                @foreach ($activity->files as $file)
+                                                    <a href="{{ route('activity-files.download', $file) }}" target="_blank" rel="noopener"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors">
+                                                        📎 {{ Str::limit($file->original_name, 20) }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <div class="flex items-center gap-2 shrink-0">

@@ -14,7 +14,7 @@ class MergeOrdersRequest extends FormRequest
 
     public function rules(): array
     {
-        $orderId = (int) $this->route('id');
+        $orderId = (int) $this->route('order')->id;
 
         return [
             'merge_with' => ['required', 'integer', Rule::notIn([$orderId]), 'exists:orders,id'],

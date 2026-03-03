@@ -61,7 +61,7 @@ class OrderComment extends Model
 
     public function isVisibleTo(\App\Models\User $user): bool
     {
-        if ($this->is_internal && ! $user->hasAnyRole(['editor', 'admin', 'superadmin'])) {
+        if ($this->is_internal && ! $user->isStaffOrAbove()) {
             return false;
         }
 
@@ -87,7 +87,7 @@ class OrderComment extends Model
             return false;
         }
 
-        if ($user->hasAnyRole(['editor', 'admin', 'superadmin']) && $user->can('reply-to-comments')) {
+        if ($user->isStaffOrAbove() && $user->can('reply-to-comments')) {
             return true;
         }
 

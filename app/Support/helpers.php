@@ -1,5 +1,31 @@
 <?php
 
+if (! function_exists('to_english_digits')) {
+    /**
+     * Convert Arabic-Indic [٠١٢٣٤٥٦٧٨٩] and Persian [۰۱۲۳۴۵۶۷۸۹] digits to English [0-9].
+     * Use when accepting user input that may be typed in Arabic keyboard layout.
+     */
+    function to_english_digits(?string $str): ?string
+    {
+        if ($str === null || $str === '') {
+            return $str;
+        }
+
+        $str = (string) $str;
+
+        // Persian digits [۰۱۲۳۴۵۶۷۸۹] U+06F0–U+06F9
+        $str = preg_replace_callback('/[۰-۹]/u', fn ($m) => (string) (mb_ord($m[0]) - mb_ord('۰')), $str);
+
+        // Arabic-Indic digits [٠١٢٣٤٥٦٧٨٩] U+0660–U+0669
+        $str = preg_replace_callback('/[٠-٩]/u', fn ($m) => (string) (mb_ord($m[0]) - mb_ord('٠')), $str);
+
+        // Arabic decimal separator ٫ (U+066B) → period
+        $str = str_replace('٫', '.', $str);
+
+        return $str;
+    }
+}
+
 if (! function_exists('order_form_currencies')) {
     /**
      * Currency list for the order form. Same source used by NewOrder and design prototypes.
@@ -127,6 +153,21 @@ if (! function_exists('format_datetime_for_display')) {
             : \App\Models\Setting::get('site_timezone', 'Asia/Riyadh');
 
         return $date->copy()->timezone($tz)->format($format);
+    }
+}
+
+if (! function_exists('comment_text_direction')) {
+    /**
+     * Return 'rtl' if text contains Arabic script, else 'ltr'.
+     * Used for comment body so English comments display left-to-right.
+     */
+    function comment_text_direction(?string $body): string
+    {
+        $body = $body ?? '';
+
+        return preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $body)
+            ? 'rtl'
+            : 'ltr';
     }
 }
 

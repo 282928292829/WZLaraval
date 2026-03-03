@@ -262,6 +262,9 @@ window.toEnglishDigits = function (str) {
         return c.charCodeAt(0) - '٠'.charCodeAt(0);
     });
     
+    // Arabic decimal separator ٫ (U+066B) → period
+    str = str.replace(/٫/g, '.');
+
     return str;
 };
 

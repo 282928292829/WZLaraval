@@ -154,7 +154,7 @@ Three most complex pages, built first — **rewrite all templates from scratch, 
 - `/account` — profile, saved addresses, activity log (mobile-first)
 - `/inbox` — staff only, unified activity feed (all comments, payments, new orders, contact forms) (mobile-first)
 - Email notifications: Build templates and queue jobs (ready to send), but **disabled by default** — no emails triggered until admin configures SMTP and enables per-type toggles. Email types: account registration, password reset, welcome, email confirmation (optional), comment notifications (opt-in per user). Each type has its own on/off toggle in Filament settings.
-- Rate limiting (configurable via settings: 10 orders/hour customers, 50/hour admins)
+- Rate limiting (configurable via settings: 50 orders/hour customers, 50/hour admins)
 - Order merging + duplicate order
 - File upload limits: 1 per product, 1 per comment, 10 max per order
 - Login flow: guests can fill form, modal login on submit (no redirect)

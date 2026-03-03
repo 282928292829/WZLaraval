@@ -22,6 +22,15 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Whether the user has staff-level access (staff, admin, or superadmin role).
+     * Use instead of hasAnyRole(['staff', 'admin', 'superadmin']) to avoid copy-paste errors.
+     */
+    public function isStaffOrAbove(): bool
+    {
+        return $this->hasAnyRole(['staff', 'admin', 'superadmin']);
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

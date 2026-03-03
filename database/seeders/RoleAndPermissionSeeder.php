@@ -61,6 +61,7 @@ class RoleAndPermissionSeeder extends Seeder
             'edit-commission-rules',   // configure commission percentages
             'manage-ad-campaigns',     // add/edit/delete ad campaigns
             'manage-comment-templates', // add/edit/delete comment templates
+            'manage-order-automation',  // add/edit/delete order status automation rules
         ],
 
         // ── Superadmin-level (superadmins only) ──────────────────────────
@@ -154,7 +155,7 @@ class RoleAndPermissionSeeder extends Seeder
             ],
             [
                 'name' => 'Staff User',
-                'email' => 'editor@wasetzon.test',
+                'email' => 'staff@wasetzon.test',
                 'password' => 'password',
                 'role' => $staff,
             ],

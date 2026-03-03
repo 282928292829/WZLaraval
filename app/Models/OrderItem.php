@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends Model
 {
@@ -29,18 +30,24 @@ class OrderItem extends Model
     ];
 
     protected $casts = [
-        'is_url'      => 'boolean',
-        'qty'         => 'integer',
-        'unit_price'  => 'decimal:2',
+        'is_url' => 'boolean',
+        'qty' => 'integer',
+        'unit_price' => 'decimal:2',
         'final_price' => 'decimal:2',
-        'commission'  => 'decimal:2',
-        'shipping'    => 'decimal:2',
-        'extras'      => 'decimal:2',
+        'commission' => 'decimal:2',
+        'shipping' => 'decimal:2',
+        'extras' => 'decimal:2',
     ];
 
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /** Product images and attachments linked to this item (order_item_id set) */
+    public function files(): HasMany
+    {
+        return $this->hasMany(OrderFile::class, 'order_item_id');
     }
 
     public function hasImage(): bool
