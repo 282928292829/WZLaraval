@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Migration;
 
+use Database\Seeders\DeletedUserSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -9,29 +10,18 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Migrate order-related files from the legacy WordPress uploads directory.
  *
- * Two file types are handled:
+ * 1. Product images: p_img_N → WP attachment → copy to storage
+ * 2. Comment attachments: wp_commentmeta attachmentId
  *
- * 1. Product images: stored in wp_postmeta as p_img_N (WP attachment ID).
- *    The attachment GUID gives the original URL; the file lives on disk at
- *    LEGACY_UPLOADS_PATH / <relative-path-from-url>.
- *    Target: storage/app/public/orders/products/{year}/{month}/{filename}
- *    Linked to: order_files (type=product_image) + order_items.image_path
+ * Option A: When source file is missing (e.g. media not exported), still create
+ * order_files and order_items.image_path with the canonical path. When media
+ * is added later to the expected location, it will work without re-migration.
  *
- * 2. Comment attachments: stored in wp_commentmeta as attachmentId.
- *    These are receipts or arbitrary files uploaded during order comments.
- *    Target: storage/app/public/orders/receipts/{year}/{month}/{filename}
- *    Linked to: order_files (type=receipt)
- *
- * Run this AFTER migrate:orders and migrate:order-comments.
- *
- * Set LEGACY_UPLOADS_PATH in .env (or config/migration.php) to the absolute
- * path of the legacy wp-content/uploads directory:
- *   LEGACY_UPLOADS_PATH=/path/to/old-wp-content/uploads
+ * Uses config('migration.legacy_uploads_path') for file paths when present.
  */
 class MigrateOrderFiles extends Command
 {
     protected $signature = 'migrate:order-files
-                            {--fresh : Truncate order_files before migrating}
                             {--chunk=500 : Batch size}
                             {--dry-run : Scan and report without copying files or writing DB rows}';
 
@@ -42,6 +32,8 @@ class MigrateOrderFiles extends Command
     private bool $dryRun = false;
 
     private int $copied = 0;
+
+    private int $pathsPreserved = 0;
 
     private int $skipped = 0;
 
@@ -54,7 +46,6 @@ class MigrateOrderFiles extends Command
         $this->info('=== MigrateOrderFiles ===');
 
         $this->uploadsPath = rtrim(config('migration.legacy_uploads_path'), '/');
-
         $this->dryRun = (bool) $this->option('dry-run');
 
         if ($this->dryRun) {
@@ -62,19 +53,8 @@ class MigrateOrderFiles extends Command
         }
 
         if (! is_dir($this->uploadsPath)) {
-            $this->error("Uploads directory not found: {$this->uploadsPath}");
-            $this->line('Set LEGACY_UPLOADS_PATH in .env to the absolute path of the legacy uploads folder.');
-
-            return self::FAILURE;
-        }
-
-        if ($this->option('fresh') && ! $this->dryRun) {
-            $this->warn('Truncating order_files …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('order_files')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            // Also clear image_path on order_items.
-            DB::table('order_items')->update(['image_path' => null]);
+            $this->warn("Uploads directory not found: {$this->uploadsPath}");
+            $this->line('Preserving paths only (no file copy). Set LEGACY_UPLOADS_PATH when media is available.');
         }
 
         $this->migrateProductImages();
@@ -82,8 +62,9 @@ class MigrateOrderFiles extends Command
 
         $this->newLine();
         $this->info("Copied  : {$this->copied}");
+        $this->line("Paths preserved : {$this->pathsPreserved}  (DB records created, file not on disk)");
         $this->line("Skipped : {$this->skipped}  (already exists or empty)");
-        $this->line("Missing : {$this->missing}  (source file not found on disk)");
+        $this->line("Missing : {$this->missing}  (no attachment GUID in legacy DB)");
 
         if ($this->errors > 0) {
             $this->error("Errors  : {$this->errors}");
@@ -92,26 +73,21 @@ class MigrateOrderFiles extends Command
         return self::SUCCESS;
     }
 
-    // -------------------------------------------------------------------------
-    // Product images (p_img_N postmeta)
-    // -------------------------------------------------------------------------
-
     private function migrateProductImages(): void
     {
         $this->line('');
         $this->line('--- Product images (p_img_N) ---');
 
-        // Collect all p_img_N meta from order posts.
         $attachmentIds = DB::connection('legacy')
-            ->table('wp_postmeta')
-            ->join('wp_posts', 'wp_posts.ID', '=', 'wp_postmeta.post_id')
-            ->where('wp_posts.post_type', 'orders')
-            ->where('wp_postmeta.meta_key', 'like', 'p_img_%')
-            ->whereRaw('wp_postmeta.meta_value REGEXP \'^[0-9]+$\'')
+            ->table('postmeta')
+            ->join('posts', 'posts.ID', '=', 'postmeta.post_id')
+            ->where('posts.post_type', 'orders')
+            ->where('postmeta.meta_key', 'like', 'p_img_%')
+            ->whereRaw('postmeta.meta_value REGEXP \'^[0-9]+$\'')
             ->select(
-                'wp_postmeta.post_id',
-                'wp_postmeta.meta_key',
-                DB::connection('legacy')->raw('CAST(wp_postmeta.meta_value AS UNSIGNED) as attachment_id')
+                'postmeta.post_id',
+                'postmeta.meta_key',
+                DB::connection('legacy')->raw('CAST(postmeta.meta_value AS UNSIGNED) as attachment_id')
             )
             ->get();
 
@@ -125,9 +101,8 @@ class MigrateOrderFiles extends Command
         foreach ($attachmentIds as $row) {
             $bar->advance();
 
-            // Resolve attachment.
             $attachment = DB::connection('legacy')
-                ->table('wp_posts')
+                ->table('posts')
                 ->where('ID', $row->attachment_id)
                 ->where('post_type', 'attachment')
                 ->first(['ID', 'guid', 'post_mime_type', 'post_parent']);
@@ -138,27 +113,18 @@ class MigrateOrderFiles extends Command
                 continue;
             }
 
-            // Derive source path from GUID.
-            $srcPath = $this->guidToLocalPath($attachment->guid);
-
-            if (! $srcPath || ! file_exists($srcPath)) {
-                $this->missing++;
-
-                continue;
-            }
-
-            // Determine target path.
             $relativePath = $this->guidToRelativePath($attachment->guid);
             $destPath = 'orders/products/'.$relativePath;
+            $srcPath = $this->guidToLocalPath($attachment->guid);
+            $fileExists = $srcPath && is_file($srcPath);
 
-            if (! $this->dryRun && Storage::disk('public')->exists($destPath)) {
+            if ($fileExists && ! $this->dryRun && Storage::disk('public')->exists($destPath)) {
                 $this->skipped++;
 
                 continue;
             }
 
-            // Copy file.
-            if (! $this->dryRun) {
+            if ($fileExists && ! $this->dryRun) {
                 try {
                     Storage::disk('public')->put($destPath, file_get_contents($srcPath));
                 } catch (\Exception $e) {
@@ -168,16 +134,14 @@ class MigrateOrderFiles extends Command
                 }
             }
 
-            // Resolve order by wp post_id.
             $orderId = $wpPostToOrderId[(int) $row->post_id] ?? null;
 
             if (! $orderId) {
-                $this->copied++;
+                $fileExists ? $this->copied++ : $this->pathsPreserved++;
 
                 continue;
             }
 
-            // Update order_items.image_path and resolve order_item_id.
             preg_match('/p_img_(\d+)/', $row->meta_key, $m);
             $itemIndex = (int) ($m[1] ?? 0);
             $orderItemId = null;
@@ -196,15 +160,17 @@ class MigrateOrderFiles extends Command
                 }
             }
 
-            // Resolve uploader user.
             $uploaderEmail = DB::connection('legacy')
-                ->table('wp_users')
-                ->join('wp_posts', 'wp_posts.post_author', '=', 'wp_users.ID')
-                ->where('wp_posts.ID', $row->post_id)
-                ->value('wp_users.user_email');
+                ->table('users')
+                ->join('posts', 'posts.post_author', '=', 'users.ID')
+                ->where('posts.ID', $row->post_id)
+                ->value('users.user_email');
 
             $userId = DB::table('users')->where('email', $uploaderEmail)->value('id')
+                ?? DB::table('users')->where('email', DeletedUserSeeder::EMAIL)->value('id')
                 ?? DB::table('users')->min('id');
+
+            $originalName = $srcPath ? basename($srcPath) : basename($relativePath);
 
             if (! $this->dryRun) {
                 DB::table('order_files')->insertOrIgnore([
@@ -213,25 +179,21 @@ class MigrateOrderFiles extends Command
                     'user_id' => $userId,
                     'comment_id' => null,
                     'path' => $destPath,
-                    'original_name' => basename($srcPath),
-                    'mime_type' => $attachment->post_mime_type ?? null,
-                    'size' => filesize($srcPath) ?: null,
+                    'original_name' => $originalName,
+                    'mime_type' => $fileExists ? ($attachment->post_mime_type ?? null) : null,
+                    'size' => $fileExists && $srcPath ? (filesize($srcPath) ?: null) : null,
                     'type' => 'product_image',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
 
-            $this->copied++;
+            $fileExists ? $this->copied++ : $this->pathsPreserved++;
         }
 
         $bar->finish();
         $this->newLine();
     }
-
-    // -------------------------------------------------------------------------
-    // Comment attachments (wp_commentmeta attachmentId)
-    // -------------------------------------------------------------------------
 
     private function migrateCommentAttachments(): void
     {
@@ -239,13 +201,14 @@ class MigrateOrderFiles extends Command
         $this->line('--- Comment attachments (wp_commentmeta) ---');
 
         $userMap = DB::table('users')->pluck('id', 'email')->toArray();
+        $deletedUserId = DB::table('users')->where('email', DeletedUserSeeder::EMAIL)->value('id');
+        $fallbackUserId = $deletedUserId ?? DB::table('users')->min('id');
         $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
-        $fallbackUserId = DB::table('users')->min('id');
 
         $baseQuery = DB::connection('legacy')
-            ->table('wp_commentmeta as cm')
-            ->join('wp_comments as c', 'c.comment_ID', '=', 'cm.comment_id')
-            ->join('wp_posts as p', 'p.ID', '=', 'c.comment_post_ID')
+            ->table('commentmeta as cm')
+            ->join('comments as c', 'c.comment_ID', '=', 'cm.comment_id')
+            ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
             ->where('cm.meta_key', 'attachmentId')
             ->whereRaw('cm.meta_value REGEXP \'^[0-9]+$\'');
@@ -276,7 +239,7 @@ class MigrateOrderFiles extends Command
 
                     try {
                         $attachment = DB::connection('legacy')
-                            ->table('wp_posts')
+                            ->table('posts')
                             ->where('ID', (int) $row->attachment_id)
                             ->where('post_type', 'attachment')
                             ->first(['ID', 'guid', 'post_mime_type']);
@@ -287,31 +250,25 @@ class MigrateOrderFiles extends Command
                             continue;
                         }
 
-                        $srcPath = $this->guidToLocalPath($attachment->guid);
-
-                        if (! $srcPath || ! file_exists($srcPath)) {
-                            $this->missing++;
-
-                            continue;
-                        }
-
                         $relativePath = $this->guidToRelativePath($attachment->guid);
                         $destPath = 'orders/receipts/'.$relativePath;
+                        $srcPath = $this->guidToLocalPath($attachment->guid);
+                        $fileExists = $srcPath && is_file($srcPath);
 
-                        if (! $this->dryRun && Storage::disk('public')->exists($destPath)) {
+                        if ($fileExists && ! $this->dryRun && Storage::disk('public')->exists($destPath)) {
                             $this->skipped++;
 
                             continue;
                         }
 
-                        if (! $this->dryRun) {
+                        if ($fileExists && ! $this->dryRun) {
                             Storage::disk('public')->put($destPath, file_get_contents($srcPath));
                         }
 
                         $orderId = $wpPostToOrderId[(int) $row->comment_post_ID] ?? null;
 
                         if (! $orderId) {
-                            $this->copied++;
+                            $fileExists ? $this->copied++ : $this->pathsPreserved++;
 
                             continue;
                         }
@@ -319,22 +276,24 @@ class MigrateOrderFiles extends Command
                         $uploaderEmail = ! empty($row->comment_author_email) ? $row->comment_author_email : null;
                         $userId = ($uploaderEmail ? ($userMap[$uploaderEmail] ?? null) : null) ?? $fallbackUserId;
 
+                        $originalName = $srcPath ? basename($srcPath) : basename($relativePath);
+
                         if (! $this->dryRun) {
                             DB::table('order_files')->insertOrIgnore([
                                 'order_id' => $orderId,
                                 'user_id' => $userId,
                                 'comment_id' => null,
                                 'path' => $destPath,
-                                'original_name' => basename($srcPath),
-                                'mime_type' => $attachment->post_mime_type ?? null,
-                                'size' => filesize($srcPath) ?: null,
+                                'original_name' => $originalName,
+                                'mime_type' => $fileExists ? ($attachment->post_mime_type ?? null) : null,
+                                'size' => $fileExists && $srcPath ? (filesize($srcPath) ?: null) : null,
                                 'type' => 'receipt',
                                 'created_at' => $row->comment_date ?? now(),
                                 'updated_at' => $row->comment_date ?? now(),
                             ]);
                         }
 
-                        $this->copied++;
+                        $fileExists ? $this->copied++ : $this->pathsPreserved++;
                     } catch (\Exception $e) {
                         $this->errors++;
                     }
@@ -345,13 +304,6 @@ class MigrateOrderFiles extends Command
         $this->newLine();
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Convert a WP attachment GUID (full URL) to an absolute local file path.
-     */
     private function guidToLocalPath(string $guid): ?string
     {
         if (preg_match('#/uploads/(.+)$#', $guid, $m)) {
@@ -361,9 +313,6 @@ class MigrateOrderFiles extends Command
         return null;
     }
 
-    /**
-     * Convert a WP attachment GUID to a relative path (after /uploads/).
-     */
     private function guidToRelativePath(string $guid): string
     {
         if (preg_match('#/uploads/(.+)$#', $guid, $m)) {
@@ -373,9 +322,6 @@ class MigrateOrderFiles extends Command
         return basename($guid);
     }
 
-    /**
-     * Build wp_post_id → Laravel order_id from orders.wp_post_id (set during migrate:orders).
-     */
     private function buildWpPostToOrderIdMap(): array
     {
         $map = [];

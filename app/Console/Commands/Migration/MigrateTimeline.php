@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\DB;
  * Source:  wp_postmeta (meta_key=activity_log)  (legacy connection)
  * Target:  order_timeline  (default connection)
  *
- * Must run AFTER migrate:orders (needs wp_post_id → Laravel order_id map).
+ * Supports both formats:
+ *   - {type, body, date, user?}
+ *   - {action, details, timestamp}
  */
 class MigrateTimeline extends Command
 {
-    protected $signature = 'migrate:timeline
-                            {--fresh : Truncate order_timeline before migrating}';
+    protected $signature = 'migrate:timeline';
 
     protected $description = 'Migrate order timeline (activity_log) from legacy WordPress into order_timeline';
 
@@ -34,19 +35,12 @@ class MigrateTimeline extends Command
             return self::SUCCESS;
         }
 
-        if ($this->option('fresh')) {
-            $this->warn('Truncating order_timeline …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('order_timeline')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-        }
-
         $postIds = array_keys($wpPostToOrderId);
         $total = 0;
 
         foreach (array_chunk($postIds, 1000) as $chunk) {
             $total += DB::connection('legacy')
-                ->table('wp_postmeta')
+                ->table('postmeta')
                 ->where('meta_key', 'activity_log')
                 ->whereIn('post_id', $chunk)
                 ->count();
@@ -57,7 +51,7 @@ class MigrateTimeline extends Command
 
         foreach (array_chunk($postIds, 1000) as $chunk) {
             $meta = DB::connection('legacy')
-                ->table('wp_postmeta')
+                ->table('postmeta')
                 ->where('meta_key', 'activity_log')
                 ->whereIn('post_id', $chunk)
                 ->get();
@@ -79,20 +73,17 @@ class MigrateTimeline extends Command
                     if (! is_array($entry)) {
                         continue;
                     }
-                    $type = $this->mapActivityType($entry['action'] ?? '');
-                    $body = $entry['details'] ?? $entry['action'] ?? null;
-                    if (is_array($body)) {
-                        $body = json_encode($body);
-                    }
+
+                    $record = $this->normalizeEntry($entry);
 
                     DB::table('order_timeline')->insert([
                         'order_id' => $orderId,
-                        'user_id' => null,
-                        'type' => $type,
-                        'status_from' => null,
-                        'status_to' => null,
-                        'body' => $body,
-                        'created_at' => $entry['timestamp'] ?? now(),
+                        'user_id' => $record['user_id'],
+                        'type' => $record['type'],
+                        'status_from' => $record['status_from'],
+                        'status_to' => $record['status_to'],
+                        'body' => $record['body'],
+                        'created_at' => $record['created_at'],
                     ]);
                     $this->inserted++;
                 }
@@ -107,21 +98,70 @@ class MigrateTimeline extends Command
         return self::SUCCESS;
     }
 
-    private function mapActivityType(string $action): string
+    /**
+     * Normalize entry from either {type, body, date, user?} or {action, details, timestamp}.
+     *
+     * @return array{user_id: ?int, type: string, status_from: ?string, status_to: ?string, body: ?string, created_at: string}
+     */
+    private function normalizeEntry(array $entry): array
     {
-        return match (true) {
-            str_contains($action, 'status') => 'status_change',
-            str_contains($action, 'comment') => 'comment',
-            str_contains($action, 'file') => 'file_upload',
-            str_contains($action, 'payment') => 'payment',
-            str_contains($action, 'merge') => 'merge',
-            default => 'note',
-        };
+        $createdAt = $entry['date'] ?? $entry['timestamp'] ?? now();
+
+        if (isset($entry['type'], $entry['body'])) {
+            $type = $this->mapActivityType($entry['type']);
+            $body = is_array($entry['body']) ? json_encode($entry['body']) : (string) $entry['body'];
+            $userId = isset($entry['user']) ? (int) $entry['user'] : null;
+
+            return [
+                'user_id' => $userId ?: null,
+                'type' => $type,
+                'status_from' => null,
+                'status_to' => null,
+                'body' => $body ?: null,
+                'created_at' => $createdAt,
+            ];
+        }
+
+        $action = $entry['action'] ?? '';
+        $type = $this->mapActivityType($action);
+        $body = $entry['details'] ?? $entry['body'] ?? $action;
+        if (is_array($body)) {
+            $body = json_encode($body);
+        }
+
+        return [
+            'user_id' => null,
+            'type' => $type,
+            'status_from' => null,
+            'status_to' => null,
+            'body' => $body ?: null,
+            'created_at' => $createdAt,
+        ];
     }
 
-    /**
-     * Build wp_post_id → Laravel order_id from orders.wp_post_id (set during migrate:orders).
-     */
+    private function mapActivityType(string $action): string
+    {
+        $lower = strtolower($action);
+
+        if (str_contains($lower, 'status')) {
+            return 'status_change';
+        }
+        if (str_contains($lower, 'comment')) {
+            return 'comment';
+        }
+        if (str_contains($lower, 'file')) {
+            return 'file_upload';
+        }
+        if (str_contains($lower, 'payment')) {
+            return 'payment';
+        }
+        if (str_contains($lower, 'merge')) {
+            return 'merge';
+        }
+
+        return 'note';
+    }
+
     private function buildWpPostToOrderIdMap(): array
     {
         $map = [];

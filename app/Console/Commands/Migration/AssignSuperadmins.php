@@ -4,35 +4,37 @@ namespace App\Console\Commands\Migration;
 
 use App\Models\User;
 use Illuminate\Console\Command;
+use Spatie\Permission\Models\Role;
 
 /**
- * Assign superadmin role to configured users by email.
+ * Overwrite roles and assign superadmin to all emails in SUPERADMIN_EMAILS.
  *
- * Set SUPERADMIN_EMAILS in .env (comma-separated):
- *   SUPERADMIN_EMAILS=abdulsgz@hotmail.com,ulgasan491@yahoo.com,aminoos@live.com
+ * Set SUPERADMIN_EMAILS in .env (comma-separated).
  */
 class AssignSuperadmins extends Command
 {
     protected $signature = 'migrate:assign-superadmins';
 
-    protected $description = 'Assign superadmin role to users by email (SUPERADMIN_EMAILS env)';
-
-    private const DEFAULT_EMAILS = [
-        'abdulsgz@hotmail.com',
-        'ulgasan491@yahoo.com',
-        'aminoos@live.com',
-    ];
+    protected $description = 'Assign superadmin role to users by email (SUPERADMIN_EMAILS env), overwriting existing roles';
 
     public function handle(): int
     {
         $this->info('=== AssignSuperadmins ===');
 
-        $emails = $this->getEmails();
+        $emails = config('migration.superadmin_emails', []);
 
         if (empty($emails)) {
             $this->warn('No SUPERADMIN_EMAILS configured. Use comma-separated emails in .env');
 
             return self::SUCCESS;
+        }
+
+        $superadminRole = Role::where('name', 'superadmin')->first();
+
+        if (! $superadminRole) {
+            $this->error('Superadmin role not found.');
+
+            return self::FAILURE;
         }
 
         $assigned = 0;
@@ -51,13 +53,7 @@ class AssignSuperadmins extends Command
                 continue;
             }
 
-            if ($user->hasRole('superadmin')) {
-                $this->line("  <info>Already superadmin:</info> {$email}");
-
-                continue;
-            }
-
-            $user->assignRole('superadmin');
+            $user->syncRoles(['superadmin']);
             $this->line("  <info>Assigned superadmin:</info> {$email}");
             $assigned++;
         }
@@ -65,16 +61,5 @@ class AssignSuperadmins extends Command
         $this->info("Assigned superadmin to {$assigned} user(s).");
 
         return self::SUCCESS;
-    }
-
-    private function getEmails(): array
-    {
-        $config = config('migration.superadmin_emails');
-
-        if (is_array($config) && ! empty($config)) {
-            return $config;
-        }
-
-        return self::DEFAULT_EMAILS;
     }
 }

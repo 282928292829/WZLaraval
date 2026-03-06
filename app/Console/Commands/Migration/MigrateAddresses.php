@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\DB;
  */
 class MigrateAddresses extends Command
 {
-    protected $signature = 'migrate:addresses
-                            {--fresh : Truncate user_addresses before migrating}';
+    protected $signature = 'migrate:addresses';
 
     protected $description = 'Migrate user addresses from legacy WordPress into user_addresses';
 
@@ -25,13 +24,13 @@ class MigrateAddresses extends Command
         $this->info('=== MigrateAddresses ===');
 
         $legacy = DB::connection('legacy');
-        if (! $legacy->getSchemaBuilder()->hasTable('wp_usermeta')) {
-            $this->error('Legacy wp_usermeta table not found.');
+        if (! $legacy->getSchemaBuilder()->hasTable('usermeta')) {
+            $this->error('Legacy usermeta table not found.');
 
             return self::FAILURE;
         }
 
-        $meta = $legacy->table('wp_usermeta')
+        $meta = $legacy->table('usermeta')
             ->where('meta_key', 'saved_addresses')
             ->get();
 
@@ -41,15 +40,7 @@ class MigrateAddresses extends Command
             return self::SUCCESS;
         }
 
-        if ($this->option('fresh')) {
-            $this->warn('Truncating user_addresses …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('user_addresses')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-        }
-
-        // Build wp_user_id → Laravel user_id map (by email).
-        $wpUserEmails = $legacy->table('wp_users')
+        $wpUserEmails = $legacy->table('users')
             ->whereIn('ID', $meta->pluck('user_id')->unique())
             ->pluck('user_email', 'ID')
             ->toArray();

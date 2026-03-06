@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Migration;
 
+use Database\Seeders\DeletedUserSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -9,25 +10,17 @@ use Illuminate\Support\Facades\DB;
  * Migrate orders from the legacy WordPress database into the Laravel schema.
  *
  * Source:  wp_posts (post_type='orders') + wp_postmeta  (legacy connection)
- * Target:  orders + order_items                          (default connection)
+ * Target:  orders + order_items  (default connection)
  *
- * Legacy status → Laravel status mapping:
- *   0 → pending           (calculating order value)
- *   1 → needs_payment     (value calculated, awaiting payment)
- *   2 → processing        (executing, items en route to warehouse)
- *   3 → purchasing        (final invoice issued)
- *   4 → shipped
- *   5 → delivered
- *   6 → cancelled
- *   7 → on_hold           (awaiting customer clarification)
+ * Order number: Use post_name as-is. On collision, append -2, -3, etc.
  *
- * Product item columns:  p_url_N, p_qty_N, p_color_N, p_size_N, p_info_N,
- *                        p_price_N, p_img_N  (N = 1…30)
+ * Status mapping (WP 0–7 → Laravel slug):
+ *   0 → pending, 1 → needs_payment, 2 → processing, 3 → purchasing,
+ *   4 → shipped, 5 → delivered, 6 → cancelled, 7 → on_hold
  */
 class MigrateOrders extends Command
 {
     protected $signature = 'migrate:orders
-                            {--fresh : Truncate orders + order_items before migrating}
                             {--chunk=200 : Number of orders to process per batch}
                             {--limit= : Only migrate this many orders (for testing)}';
 
@@ -56,30 +49,13 @@ class MigrateOrders extends Command
     {
         $this->info('=== MigrateOrders ===');
 
-        if ($this->option('fresh')) {
-            $this->warn('Truncating order_items, orders …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('order_comment_reads')->truncate();
-            DB::table('order_comment_edits')->truncate();
-            DB::table('order_comments')->truncate();
-            DB::table('order_files')->truncate();
-            DB::table('order_items')->truncate();
-            DB::table('order_timeline')->truncate();
-            DB::table('orders')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-        }
-
-        // Build email → Laravel user_id map for fast lookups.
-        $this->line('Building user ID map …');
-        $userMap = DB::table('users')
-            ->pluck('id', 'email')
-            ->toArray();
+        $userMap = DB::table('users')->pluck('id', 'email')->toArray();
 
         $chunkSize = (int) $this->option('chunk');
         $limit = $this->option('limit') ? (int) $this->option('limit') : null;
 
         $query = DB::connection('legacy')
-            ->table('wp_posts')
+            ->table('posts')
             ->where('post_type', 'orders')
             ->where('post_status', 'publish')
             ->orderBy('ID');
@@ -91,35 +67,32 @@ class MigrateOrders extends Command
         $bar->start();
 
         $processed = 0;
+        $seenOrderNumbers = [];
 
-        $query->chunk($chunkSize, function ($posts) use ($userMap, $bar, $limit, &$processed) {
+        $query->chunk($chunkSize, function ($posts) use ($userMap, $bar, $limit, &$processed, &$seenOrderNumbers) {
             try {
                 $postIds = $posts->pluck('ID')->toArray();
 
-                // Fetch all meta for this batch in one query.
                 $metaRows = DB::connection('legacy')
-                    ->table('wp_postmeta')
+                    ->table('postmeta')
                     ->whereIn('post_id', $postIds)
                     ->get();
 
-                // Index: post_id → [meta_key => meta_value]
-                // Note: p_img_N can appear multiple times (duplicate rows) — keep last value.
                 $meta = [];
                 foreach ($metaRows as $row) {
                     $meta[$row->post_id][$row->meta_key] = $row->meta_value;
                 }
 
-                // Batch-fetch author emails for this chunk.
                 $authorIds = $posts->pluck('post_author')->unique()->toArray();
                 $authorEmails = DB::connection('legacy')
-                    ->table('wp_users')
+                    ->table('users')
                     ->whereIn('ID', $authorIds)
                     ->pluck('user_email', 'ID')
-                    ->toArray(); // wp_user_id → email
+                    ->toArray();
 
                 $ordersToInsert = [];
                 $itemsByPostId = [];
-                $usedOrderNumbers = []; // Track within batch to handle duplicate post_name in same chunk
+                $queuedOrderNumbers = []; // order numbers assigned in this chunk (before batch insert)
 
                 foreach ($posts as $post) {
                     if ($limit && $processed >= $limit) {
@@ -129,53 +102,50 @@ class MigrateOrders extends Command
                     $bar->advance();
                     $processed++;
 
-                    $postMeta = $meta[$post->ID] ?? [];
-                    // Use WP post_name as order_number: unique orders = plain number (66610), duplicates = order_id-2, -3 etc.
-                    $orderNumber = $post->post_name ?: (string) ($postMeta['order_id'] ?? $post->ID);
-                    if ($orderNumber === '') {
-                        $orderNumber = (string) $post->ID;
-                    }
-                    // Fallback: if post_name collides (in DB or within this batch), append post_id
-                    if (isset($usedOrderNumbers[$orderNumber]) || DB::table('orders')->where('order_number', $orderNumber)->exists()) {
-                        $orderNumber = $orderNumber.'-'.$post->ID;
-                    }
-                    $usedOrderNumbers[$orderNumber] = true;
-
-                    // Skip if already migrated (by wp_post_id).
                     if (DB::table('orders')->where('wp_post_id', $post->ID)->exists()) {
                         $this->skipped++;
 
                         continue;
                     }
 
-                    // Resolve user — fall back to system user (first admin) if not found.
+                    $postMeta = $meta[$post->ID] ?? [];
+                    $baseOrderNumber = $post->post_name ?: (string) ($postMeta['order_id'] ?? $post->ID);
+                    if ($baseOrderNumber === '') {
+                        $baseOrderNumber = (string) $post->ID;
+                    }
+
+                    // Duplicate order numbers: first = plain, 2nd = -2, 3rd = -3, etc.
+                    // Check DB + previous chunks (seenOrderNumbers) + current chunk queue (queuedOrderNumbers)
+                    $orderNumber = $baseOrderNumber;
+                    $suffix = 2;
+                    while (DB::table('orders')->where('order_number', $orderNumber)->exists()
+                        || isset($seenOrderNumbers[$orderNumber])
+                        || isset($queuedOrderNumbers[$orderNumber])) {
+                        $orderNumber = $baseOrderNumber.'-'.$suffix;
+                        $suffix++;
+                    }
+                    $queuedOrderNumbers[$orderNumber] = true;
+                    $seenOrderNumbers[$orderNumber] = true;
+
                     $authorEmail = $authorEmails[$post->post_author] ?? null;
                     $userId = $authorEmail ? ($userMap[$authorEmail] ?? null) : null;
 
                     if (! $userId) {
-                        // Orphaned WP user — assign to first admin in Laravel.
                         static $fallbackUserId = null;
-
                         if ($fallbackUserId === null) {
-                            $fallbackUserId = DB::table('model_has_roles')
-                                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-                                ->where('roles.name', 'admin')
-                                ->value('model_has_roles.model_id')
+                            $fallbackUserId = DB::table('users')->where('email', DeletedUserSeeder::EMAIL)->value('id')
                                 ?? DB::table('users')->min('id');
                         }
-
                         $userId = $fallbackUserId;
                     }
 
                     $wpStatus = (int) ($postMeta['order_status'] ?? 0);
                     $laravelStatus = self::STATUS_MAP[$wpStatus] ?? 'pending';
 
-                    // Calculate subtotal from all product prices.
                     $subtotal = 0;
                     for ($i = 1; $i <= 30; $i++) {
                         $price = (float) ($postMeta["p_price_{$i}"] ?? 0);
                         $qty = (int) ($postMeta["p_qty_{$i}"] ?? 1);
-
                         if ($price > 0) {
                             $subtotal += $price * $qty;
                         }
@@ -186,7 +156,6 @@ class MigrateOrders extends Command
                     $paymentDate = $this->parseDate($postMeta['payment_date'] ?? null);
                     $shippingSnapshot = $this->parseJson($postMeta['shipping_address_snapshot'] ?? null);
 
-                    // Cap amounts to fit DECIMAL column (avoids out-of-range from corrupt legacy data)
                     $maxAmount = 99_999_999.99;
                     $subtotal = min($subtotal, $maxAmount);
                     $paymentAmount = $paymentAmount !== null ? min($paymentAmount, $maxAmount) : null;
@@ -214,20 +183,17 @@ class MigrateOrders extends Command
                         'updated_at' => $post->post_modified ?? $post->post_date,
                     ];
 
-                    // Build order items.
                     $items = $this->extractItems($postMeta, $post->ID);
                     if ($items) {
                         $itemsByPostId[$orderNumber] = $items;
                     }
                 }
 
-                // Batch insert orders.
                 if ($ordersToInsert) {
                     try {
                         DB::table('orders')->insert($ordersToInsert);
                         $this->ordersInserted += count($ordersToInsert);
                     } catch (\Exception $e) {
-                        // Fall back to single inserts to isolate the bad row.
                         foreach ($ordersToInsert as $row) {
                             try {
                                 DB::table('orders')->insert($row);
@@ -241,7 +207,6 @@ class MigrateOrders extends Command
                     }
                 }
 
-                // Now insert order items using the newly created order IDs.
                 if ($itemsByPostId) {
                     $orderIds = DB::table('orders')
                         ->whereIn('order_number', array_keys($itemsByPostId))
@@ -249,14 +214,11 @@ class MigrateOrders extends Command
                         ->toArray();
 
                     $allItems = [];
-
                     foreach ($itemsByPostId as $orderNumber => $items) {
                         $orderId = $orderIds[$orderNumber] ?? null;
-
                         if (! $orderId) {
                             continue;
                         }
-
                         foreach ($items as $item) {
                             $item['order_id'] = $orderId;
                             $allItems[] = $item;
@@ -268,12 +230,11 @@ class MigrateOrders extends Command
                             DB::table('order_items')->insert($allItems);
                             $this->itemsInserted += count($allItems);
                         } catch (\Exception $e) {
-                            // Fall back to single item inserts.
                             foreach ($allItems as $item) {
                                 try {
                                     DB::table('order_items')->insert($item);
                                     $this->itemsInserted++;
-                                } catch (\Exception $ie) {
+                                } catch (\Exception) {
                                     $this->errors++;
                                 }
                             }
@@ -282,7 +243,7 @@ class MigrateOrders extends Command
                 }
 
                 if ($limit && $processed >= $limit) {
-                    return false; // Stop chunking.
+                    return false;
                 }
             } catch (\Exception $e) {
                 $this->errors++;
@@ -305,35 +266,26 @@ class MigrateOrders extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Parse product item fields from post meta (p_url_N, p_qty_N, etc.)
-     * and return an array of order_items rows (without order_id).
-     */
     private function extractItems(array $meta, int $postId): array
     {
         $items = [];
 
         for ($i = 1; $i <= 30; $i++) {
-            // A product slot exists when p_N key is present or p_url_N is non-empty.
             $slotKey = "p_{$i}";
             $urlKey = "p_url_{$i}";
-
             $hasSlot = array_key_exists($slotKey, $meta) || array_key_exists($urlKey, $meta);
 
             if (! $hasSlot) {
-                break; // Products are sequential — stop on first gap.
+                break;
             }
 
             $url = trim($meta[$urlKey] ?? '');
-
-            // Strip page content that sometimes gets appended to the URL field
-            // (happens when users paste from browser address bar on old mobile WP theme).
             if (strlen($url) > 2000) {
                 $url = substr($url, 0, 2000);
             }
 
             if (empty($url)) {
-                continue; // Empty slot — skip.
+                continue;
             }
 
             $isUrl = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
@@ -343,7 +295,6 @@ class MigrateOrders extends Command
 
             $imagePath = null;
             if (! empty($meta["p_img_{$i}"])) {
-                // Resolve WP attachment ID to a relative file path.
                 $imagePath = $this->resolveAttachmentPath((int) $meta["p_img_{$i}"]);
             }
 
@@ -366,11 +317,6 @@ class MigrateOrders extends Command
         return $items;
     }
 
-    /**
-     * Resolve a WP attachment ID to a storage-relative path.
-     *
-     * Uses a static cache to avoid redundant DB queries within a single run.
-     */
     private function resolveAttachmentPath(int $attachmentId): ?string
     {
         static $cache = [];
@@ -380,7 +326,7 @@ class MigrateOrders extends Command
         }
 
         $guid = DB::connection('legacy')
-            ->table('wp_posts')
+            ->table('posts')
             ->where('ID', $attachmentId)
             ->where('post_type', 'attachment')
             ->value('guid');

@@ -2,24 +2,24 @@
 
 namespace App\Console\Commands\Migration;
 
+use Database\Seeders\DeletedUserSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Migrate order comments from the legacy WordPress database.
  *
- * Source:  wp_comments WHERE post_type = 'orders'  (legacy connection)
- * Target:  order_comments                           (default connection)
+ * Source:  wp_comments WHERE comment_post_ID = order post  (legacy connection)
+ * Target:  order_comments  (default connection)
  *
- * Must run AFTER migrate:users and migrate:orders.
+ * Orphan comments (e.g. from deleted user ulgasan581@gmail.com): Assign to
+ * Deleted User placeholder, set is_system=true.
  *
- * Trashed comments (comment_approved = 'trash') are skipped.
- * Comments from unknown users are attributed to the first admin account.
+ * comment_approved: '1' or '0' = migrate; 'trash'/'spam' = skip
  */
 class MigrateOrderComments extends Command
 {
     protected $signature = 'migrate:order-comments
-                            {--fresh : Truncate order_comments before migrating}
                             {--chunk=1000 : Number of records to process per batch}';
 
     protected $description = 'Migrate order comments from legacy WordPress database into order_comments';
@@ -34,34 +34,22 @@ class MigrateOrderComments extends Command
     {
         $this->info('=== MigrateOrderComments ===');
 
-        if ($this->option('fresh')) {
-            $this->warn('Truncating order_comments …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('order_comment_reads')->truncate();
-            DB::table('order_comment_edits')->truncate();
-            DB::table('order_comments')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        $userMap = DB::table('users')->pluck('id', 'email')->toArray();
+        $deletedUserId = DB::table('users')->where('email', DeletedUserSeeder::EMAIL)->value('id');
+
+        if (! $deletedUserId) {
+            $this->error('Deleted User not found. Run MigrateAll (or seed DeletedUserSeeder) first.');
+
+            return self::FAILURE;
         }
 
-        // Build lookup maps.
-        $this->line('Building lookup maps …');
-
-        $userMap = DB::table('users')->pluck('id', 'email')->toArray();
-
-        $fallbackUserId = DB::table('model_has_roles')
-            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-            ->where('roles.name', 'admin')
-            ->value('model_has_roles.model_id')
-            ?? DB::table('users')->min('id');
-
-        $this->line('Mapping WP post IDs to Laravel order IDs …');
         $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
 
         $total = DB::connection('legacy')
-            ->table('wp_comments as c')
-            ->join('wp_posts as p', 'p.ID', '=', 'c.comment_post_ID')
+            ->table('comments as c')
+            ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
-            ->whereIn('c.comment_approved', ['1', '0'])  // include pending (0), exclude trash/spam
+            ->whereIn('c.comment_approved', ['1', '0'])
             ->count();
 
         $this->line("Source: {$total} order comments");
@@ -70,8 +58,8 @@ class MigrateOrderComments extends Command
         $bar->start();
 
         DB::connection('legacy')
-            ->table('wp_comments as c')
-            ->join('wp_posts as p', 'p.ID', '=', 'c.comment_post_ID')
+            ->table('comments as c')
+            ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
             ->whereIn('c.comment_approved', ['1', '0'])
             ->select('c.*')
@@ -79,7 +67,7 @@ class MigrateOrderComments extends Command
             ->chunk((int) $this->option('chunk'), function ($comments) use (
                 $userMap,
                 $wpPostToOrderId,
-                $fallbackUserId,
+                $deletedUserId,
                 $bar
             ) {
                 $toInsert = [];
@@ -95,24 +83,24 @@ class MigrateOrderComments extends Command
                         continue;
                     }
 
-                    // Resolve author to a Laravel user ID.
                     $userId = null;
+                    $isSystem = false;
 
                     if ($comment->user_id > 0) {
                         $email = DB::connection('legacy')
-                            ->table('wp_users')
+                            ->table('users')
                             ->where('ID', $comment->user_id)
                             ->value('user_email');
                         $userId = $userMap[$email] ?? null;
                     }
 
-                    if (! $userId) {
-                        // Try matching by author email.
+                    if (! $userId && ! empty($comment->comment_author_email)) {
                         $userId = $userMap[$comment->comment_author_email] ?? null;
                     }
 
                     if (! $userId) {
-                        $userId = $fallbackUserId;
+                        $userId = $deletedUserId;
+                        $isSystem = true;
                     }
 
                     $body = trim($comment->comment_content);
@@ -128,6 +116,7 @@ class MigrateOrderComments extends Command
                         'user_id' => $userId,
                         'body' => $body,
                         'is_internal' => false,
+                        'is_system' => $isSystem,
                         'is_edited' => false,
                         'created_at' => $comment->comment_date,
                         'updated_at' => $comment->comment_date,
@@ -166,9 +155,6 @@ class MigrateOrderComments extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Build wp_post_id → Laravel order_id from orders.wp_post_id (set during migrate:orders).
-     */
     private function buildWpPostToOrderIdMap(): array
     {
         $map = [];
