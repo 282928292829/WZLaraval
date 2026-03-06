@@ -91,7 +91,7 @@ class NewOrder extends Component
         if ($editId && Auth::check()) {
             $order = Order::find($editId);
             if ($order) {
-                return $this->redirect(route('orders.show', $order));
+                $this->redirect(route('orders.show', $order));
             }
         }
 
@@ -725,8 +725,7 @@ class NewOrder extends Component
     private function insertDevComments(Order $order): void
     {
         $customer = $order->user;
-        $staff = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['staff', 'admin', 'superadmin']))
-            ->first() ?? $customer;
+        $staff = User::staff()->first() ?? $customer;
 
         $messages = [
             'Hi, I just placed this order. Please confirm you received it.',
@@ -995,7 +994,9 @@ class NewOrder extends Component
     public function render()
     {
         $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
-        $view = view('livewire.new-order')
+        $layout = Setting::get('order_new_layout', '1');
+        $viewName = $layout === '4' ? 'livewire.new-order-wizard' : 'livewire.new-order';
+        $view = view($viewName)
             ->with('commissionSettings', CommissionCalculator::getSettings())
             ->with('allowedMimeTypes', allowed_upload_mime_types())
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024);

@@ -13,16 +13,16 @@ class RoleBasedThrottle
     public function __construct(protected RateLimiter $limiter) {}
 
     /**
-     * Apply role-aware rate limiting, reading limits from the settings table.
+     * Apply permission-aware rate limiting, reading limits from the settings table.
      *
-     * Staff (editor/admin/superadmin) → orders_per_hour_admin (default 50).
+     * Staff (users with view-all-orders) → orders_per_hour_admin (default 50).
      * Everyone else (customers, guests)  → orders_per_hour_customer (default 10).
      */
     public function handle(Request $request, Closure $next, string $key = 'new-order'): Response
     {
         $user = $request->user();
 
-        $isStaff = $user && $user->hasAnyRole(['editor', 'admin', 'superadmin']);
+        $isStaff = $user && $user->can('view-all-orders');
 
         $maxAttempts = $isStaff
             ? (int) Setting::get('orders_per_hour_admin', 50)
