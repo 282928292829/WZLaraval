@@ -29,7 +29,7 @@
                 {{ __('account.quick_new_order') }}
             </a>
             @if ($lastOrder)
-            <a href="{{ route('orders.show', $lastOrder->id) }}"
+            <a href="{{ route('orders.show', $lastOrder) }}"
                class="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-2.5 rounded-xl border border-gray-200 transition-colors">
                 {{ __('orders.last_order_label') }}
             </a>
@@ -138,7 +138,7 @@
                             default         => 'bg-gray-50 text-gray-600 ring-gray-200',
                         };
                     @endphp
-                    <a href="{{ route('orders.show', $order->id) }}"
+                    <a href="{{ route('orders.show', $order) }}"
                        class="block bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-[0.99] transition-all">
                         <div class="px-4 pt-3.5 pb-3 space-y-2.5">
                             {{-- Row 1: order number · status badge · date (each with label) --}}
@@ -196,7 +196,7 @@
                                 };
                             @endphp
                             <tr class="hover:bg-gray-50/60 transition-colors cursor-pointer"
-                                onclick="location.href='{{ route('orders.show', $order->id) }}'">
+                                onclick="location.href='{{ route('orders.show', $order) }}'">
                                 <td class="px-4 py-3 font-bold text-primary-600">{{ $order->order_number }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ $order->created_at->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3">
@@ -205,8 +205,8 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3" onclick="event.stopPropagation()">
-                                    <a href="{{ route('orders.show', $order->id) }}"
-                                       class="inline-flex items-center whitespace-nowrap px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+<a href="{{ route('orders.show', $order) }}"
+                                   class="inline-flex items-center whitespace-nowrap px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
                                         {{ __('orders.action_open') }}
                                     </a>
                                 </td>

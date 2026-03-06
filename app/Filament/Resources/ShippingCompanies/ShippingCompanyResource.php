@@ -48,7 +48,7 @@ class ShippingCompanyResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Settings');
+        return __('Order Setup');
     }
 
     public static function form(Schema $schema): Schema

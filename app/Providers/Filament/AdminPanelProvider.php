@@ -2,8 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\FontSettingsPage;
-use App\Filament\Pages\SettingsPage;
+use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\TranslationsPage;
 use App\Http\Middleware\SetLocale;
 use App\Models\Setting;
@@ -33,18 +32,24 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->navigationGroups([
+                0 => __('Orders'),
+                1 => __('Order Setup'),
+                2 => __('Content'),
+                3 => __('Settings'),
+                4 => __('Users'),
+            ])
             ->favicon(fn () => Setting::faviconUrl('admin'))
             ->brandName(fn () => LogoHelper::getLogoText())
             ->brandLogo(fn () => LogoHelper::getLogoUrl())
-            ->font(config('app.locale') === 'ar' ? 'IBM Plex Sans Arabic' : 'Inter')
+            ->font(fn () => app()->getLocale() === 'ar' ? 'IBM Plex Sans Arabic' : 'Inter')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex(Setting::get('primary_color', '#f97316')),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
-                SettingsPage::class,
-                FontSettingsPage::class,
+                GeneralSettingsPage::class,
                 TranslationsPage::class,
             ])
             ->homeUrl(fn () => route('filament.admin.resources.orders.index'))
@@ -71,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar'))
                     ->openUrlInNewTab(false),
             ])
-            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'));
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'))
+            ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn () => view('filament.homepage-link'));
     }
 }

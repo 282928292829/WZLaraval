@@ -5,7 +5,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        @php $primaryColor = \App\Models\Setting::get('primary_color', '#f97316'); @endphp
+        @php
+            $primaryColor = trim((string) \App\Models\Setting::get('primary_color', '#f97316'));
+            $primaryHover = \App\Support\ColorHelper::darken($primaryColor, 5);
+            $primaryLight = \App\Support\ColorHelper::lighten($primaryColor, 92);
+            $primaryLight2 = \App\Support\ColorHelper::lighten($primaryColor, 80);
+        @endphp
         <meta name="theme-color" content="{{ $primaryColor }}">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,8 +35,16 @@
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         @endif
 
-        <style>:root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }</style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <style>:root {
+            --primary: {{ $primaryColor }};
+            --primary-hover: {{ $primaryHover }};
+            --color-primary-50: {{ $primaryLight }};
+            --color-primary-100: {{ $primaryLight2 }};
+            --color-primary-400: {{ $primaryColor }};
+            --color-primary-500: {{ $primaryColor }};
+            --color-primary-600: {{ $primaryHover }};
+        }</style>
         @livewireStyles
     </head>
     <body class="antialiased bg-white text-gray-900 min-h-screen flex flex-col" style="font-family: {{ \App\Support\FontHelper::cssFontFamily() }};">
@@ -49,6 +62,9 @@
         <main class="flex-1">
             {!! $slot ?? '' !!}
         </main>
+
+        @php $minimalFooter = true; @endphp
+        @include('layouts.partials.footer')
 
         @livewireScripts
         @stack('scripts')

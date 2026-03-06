@@ -5,7 +5,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        @php $primaryColor = \App\Models\Setting::get('primary_color', '#f97316'); @endphp
+        @php
+            $primaryColor = trim((string) \App\Models\Setting::get('primary_color', '#f97316'));
+            $primaryHover = \App\Support\ColorHelper::darken($primaryColor, 5);
+            $primaryLight = \App\Support\ColorHelper::lighten($primaryColor, 92);
+            $primaryLight2 = \App\Support\ColorHelper::lighten($primaryColor, 80);
+        @endphp
         <meta name="theme-color" content="{{ $primaryColor }}">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -52,7 +57,10 @@
         <meta name="twitter:description" content="{{ $ogDescription ?? ($description ?? $siteDefaultDesc) }}">
         @if($effectiveOgImage)
         <meta name="twitter:image" content="{{ $effectiveOgImage }}">
+        <meta name="twitter:image:alt" content="{{ $ogImageAlt ?? $siteName }}">
         @endif
+
+        @stack('meta')
 
         <title>{{ isset($title) ? $title . ' — ' . $siteName : $siteName }}</title>
 
@@ -81,10 +89,16 @@
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         @endif
 
-        <style>
-            :root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }
-        </style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <style>:root {
+            --primary: {{ $primaryColor }};
+            --primary-hover: {{ $primaryHover }};
+            --color-primary-50: {{ $primaryLight }};
+            --color-primary-100: {{ $primaryLight2 }};
+            --color-primary-400: {{ $primaryColor }};
+            --color-primary-500: {{ $primaryColor }};
+            --color-primary-600: {{ $primaryHover }};
+        }</style>
         @livewireStyles
     </head>
     <body class="antialiased bg-white text-gray-900 min-h-screen flex flex-col" style="font-family: {{ \App\Support\FontHelper::cssFontFamily() }};">
@@ -114,217 +128,7 @@
             {{ $slot }}
         </main>
 
-        {{-- Footer --}}
-        @if ($minimalFooter ?? false)
-        <footer id="page-bottom" class="bg-gray-50 border-t border-gray-100 mt-auto py-4 scroll-mt-14">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-gray-500">
-                <span>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</span>
-                <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">
-                    @csrf
-                    <button type="submit"
-                            class="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-400 rounded-lg transition-colors"
-                            style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
-                        {{ __('Switch language text') }}
-                    </button>
-                </form>
-            </div>
-        </footer>
-        @elseif(!($hideFooter ?? false))
-        @php
-            $footerWhatsapp = \App\Models\Setting::get('whatsapp', '');
-            $footerEmail    = \App\Models\Setting::get('contact_email', '');
-            $commercialReg  = \App\Models\Setting::get('commercial_registration', '');
-            $footerInfoSlugs = ['how-to-order', 'shipping-calculator', 'payment-methods', 'faq'];
-            $footerServicesSlugs = ['calculator', 'membership'];
-            $footerPoliciesSlugs = ['terms-and-conditions', 'privacy-policy', 'refund-policy'];
-            $footerPages = \App\Models\Page::where('show_in_footer', true)->where('is_published', true)->orderBy('menu_order')->get();
-            $footerInfoPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerInfoSlugs));
-            $footerServicesPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerServicesSlugs));
-            $footerPoliciesPages = $footerPages->filter(fn ($p) => in_array($p->slug, $footerPoliciesSlugs));
-            $footerOtherPages = $footerPages->filter(fn ($p) => ! in_array($p->slug, array_merge($footerInfoSlugs, $footerServicesSlugs, $footerPoliciesSlugs)));
-        @endphp
-        <footer class="bg-gray-50 border-t border-gray-100 mt-auto">
-
-            {{-- Main footer links --}}
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-8">
-
-                    {{-- Column 1: معلومات --}}
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.information') }}</h4>
-                        <ul class="space-y-2.5">
-                            @foreach($footerInfoPages->merge($footerOtherPages) as $p)
-                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
-                            @endforeach
-                        </ul>
-                    </div>
-
-                    {{-- Column 2: خدمات --}}
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.services') }}</h4>
-                        <ul class="space-y-2.5">
-                            <li><a href="{{ url('/new-order') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.new_order') }}</a></li>
-                            <li><a href="{{ url('/orders') }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ __('footer.my_orders') }}</a></li>
-                            @foreach($footerServicesPages as $p)
-                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
-                            @endforeach
-                        </ul>
-                    </div>
-
-                    {{-- Column 3: سياسات --}}
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.policies') }}</h4>
-                        <ul class="space-y-2.5">
-                            @foreach($footerPoliciesPages as $p)
-                                <li><a href="{{ url('/pages/' . $p->slug) }}" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">{{ $p->getTitle() }}</a></li>
-                            @endforeach
-                        </ul>
-                    </div>
-
-                    {{-- Column 4: معلومات الإتصال --}}
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800 mb-4">{{ __('footer.contact') }}</h4>
-                        <ul class="space-y-2.5">
-                            @if ($footerWhatsapp)
-                                <li>
-                                    <span class="text-xs text-gray-400 block">{{ __('footer.whatsapp') }}</span>
-                                    <a href="https://wa.me/{{ preg_replace('/\D/', '', $footerWhatsapp) }}"
-                                       target="_blank" rel="noopener"
-                                       class="text-sm text-gray-600 hover:text-primary-600 transition-colors">
-                                        {{ $footerWhatsapp }}
-                                    </a>
-                                </li>
-                            @endif
-                            @if ($footerEmail)
-                                <li>
-                                    <span class="text-xs text-gray-400 block">{{ __('footer.email') }}</span>
-                                    <a href="mailto:{{ $footerEmail }}"
-                                       class="text-sm text-gray-600 hover:text-primary-600 transition-colors">
-                                        {{ $footerEmail }}
-                                    </a>
-                                </li>
-                            @endif
-                            <li class="text-sm text-gray-500">{{ __('footer.support_hours') }}</li>
-                        </ul>
-                    </div>
-
-                </div>
-            </div>
-
-            {{-- Partners / logos section --}}
-            @php $showPartners = \App\Models\Setting::get('show_partners', true); @endphp
-            @if ($showPartners)
-                <div class="border-t border-gray-100">
-                    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-6">
-                        <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
-                        {{-- Bank logos ordered right→left: Rajhi, Ahli, Bilad, Alinma, SAB, Riyad, SAIB --}}
-                        <div class="flex flex-wrap items-center justify-center gap-5 opacity-70" dir="ltr">
-                            @foreach([
-                                ['src' => 'images/banks/saib.svg',    'alt' => 'SAIB'],
-                                ['src' => 'images/banks/riyad.svg',   'alt' => 'Riyad Bank'],
-                                ['src' => 'images/banks/sab.svg',     'alt' => 'SAB'],
-                                ['src' => 'images/banks/alinma.svg',  'alt' => 'Alinma Bank'],
-                                ['src' => 'images/banks/albilad.svg', 'alt' => 'Bank Albilad'],
-                                ['src' => 'images/banks/snb.svg',     'alt' => 'NCB / Ahli'],
-                                ['src' => 'images/banks/rajhi.svg',   'alt' => 'Al Rajhi Bank'],
-                            ] as $bank)
-                                <img src="{{ asset($bank['src']) }}"
-                                     alt="{{ $bank['alt'] }}"
-                                     class="h-7 w-auto object-contain"
-                                     loading="lazy">
-                            @endforeach
-                        </div>
-                        {{-- Individual payment logos — flex so RTL ordering works correctly --}}
-                        <div class="flex flex-wrap items-center justify-center gap-5 opacity-70">
-                            @foreach([
-                                ['src' => 'images/payment/visa.svg',          'alt' => 'Visa',          'h' => 'h-6'],
-                                ['src' => 'images/payment/mastercard.svg',     'alt' => 'Mastercard',    'h' => 'h-8'],
-                                ['src' => 'images/payment/paypal.svg',         'alt' => 'PayPal',        'h' => 'h-6'],
-                                ['src' => 'images/payment/western-union.svg',  'alt' => 'Western Union', 'h' => 'h-7'],
-                                ['src' => 'images/payment/moneygram.svg',      'alt' => 'MoneyGram',     'h' => 'h-7'],
-                            ] as $pm)
-                                <img src="{{ asset($pm['src']) }}"
-                                     alt="{{ $pm['alt'] }}"
-                                     class="{{ $pm['h'] }} w-auto object-contain"
-                                     loading="lazy">
-                            @endforeach
-                        </div>
-                        <img src="{{ asset('images/shipping-line.svg') }}"
-                             alt="{{ __('footer.shipping_alt') }}"
-                             class="w-full max-w-2xl object-contain opacity-70"
-                             loading="lazy"
-                             height="18">
-                    </div>
-                </div>
-            @endif
-
-            {{-- Bottom bar: legal + last updated + copyright --}}
-            <div class="border-t border-gray-100">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4 text-center text-xs text-gray-400">
-
-                    {{-- Commercial registration + SBC badge --}}
-                    @if ($commercialReg)
-                        <div>
-                            <span>{{ __('footer.commercial_reg') }}: {{ $commercialReg }}</span>
-                        </div>
-                    @endif
-                    @php
-                        $certLogo = \App\Models\Setting::get('certification_logo', '');
-                        $certUrl = \App\Models\Setting::get('certification_url', '');
-                    @endphp
-                    @if ($certLogo || $certUrl)
-                        <div>
-                            @php
-                                $logoUrl = $certLogo && \Illuminate\Support\Facades\Storage::disk('public')->exists($certLogo)
-                                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($certLogo)
-                                    : null;
-                            @endphp
-                            <a href="{{ $certUrl ?: '#' }}"
-                               @if($certUrl) target="_blank" rel="noopener noreferrer" @endif
-                               class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-600 transition-colors text-xs text-gray-500">
-                                @if ($logoUrl)
-                                    <img src="{{ $logoUrl }}"
-                                         alt="{{ __('footer.certified_by') }}"
-                                         class="w-6 h-6 object-contain"
-                                         loading="lazy">
-                                @endif
-                                {{ __('footer.certified_by') }}
-                            </a>
-                        </div>
-                    @endif
-
-                    {{-- Last updated --}}
-                    @php
-                        $manifestPath = public_path('build/manifest.json');
-                        $lastUpdated  = file_exists($manifestPath) ? filemtime($manifestPath) : null;
-                    @endphp
-                    @if ($lastUpdated)
-                        <div>
-                            <strong>{{ __('footer.last_updated') }}:</strong>
-                            {{ date('Y/m/d', $lastUpdated) }} - {{ date('H:i', $lastUpdated) }}
-                        </div>
-                    @endif
-
-                    {{-- Language toggle --}}
-                    <div>
-                        <form method="POST" action="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-400 rounded-lg transition-colors"
-                                    style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
-                                {{ __('Switch language text') }}
-                            </button>
-                        </form>
-                    </div>
-
-                    {{-- Copyright --}}
-                    <p>&copy; {{ date('Y') }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</p>
-
-                </div>
-            </div>
-
-        </footer>
-        @endunless
+        @include('layouts.partials.footer')
 
         @livewireScripts
         @stack('scripts')

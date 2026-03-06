@@ -112,25 +112,29 @@ class PageResource extends Resource
             Section::make(__('SEO'))->schema([
                 TextInput::make('seo_title_ar')
                     ->label(__('SEO Title (Arabic)'))
-                    ->maxLength(70),
+                    ->maxLength(70)
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.title_help').'</span>')),
 
                 TextInput::make('seo_title_en')
                     ->label(__('SEO Title (English)'))
-                    ->maxLength(70),
+                    ->maxLength(70)
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.title_help').'</span>')),
 
                 Textarea::make('seo_description_ar')
                     ->label(__('SEO Description (Arabic)'))
                     ->rows(2)
-                    ->maxLength(160),
+                    ->maxLength(160)
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.description_help').'</span>')),
 
                 Textarea::make('seo_description_en')
                     ->label(__('SEO Description (English)'))
                     ->rows(2)
-                    ->maxLength(160),
+                    ->maxLength(160)
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.description_help').'</span>')),
 
                 FileUpload::make('og_image')
                     ->label(__('OG Image'))
-                    ->helperText(__('Image for social sharing. Min 1200×630px. Falls back to site default if empty.'))
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.og_image_help').'</span>'))
                     ->image()
                     ->directory('og-images')
                     ->nullable(),
@@ -140,7 +144,8 @@ class PageResource extends Resource
                     ->url()
                     ->placeholder('https://example.com/pages/slug')
                     ->nullable()
-                    ->maxLength(500),
+                    ->maxLength(500)
+                    ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.canonical_help').'</span>')),
 
                 Select::make('robots')
                     ->label(__('Robots'))
@@ -150,6 +155,9 @@ class PageResource extends Resource
                         'index, nofollow' => __('index, nofollow'),
                         'noindex, nofollow' => __('noindex, nofollow'),
                     ])
+                    ->helperText(new \Illuminate\Support\HtmlString(
+                        '<span class="text-gray-400 text-xs">'.__('seo.robots_help').'</span>'
+                    ))
                     ->nullable(),
             ])->columns(2)->collapsible(),
         ]);

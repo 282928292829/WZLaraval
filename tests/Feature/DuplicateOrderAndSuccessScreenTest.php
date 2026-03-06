@@ -17,6 +17,7 @@ beforeEach(function (): void {
     Setting::set('max_orders_per_day', '0', 'integer', 'orders');
     Setting::set('max_products_per_order', '30', 'integer', 'orders');
     Setting::set('default_currency', 'USD', 'string', 'orders');
+    Setting::set('order_new_layout', '1', 'string', 'orders');
 });
 
 // ─── duplicate_from ───────────────────────────────────────────────────────────
@@ -81,6 +82,39 @@ test('staff can duplicate any order', function (): void {
 
     expect($component->get('orderNotes'))->toBe('Staff dupe');
     expect($component->get('items'))->toHaveCount(1);
+});
+
+// ─── edit redirect (System 1: inline edit on order page) ───────────────────────
+
+test('edit param redirects authenticated owner to order page for inline edit', function (): void {
+    $user = User::factory()->create();
+    $user->assignRole('customer');
+
+    $order = Order::factory()->create(['user_id' => $user->id]);
+
+    $component = Livewire::actingAs($user)
+        ->test(NewOrder::class, ['edit' => $order->id]);
+
+    $component->assertRedirect(route('orders.show', $order));
+});
+
+test('edit param with invalid id does not redirect', function (): void {
+    $user = User::factory()->create();
+    $user->assignRole('customer');
+
+    $component = Livewire::actingAs($user)
+        ->test(NewOrder::class, ['edit' => 999999]);
+
+    $component->assertNoRedirect();
+});
+
+test('edit param is ignored when guest', function (): void {
+    $user = User::factory()->create();
+    $order = Order::factory()->create(['user_id' => $user->id]);
+
+    $component = Livewire::test(NewOrder::class, ['edit' => $order->id]);
+
+    $component->assertNoRedirect();
 });
 
 // ─── product_url ─────────────────────────────────────────────────────────────

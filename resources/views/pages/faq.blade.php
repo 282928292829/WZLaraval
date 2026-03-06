@@ -46,7 +46,7 @@
                 ],
                 [
                     'q' => __('faq.q9'),
-                    'a' => __('faq.a9'),
+                    'a' => __('faq.a9', ['contact_email' => \App\Models\Setting::get('contact_email') ?: config('mail.from.address', 'info@example.com')]),
                 ],
                 [
                     'q' => __('faq.q10'),

@@ -3,6 +3,8 @@
 namespace App\Mail;
 
 use App\Models\OrderComment;
+use App\Models\Setting;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,15 +20,51 @@ class CommentNotification extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $orderNumber = $this->comment->order->order_number ?? '';
+        $order = $this->comment->order;
+        $locale = $order->user?->locale ?? app()->getLocale();
+        $siteName = Setting::get('site_name') ?: config('app.name');
+
+        $replacements = [
+            'name' => $order->user?->name ?? '',
+            'order_number' => $order->order_number ?? '',
+            'comment_body' => $this->comment->body ?? '',
+            'order_link' => url('/orders/'.$order->id),
+        ];
+
+        $subject = app(EmailTemplateService::class)->getSubject('comment_notification', $locale, $replacements);
 
         return new Envelope(
-            subject: __('orders.notification_email_subject', ['number' => $orderNumber]),
+            subject: $subject ?? __('orders.notification_email_subject', ['number' => $order->order_number ?? '']),
         );
     }
 
     public function content(): Content
     {
+        $order = $this->comment->order;
+        $locale = $order->user?->locale ?? app()->getLocale();
+
+        $replacements = [
+            'name' => $order->user?->name ?? '',
+            'order_number' => $order->order_number ?? '',
+            'comment_body' => $this->comment->body ?? '',
+            'order_link' => url('/orders/'.$order->id),
+        ];
+
+        $body = app(EmailTemplateService::class)->getBody('comment_notification', $locale, $replacements);
+
+        if ($body !== null) {
+            $subj = app(EmailTemplateService::class)->getSubject('comment_notification', $locale, $replacements);
+
+            return new Content(
+                view: 'emails.plain-text',
+                with: [
+                    'body' => $body,
+                    'locale' => $locale,
+                    'subject' => $subj ?? __('orders.notification_email_subject', ['number' => $order->order_number ?? '']),
+                ],
+            );
+        }
+
         return new Content(
             view: 'emails.comment-notification',
         );

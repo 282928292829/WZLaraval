@@ -4,6 +4,7 @@
     $isLoggedIn = auth()->check();
     $locale = app()->getLocale();
     $isRtl = $locale === 'ar';
+    $orderNewLayout = (string) ($orderNewLayout ?? '1');
 @endphp
 
 {{-- ============================================================ --}}
@@ -53,7 +54,8 @@
             ],
         ]),
         @js($allowedMimeTypes ?? []),
-        {{ $maxFileSizeBytes ?? (2 * 1024 * 1024) }}
+        {{ $maxFileSizeBytes ?? (2 * 1024 * 1024) }},
+        @js($orderNewLayout)
     )"
     x-init="
         init();
@@ -78,7 +80,7 @@
 
     <div class="flex flex-wrap items-center justify-between gap-2 mb-4 lg:shrink-0">
         <h1 class="text-xl font-bold text-slate-800 m-0">{{ $editingOrderId ? __('orders.edit_order_title', ['number' => $editingOrderNumber]) : __('Create new order') }}</h1>
-        @if (config('app.env') === 'local')
+        @if ($showAddTestItems ?? false)
         <button type="button" @click="addFiveTestItems()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
             {{ __('order.dev_add_5_test_items') }}
         </button>
@@ -86,8 +88,8 @@
     </div>
 
     {{-- Tips Box --}}
-    <section class="bg-white rounded-lg shadow-sm border border-orange-100 mb-5 overflow-hidden lg:shrink-0" x-show="!tipsHidden" x-cloak>
-        <div class="px-4 py-3 flex justify-between items-center cursor-pointer border-b border-orange-100" @click="tipsOpen = !tipsOpen">
+    <section class="bg-white rounded-lg shadow-sm border border-primary-100 mb-5 overflow-hidden lg:shrink-0" x-show="!tipsHidden" x-cloak>
+        <div class="px-4 py-3 flex justify-between items-center cursor-pointer border-b border-primary-100" @click="tipsOpen = !tipsOpen">
             <h2 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.tips_title') }}</h2>
             <span x-text="tipsOpen ? '▲' : '▼'" class="text-primary-500 text-xs"></span>
         </div>
@@ -97,7 +99,7 @@
                     <li class="mb-2.5 relative ps-[18px] before:content-['•'] before:absolute before:start-0 before:text-primary-500 before:font-bold">{{ __("order_form.tip_{$i}") }}</li>
                 @endfor
             </ul>
-            <div class="mt-4 pt-4 border-t border-orange-100">
+            <div class="mt-4 pt-4 border-t border-primary-100">
                 <label class="flex items-center gap-2 text-sm text-slate-500 cursor-pointer">
                     <input type="checkbox" @change="hideTips30Days()" class="cursor-pointer">
                     <span>{{ __('order_form.tips_dont_show') }}</span>
@@ -118,8 +120,36 @@
         </section>
         @endif
 
-        {{-- Products Section — desktop: HTML table (scrolls); mobile: collapsible cards --}}
-        <section class="bg-white rounded-xl shadow-sm border border-orange-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
+        @if ($orderNewLayout === '3')
+        {{-- Option 3: Cards everywhere — cards on both mobile and desktop --}}
+        <section class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
+            <div id="items-container-wrapper" class="flex flex-col gap-2.5 lg:flex-1 lg:min-h-0 lg:min-w-0 lg:overflow-auto">
+                <div id="items-container" class="flex flex-col gap-2.5">
+                    <template x-for="(item, idx) in items" :key="idx">
+                        @include('livewire.partials._order-item-card-option3')
+                    </template>
+                </div>
+            </div>
+            <div class="flex flex-col gap-3 shrink-0 pt-3 border-t border-primary-100 mt-3">
+                <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
+                    + {{ __('order_form.add_product') }}
+                </button>
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
+                        @if ($showResetAll ?? true)
+                        <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                            {{ __('order_form.reset_all') }}
+                        </button>
+                        @endif
+                    </div>
+                    <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
+                </div>
+            </div>
+        </section>
+        @else
+        {{-- Option 1: Desktop table, mobile cards --}}
+        <section class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
 
             {{-- Desktop: HTML table (only scrollable area) — design-3 layout --}}
             <div x-ref="tableScrollContainer" class="overflow-auto lg:flex-1 lg:min-h-0 lg:min-w-0 hidden lg:block">
@@ -136,21 +166,21 @@
                         <col style="width:auto">
                         <col style="width:7rem">
                     </colgroup>
-                    <thead class="sticky top-0 z-10 bg-orange-50 shadow-sm">
+                    <thead class="sticky top-0 z-10 bg-primary-50 shadow-sm">
                         <tr>
                             <th class="p-2 w-9" aria-label="{{ __('order_form.remove_row') }}"></th>
                             <th class="text-start p-2 font-bold text-xs text-slate-800">#</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_url') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_color') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_size') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_qty') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_price_per_unit') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_currency') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_notes') }}</th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_files') }}</th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_url') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_color') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_size') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_currency') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                         </tr>
                     </thead>
-                    <tbody class="border-t border-orange-100">
+                    <tbody class="border-t border-primary-100">
                         <template x-for="(item, idx) in items" :key="idx">
                             @include('livewire.partials._order-item-table-row')
                         </template>
@@ -159,18 +189,20 @@
             </div>
 
             {{-- Desktop: Add Product, General notes, Reset — always under table edge --}}
-            <div class="hidden lg:flex lg:flex-col lg:gap-3 lg:shrink-0 pt-3 border-t border-orange-100">
+            <div class="hidden lg:flex lg:flex-col lg:gap-3 lg:shrink-0 pt-3 border-t border-primary-100">
                 <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                     + {{ __('order_form.add_product') }}
                 </button>
                 <div class="flex flex-col gap-1.5">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }}</h3>
+                        <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
+                        @if ($showResetAll ?? true)
                         <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
                             {{ __('order_form.reset_all') }}
                         </button>
+                        @endif
                     </div>
-                    <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
+                    <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
                 </div>
             </div>
 
@@ -186,20 +218,23 @@
         </section>
 
         {{-- Add Product + General Notes — mobile only; desktop has them under table --}}
-        <div class="lg:hidden bg-white -mx-4 px-4 pt-2 pb-2 border-t border-orange-100/60">
+        <div class="lg:hidden bg-white -mx-4 px-4 pt-2 pb-2 border-t border-primary-100/60">
             <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                 + {{ __('order_form.add_product') }}
             </button>
             <section class="mt-2">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <h3 class="text-base m-0">{{ __('order_form.general_notes') }}</h3>
+                    <h3 class="text-base m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
+                    @if ($showResetAll ?? true)
                     <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
                         {{ __('order_form.reset_all') }}
                     </button>
+                    @endif
                 </div>
-                <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-orange-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
+                <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
             </section>
         </div>
+        @endif
 
         {{-- Fixed Footer --}}
         <div class="order-summary-card">
@@ -238,12 +273,20 @@
     <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
 </div>
 
-{{-- Login Modal --}}
-<div class="order-login-modal-overlay"
-     :class="{ 'show': $wire.showLoginModal }"
-     @click.self="$wire.closeModal()">
+{{-- Login Modal — x-show with $wire guard prevents false display during Livewire morph (fixes black overlay on delete) --}}
+<div class="order-login-modal-overlay fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-5"
+     x-show="($wire && $wire.showLoginModal) === true"
+     x-cloak
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @click.self="$wire && $wire.closeModal()"
+     wire:key="order-login-modal-overlay">
     <div class="order-login-modal">
-        <div class="py-8 px-8 pb-5 border-b border-orange-100 relative">
+        <div class="py-8 px-8 pb-5 border-b border-primary-100 relative">
             <button type="button" class="absolute top-5 start-5 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 text-3xl border-none bg-transparent cursor-pointer hover:bg-black/5 hover:text-slate-800 transition-colors" @click="$wire.closeModal()">&times;</button>
             <h2 class="text-2xl font-bold text-slate-800 mb-2.5 text-center">
                 <span x-show="$wire.loginModalReason === 'submit'">{{ __('order_form.modal_title') }}</span>
@@ -267,7 +310,7 @@
                 <div class="mb-5">
                     <label class="block font-semibold text-sm text-slate-800 mb-2">{{ __('order_form.modal_enter_email') }}</label>
                     <input type="email" wire:model="modalEmail" required autocomplete="email"
-                           class="order-form-input w-full px-4 py-3 border border-orange-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10"
+                           class="order-form-input w-full px-4 py-3 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10"
                            placeholder="{{ __('Email') }}">
                 </div>
                 <button type="submit" class="w-full py-3 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors">
@@ -290,7 +333,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <input :type="showPassword ? 'text' : 'password'" wire:model="modalPassword" required autocomplete="current-password"
-                               class="order-form-input flex-1 w-full px-4 py-3 border border-orange-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10">
+                               class="order-form-input flex-1 w-full px-4 py-3 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10">
                         <button type="button" @click="showPassword = !showPassword"
                                 :aria-label="showPassword ? '{{ __('order_form.hide_password') }}' : '{{ __('order_form.show_password') }}'"
                                 class="shrink-0 py-2 px-3 text-xs text-slate-500 bg-slate-100 border-none rounded-lg cursor-pointer">
@@ -323,7 +366,7 @@
                     <label class="block font-semibold text-sm text-slate-800 mb-2">{{ __('Password') }}</label>
                     <div class="flex items-center gap-2">
                         <input :type="showPassword ? 'text' : 'password'" wire:model="modalPassword" required autocomplete="new-password" minlength="4"
-                               class="order-form-input flex-1 w-full px-4 py-3 border border-orange-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10">
+                               class="order-form-input flex-1 w-full px-4 py-3 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10">
                         <button type="button" @click="showPassword = !showPassword"
                                 :aria-label="showPassword ? '{{ __('order_form.hide_password') }}' : '{{ __('order_form.show_password') }}'"
                                 class="shrink-0 py-2 px-3 text-xs text-slate-500 bg-slate-100 border-none rounded-lg cursor-pointer">
@@ -343,7 +386,7 @@
                 <div class="mb-5">
                     <p class="text-sm text-slate-600 mb-3">{{ __('order_form.reset_desc') }}</p>
                     <input type="email" wire:model="modalEmail" required autocomplete="email"
-                           class="order-form-input w-full px-4 py-3 border border-orange-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10"
+                           class="order-form-input w-full px-4 py-3 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-3 focus:ring-primary-500/10"
                            placeholder="{{ __('Email') }}">
                     @if ($modalError && $modalStep === 'reset')
                         <p class="text-red-500 text-xs mt-1">{{ $modalError }}</p>
@@ -369,12 +412,12 @@
 
 @push('scripts')
 <script>
-function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes) {
+function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes, orderNewLayout) {
     maxImagesPerItem = maxImagesPerItem || 3;
     maxImagesPerOrder = maxImagesPerOrder || 10;
-    msgMaxPerItem = msgMaxPerItem || 'Maximum :max images per product.';
-    msgMaxOrder = msgMaxOrder || 'Maximum :max images per order. Remove some to submit.';
-    testOptions = testOptions || { colors: ['White / Blue if unavailable', 'Black / Gray if unavailable', 'Navy / Blue', 'Red / Maroon', 'Beige / White'], notes: ['Same as picture', 'Please send photo when it arrives', 'Exact match to image', 'I want image when it arrives', 'As shown in listing'] };
+    msgMaxPerItem = msgMaxPerItem || @js(__('order_form.max_per_item_reached', ['max' => $maxImagesPerItem ?? 3]));
+    msgMaxOrder = msgMaxOrder || @js(__('order_form.max_files', ['max' => $maxImagesPerOrder ?? 10]));
+    testOptions = testOptions || { colors: [], sizes: [], notes: [] };
     const cs = commissionSettings || { threshold: 500, below_type: 'flat', below_value: 50, above_type: 'percent', above_value: 8 };
     function calcCommission(subtotalSar) {
         if (subtotalSar <= 0) return 0;
@@ -409,6 +452,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
         filledCount: 0,
         submitting: false,
         openCurrencyRow: null,
+        orderNewLayout: orderNewLayout || '1',
         init() {
             this.checkTipsHidden();
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
@@ -466,7 +510,8 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
             }
             const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
 
-            if (window.innerWidth < 1024) {
+            const useCardsLayout = this.orderNewLayout === '3';
+            if (window.innerWidth < 1024 || useCardsLayout) {
                 const open = this.items.findIndex(i => i._expanded);
                 if (open !== -1) {
                     this.items[open]._expanded = false;
@@ -482,9 +527,10 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
             this.saveDraft();
             this.$nextTick(() => {
                 setTimeout(() => {
-                    if (window.innerWidth >= 1024 && this.$refs.tableScrollContainer) {
+                    const hasTable = this.$refs.tableScrollContainer && this.orderNewLayout !== '3';
+                    if (window.innerWidth >= 1024 && hasTable) {
                         const el = this.$refs.tableScrollContainer;
-                        el.scrollTop = el.scrollHeight - el.clientHeight;
+                        if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
                     } else {
                         const cards = document.querySelectorAll('#items-container > div');
                         if (cards.length >= 3) {
@@ -540,7 +586,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
         },
 
         removeItem(idx) {
-            this.$wire.shiftFileIndex(idx);
+            this.$wire.removeItem(idx);
             this.items.splice(idx, 1);
             this.calcTotals();
             this.saveDraft();

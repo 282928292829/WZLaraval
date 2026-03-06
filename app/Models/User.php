@@ -165,4 +165,12 @@ class User extends Authenticatable implements FilamentUser
 
         return mb_strtoupper(mb_substr($this->name, 0, 2));
     }
+
+    /**
+     * Send the password reset notification using admin-configurable templates.
+     */
+    public function sendPasswordResetNotification(mixed $token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
 }

@@ -134,6 +134,11 @@ class PostResource extends Resource
                     ->label(__('Allow Comments'))
                     ->default(true)
                     ->helperText(__('When OFF, the comment form and list are hidden on this post.')),
+
+                Toggle::make('is_pinned')
+                    ->label(__('Pin to top'))
+                    ->default(false)
+                    ->helperText(__('Pinned posts appear first on the blog listing, above other posts.')),
             ])->collapsible(),
 
             Section::make(__('Featured Image'))->schema([
@@ -222,6 +227,13 @@ class PostResource extends Resource
                 TextColumn::make('comments_count')
                     ->label(__('Comments'))
                     ->counts('comments')
+                    ->sortable(),
+
+                TextColumn::make('is_pinned')
+                    ->label(__('Pinned'))
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? __('Yes') : __('No'))
+                    ->color(fn (bool $state): string => $state ? 'warning' : 'gray')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')

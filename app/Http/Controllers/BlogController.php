@@ -17,12 +17,12 @@ class BlogController extends Controller
     {
         $categorySlug = $request->query('category');
         $search = trim((string) $request->query('search', ''));
+        $sort = $request->query('sort', 'recommended');
         $category = null;
 
         $query = Post::query()
             ->published()
-            ->with(['author', 'category'])
-            ->orderByDesc('published_at');
+            ->with(['author', 'category']);
 
         if ($categorySlug) {
             $category = PostCategory::where('slug', $categorySlug)->firstOrFail();
@@ -40,10 +40,19 @@ class BlogController extends Controller
             });
         }
 
+        $query->withCount(['comments as approved_comments_count' => fn ($q) => $q->where('status', 'approved')]);
+
+        match ($sort) {
+            'oldest' => $query->orderByRaw('is_pinned DESC')->orderBy('published_at'),
+            'most_commented' => $query->orderByRaw('is_pinned DESC')->orderByDesc('approved_comments_count'),
+            'recommended' => $query->orderByRaw('is_pinned DESC')->orderByDesc('approved_comments_count'),
+            default => $query->orderByRaw('is_pinned DESC')->orderByDesc('published_at'),
+        };
+
         $posts = $query->paginate(12)->withQueryString();
         $categories = PostCategory::has('posts')->orderBy('sort_order')->get();
 
-        return view('blog.index', compact('posts', 'categories', 'category', 'search'));
+        return view('blog.index', compact('posts', 'categories', 'category', 'search', 'sort'));
     }
 
     public function show(string $slug): View
@@ -119,7 +128,7 @@ class BlogController extends Controller
             : __('blog.comment_pending_moderation');
 
         return redirect()
-            ->to(route('blog.show', $post->slug) . '#comments')
+            ->to(route('blog.show', $post->slug).'#comments')
             ->with('status', $message);
     }
 }

@@ -58,6 +58,12 @@
     }
 
     :root {
+        /* Use website primary from settings (injected by layout) — order form & cards follow site color */
+        --color-primary-50: color-mix(in srgb, var(--primary, #f97316) 8%, white);
+        --color-primary-100: color-mix(in srgb, var(--primary, #f97316) 20%, white);
+        --color-primary-400: var(--primary, #f97316);
+        --color-primary-500: var(--primary, #f97316);
+        --color-primary-600: var(--primary-hover, #ea580c);
         --color-primary: var(--color-primary-500);
         --color-primary-hover: var(--color-primary-600);
         --color-primary-light: var(--color-primary-50);
@@ -121,6 +127,21 @@
         to { opacity: 0; transform: translateY(-20px) scale(0.8); }
     }
 
+    /* Optional indicator — small, unobtrusive, before field titles */
+    .order-field-optional {
+        @apply text-[0.6rem] text-stone-400 font-normal;
+    }
+
+    /* Placeholder: single line with ellipsis when field is narrow (URL, Notes) */
+    textarea.order-form-input::placeholder,
+    textarea.order-form-input.order-field-sync::placeholder {
+        white-space: nowrap;
+    }
+    textarea.order-form-input {
+        overflow-x: hidden;
+        text-overflow: ellipsis;
+    }
+
     /* Item grid — desktop 9-column layout (#, url, qty, color, size, price, currency, notes, files). Attach + trash in Files. Header uses this class directly; .order-item-details gets it via @media (lg: doesn't work on @layer components in Tailwind v4) */
     .order-item-grid-desktop {
         grid-template-columns: minmax(1.5rem, 0.12fr) 1fr 0.35fr 0.35fr 0.35fr 0.35fr 0.35fr 0.65fr 0.55fr;
@@ -135,7 +156,7 @@
     .order-item-details .order-cell-not { grid-column: span 6; }
     .order-item-details .order-optional-section {
         grid-column: span 6;
-        @apply flex flex-col gap-2.5 pt-2.5 mt-1.5 border-t border-dashed border-orange-100;
+        @apply flex flex-col gap-2.5 pt-2.5 mt-1.5 border-t border-dashed border-primary-100;
     }
     @media (min-width: 1024px) {
         .order-item-details {
@@ -156,7 +177,7 @@
     }
     /* Fixed summary footer */
     .order-summary-card {
-        @apply fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white/98 to-orange-50/95 backdrop-blur-xl px-5 py-4 flex justify-between items-center gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] border-t border-orange-100/60 z-[100];
+        @apply fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white/98 to-primary-50/95 backdrop-blur-xl px-5 py-4 flex justify-between items-center gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] border-t border-primary-100/60 z-[100];
     }
     @media (min-width: 640px) {
         .order-summary-card { @apply px-5 py-2.5 gap-5; }
@@ -180,12 +201,11 @@
         }
     }
 
-    /* Login modal overlay/display */
+    /* Login modal overlay — visibility controlled by Alpine x-show (hidden by default prevents flash during Livewire morph) */
     .order-login-modal-overlay {
-        @apply fixed inset-0 bg-black/70 z-[9999] items-center justify-center p-5 hidden;
+        @apply fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-5;
         animation: orderModalFadeIn 0.3s ease;
     }
-    .order-login-modal-overlay.show { @apply flex; }
     @keyframes orderModalFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .order-login-modal {
         @apply bg-white rounded-2xl max-w-[500px] w-full max-h-[90vh] overflow-y-auto shadow-2xl;

@@ -139,6 +139,28 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+// Admin: comment templates CSV export (requires manage-comment-templates permission)
+Route::middleware(['auth'])->get('/admin/export-comment-templates-csv', function () {
+    if (! auth()->user()?->can('manage-comment-templates')) {
+        abort(403);
+    }
+
+    $templates = \App\Models\CommentTemplate::query()->orderBy('sort_order')->orderBy('usage_count', 'desc')->get();
+    $filename = 'comment-templates-'.now()->format('Y-m-d').'.csv';
+
+    return response()->streamDownload(function () use ($templates) {
+        $handle = fopen('php://output', 'w');
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        fputcsv($handle, [__('Title'), __('Content'), __('Order'), __('Uses')]);
+
+        foreach ($templates as $t) {
+            fputcsv($handle, [$t->title, $t->content, $t->sort_order, $t->usage_count]);
+        }
+
+        fclose($handle);
+    }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+})->name('admin.comment-templates.export-csv');
+
 // Dev-only quick login — never registered in production
 if (app()->environment('local')) {
     Route::post('/_dev/login-as', [DevController::class, 'loginAs'])
@@ -162,5 +184,11 @@ Route::get('/homepagetest555', fn () => view('homepage-tests.555'));
 Route::get('/homepagetest666', fn () => view('homepage-tests.666'));
 Route::get('/homepagetest777', fn () => view('homepage-tests.777'));
 Route::get('/homepagetest888', fn () => view('homepage-tests.888'));
+
+// Homepage design demos
+Route::get('/test-homepage-demo1', fn () => view('homepage-tests.demo1'));
+Route::get('/test-homepage-demo2', fn () => view('homepage-tests.demo2'));
+Route::get('/test-homepage-demo3', fn () => view('homepage-tests.demo3'));
+Route::get('/test-homepage-demo4', fn () => view('homepage-tests.demo4'));
 
 require __DIR__.'/auth.php';

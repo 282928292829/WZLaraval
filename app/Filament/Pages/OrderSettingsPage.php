@@ -2,12 +2,11 @@
 
 namespace App\Filament\Pages;
 
-use App\Console\Commands\FetchExchangeRates;
 use App\Models\Currency;
 use App\Models\Setting;
+use App\Services\SettingsPersistService;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -25,10 +24,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Mail;
 
-class SettingsPage extends Page
+class OrderSettingsPage extends Page
 {
     use InteractsWithFormActions;
 
@@ -36,23 +33,23 @@ class SettingsPage extends Page
 
     protected static ?string $navigationLabel = null;
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 0;
 
     protected static ?string $title = null;
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Settings');
+        return __('Order Setup');
     }
 
     public static function getNavigationLabel(): string
     {
-        return __('General');
+        return __('Order Settings');
     }
 
     public function getTitle(): string
     {
-        return __('General Settings');
+        return __('Order Settings');
     }
 
     /** @var array<string, mixed> */
@@ -66,18 +63,61 @@ class SettingsPage extends Page
         return $user?->hasPermissionTo('manage-settings') ?? false;
     }
 
+    /** @var list<string> Order-related setting keys to load */
+    protected const ORDER_KEYS = [
+        'auto_comment_with_price', 'auto_comment_no_price',
+        'order_success_screen_enabled', 'order_success_title_ar', 'order_success_title_en',
+        'order_success_subtitle_ar', 'order_success_subtitle_en',
+        'order_success_message_ar', 'order_success_message_en',
+        'order_success_go_to_order_ar', 'order_success_go_to_order_en',
+        'order_success_redirect_prefix_ar', 'order_success_redirect_prefix_en',
+        'order_success_redirect_suffix_ar', 'order_success_redirect_suffix_en',
+        'order_success_redirect_seconds', 'order_success_screen_threshold',
+        'max_products_per_order', 'order_edit_enabled', 'order_edit_click_window_minutes',
+        'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
+        'order_new_layout', 'order_form_show_add_test_items', 'order_form_show_reset_all',
+        'orders_per_hour_customer', 'orders_per_hour_admin', 'orders_per_day_staff',
+        'orders_per_month_customer', 'orders_per_month_admin', 'orders_per_day_customer',
+        'max_file_size_mb', 'max_images_per_item', 'max_images_per_order',
+        'max_files_per_item_after_submit', 'customer_can_add_files_after_submit',
+        'comment_max_files', 'comment_max_file_size_mb',
+        'payment_notify_order_max_files', 'payment_notify_standalone_max_files',
+        'order_form_fields',
+        'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg', 'aramex_delivery_days',
+        'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg', 'dhl_delivery_days',
+        'domestic_first_half_kg', 'domestic_rest_half_kg', 'domestic_delivery_days',
+        'exchange_rates_markup_percent', 'exchange_rates_auto_fetch',
+        'commission_threshold_sar', 'commission_rate_above', 'commission_flat_below',
+        'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
+        'qa_similar_order', 'qa_customer_merge', 'qa_customer_cancel',
+        'qa_team_section', 'qa_transfer_order', 'qa_payment_tracking',
+        'qa_shipping_tracking', 'qa_team_merge',
+        'qa_mark_paid', 'qa_mark_shipped', 'qa_request_info', 'qa_cancel_order',
+        'invoice_filename_pattern', 'invoice_number_pattern', 'invoice_show_type_label',
+        'invoice_type_labels', 'invoice_show_company_details', 'invoice_company_details',
+        'invoice_show_due_date', 'invoice_due_date_days', 'invoice_due_date_label',
+        'invoice_comment_default', 'invoice_first_payment_comment_template',
+        'invoice_greeting', 'invoice_confirmation', 'invoice_payment_instructions',
+        'invoice_footer_text', 'invoice_show_order_items', 'invoice_custom_lines',
+    ];
+
     public function mount(): void
     {
         $data = $this->defaults();
 
-        foreach (Setting::all() as $setting) {
-            $data[$setting->key] = $setting->type === 'json'
-                ? json_decode($setting->value, true)
-                : $setting->value;
+        $allSettings = Setting::all()->keyBy('key');
+
+        foreach (static::ORDER_KEYS as $key) {
+            $setting = $allSettings->get($key);
+            if ($setting) {
+                $data[$key] = $setting->type === 'json'
+                    ? json_decode($setting->value, true)
+                    : $setting->value;
+            }
         }
 
         // Inflate flat exchange-rate config from the stored JSON blob
-        $er = $data['exchange_rates'] ?? [];
+        $er = Setting::get('exchange_rates', []);
         if (is_array($er)) {
             if (isset($er['markup_percent'])) {
                 $data['exchange_rates_markup_percent'] = (string) $er['markup_percent'];
@@ -86,6 +126,7 @@ class SettingsPage extends Page
                 $data['exchange_rates_auto_fetch'] = (bool) $er['auto_fetch_enabled'];
             }
         }
+        $data['exchange_rates'] = $er;
 
         // Load currencies from DB (for Exchange Rates repeater)
         $data['currencies'] = Currency::ordered()->get()->map(fn (Currency $c): array => [
@@ -101,42 +142,12 @@ class SettingsPage extends Page
         $this->form->fill($this->data);
     }
 
-    /** @return array<string,mixed> */
+    /** @return array<string, mixed> */
     protected function defaults(): array
     {
         return [
-            // General
-            'site_name' => 'Wasetzon',
-            'default_language' => 'ar',
-            'default_currency' => 'USD',
-            'site_timezone' => 'Asia/Riyadh',
-            'times_use_user_timezone' => false,
-
-            // Contact (footer, hero WhatsApp)
-            'whatsapp' => '',
-            'contact_email' => '',
-            'commercial_registration' => '',
-
-            // Appearance
-            'primary_color' => '#f97316',
-            'font_family' => 'IBM Plex Sans Arabic',
-            'logo_use_per_language' => false,
-            'logo_text_use_per_language' => true,
-            'logo_image' => '',
-            'logo_image_ar' => '',
-            'logo_image_en' => '',
-            'logo_text' => 'Wasetzon',
-            'logo_text_ar' => '',
-            'logo_text_en' => '',
-            'logo_alt' => '',
-            'logo_alt_ar' => '',
-            'logo_alt_en' => '',
-
-            // Order auto-reply (system comment after order creation)
             'auto_comment_with_price' => '',
             'auto_comment_no_price' => '',
-
-            // Order success screen (after new order submission)
             'order_success_screen_enabled' => true,
             'order_success_title_ar' => '',
             'order_success_title_en' => '',
@@ -152,95 +163,50 @@ class SettingsPage extends Page
             'order_success_redirect_suffix_en' => '',
             'order_success_redirect_seconds' => '30',
             'order_success_screen_threshold' => '10',
-
-            // Order rules
             'max_products_per_order' => '30',
             'order_edit_enabled' => true,
             'order_edit_click_window_minutes' => '10',
             'order_edit_resubmit_window_minutes' => '10',
             'order_edit_window_minutes' => '10',
             'order_new_layout' => '1',
+            'order_form_show_add_test_items' => false,
+            'order_form_show_reset_all' => true,
             'orders_per_hour_customer' => '50',
             'orders_per_hour_admin' => '50',
             'orders_per_day_staff' => '100',
             'orders_per_month_customer' => '500',
             'orders_per_month_admin' => '1000',
+            'orders_per_day_customer' => '200',
             'max_file_size_mb' => '2',
             'max_images_per_item' => '3',
             'max_images_per_order' => '10',
             'max_files_per_item_after_submit' => '5',
             'customer_can_add_files_after_submit' => '0',
-            'orders_per_day_customer' => '200',
             'comment_max_files' => '10',
             'comment_max_file_size_mb' => '10',
             'payment_notify_order_max_files' => '5',
             'payment_notify_standalone_max_files' => '5',
-
-            // Email (disabled by default, SMTP not configured)
-            'email_enabled' => '0',
-            'email_from_name' => 'Wasetzon',
-            'email_from_address' => '',
-            'smtp_host' => '',
-            'smtp_port' => '587',
-            'smtp_username' => '',
-            'smtp_password' => '',
-            'smtp_encryption' => 'tls',
-            'email_registration' => '0',
-            'email_welcome' => '0',
-            'email_password_reset' => '1',
-            'email_comment_notification' => '0',
-
-            // Social login
-            'google_login_enabled' => '0',
-
-            // Scripts
-            'header_scripts' => '',
-            'footer_scripts' => '',
-
-            // Order form fields (JSON — managed by seeder, edited here)
             'order_form_fields' => [],
-
-            // Exchange rates (global; per-currency in Currency model)
             'exchange_rates_markup_percent' => '3',
             'exchange_rates_auto_fetch' => true,
-
-            // Commission rules
             'commission_threshold_sar' => '500',
             'commission_rate_above' => '8',
             'commission_flat_below' => '50',
-
-            // Customer quick-action toggles
             'qa_customer_section' => true,
             'qa_payment_notify' => true,
             'qa_shipping_address_btn' => true,
             'qa_similar_order' => true,
             'qa_customer_merge' => true,
             'qa_customer_cancel' => true,
-
-            // Staff quick-action toggles
             'qa_team_section' => true,
             'qa_transfer_order' => true,
             'qa_payment_tracking' => true,
             'qa_shipping_tracking' => true,
             'qa_team_merge' => true,
-
-            // Legacy staff quick-action button toggles
             'qa_mark_paid' => true,
             'qa_mark_shipped' => true,
             'qa_request_info' => true,
             'qa_cancel_order' => true,
-
-            // Blog
-            'blog_comments_enabled' => true,
-
-            // SEO (site-wide defaults)
-            'seo_default_og_image' => '',
-            'seo_default_meta_description' => '',
-            'seo_twitter_handle' => '',
-            'seo_google_verification' => '',
-            'seo_bing_verification' => '',
-
-            // Shipping rates (SAR)
             'aramex_first_half_kg' => '119',
             'aramex_rest_half_kg' => '39',
             'aramex_over21_per_kg' => '59',
@@ -252,15 +218,6 @@ class SettingsPage extends Page
             'domestic_first_half_kg' => '69',
             'domestic_rest_half_kg' => '19',
             'domestic_delivery_days' => '4-7',
-
-            // Carrier tracking URL templates ({tracking} replaced with the actual number)
-            'carrier_url_aramex' => 'https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}',
-            'carrier_url_smsa' => 'https://www.smsaexpress.com/track/?tracknumbers={tracking}',
-            'carrier_url_dhl' => 'https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}',
-            'carrier_url_fedex' => 'https://www.fedextrack/?trknbr={tracking}',
-            'carrier_url_ups' => 'https://www.ups.com/track?tracknum={tracking}',
-
-            // Invoice defaults
             'invoice_filename_pattern' => 'Invoice-{order_number}.pdf',
             'invoice_number_pattern' => '{order_number}-{count}',
             'invoice_show_type_label' => false,
@@ -278,17 +235,6 @@ class SettingsPage extends Page
             'invoice_footer_text' => '',
             'invoice_show_order_items' => false,
             'invoice_custom_lines' => [],
-
-            // Hero section (homepage)
-            'hero_title' => '',
-            'hero_subtitle' => '',
-            'hero_input_placeholder' => '',
-            'hero_button_text' => '',
-            'hero_show_whatsapp' => true,
-            'hero_whatsapp_button_text' => '',
-            'hero_whatsapp_number' => '',
-            'hero_show_name_change_notice' => true,
-            'hero_input_required' => false,
         ];
     }
 
@@ -302,12 +248,6 @@ class SettingsPage extends Page
         $icon = ($er['last_fetch_status'] ?? '') === 'success' ? '✅' : '⚠️';
 
         return "{$icon} {$er['last_fetch_time']}";
-    }
-
-    /** Build helper text showing current market / final rates for a currency */
-    protected function rateInfo(string $currency): string
-    {
-        return $this->rateInfoForCode($currency);
     }
 
     /** Build helper text for a currency code (used by Repeater item). */
@@ -334,281 +274,6 @@ class SettingsPage extends Page
     {
         return $schema
             ->components([
-                // ── General ──────────────────────────────────────────────────
-                Section::make(__('General'))
-                    ->icon(Heroicon::OutlinedGlobeAlt)
-                    ->schema([
-                        TextInput::make('site_name')
-                            ->label(__('Site Name'))
-                            ->default('Wasetzon')
-                            ->required(),
-
-                        Select::make('default_language')
-                            ->label(__('Default Language'))
-                            ->options(['ar' => __('Arabic'), 'en' => __('English')])
-                            ->default('ar')
-                            ->required(),
-
-                        Select::make('default_currency')
-                            ->label(__('Default Currency'))
-                            ->options([
-                                'USD' => 'USD — US Dollar ($)',
-                                'EUR' => 'EUR — Euro (€)',
-                                'GBP' => 'GBP — British Pound (£)',
-                                'SAR' => 'SAR — Saudi Riyal (ر.س)',
-                                'AED' => 'AED — UAE Dirham (د.إ)',
-                                'KWD' => 'KWD — Kuwaiti Dinar (د.ك)',
-                                'QAR' => 'QAR — Qatari Riyal (ر.ق)',
-                                'BHD' => 'BHD — Bahraini Dinar (د.ب)',
-                                'OMR' => 'OMR — Omani Rial (ر.ع.)',
-                                'EGP' => 'EGP — Egyptian Pound (ج.م)',
-                                'TRY' => 'TRY — Turkish Lira (₺)',
-                                'CNY' => 'CNY — Chinese Yuan (¥)',
-                            ])
-                            ->searchable()
-                            ->default('USD')
-                            ->required(),
-                    ])
-                    ->columns(3),
-
-                // ── Date & Time ────────────────────────────────────────────────
-                Section::make(__('Date & Time'))
-                    ->icon(Heroicon::OutlinedClock)
-                    ->description(__('How dates and times are displayed. Site timezone is used when user timezone is OFF or when the user has not set their timezone.'))
-                    ->schema([
-                        Select::make('site_timezone')
-                            ->label(__('Site timezone'))
-                            ->options([
-                                'Asia/Riyadh' => 'Asia/Riyadh (Saudi Arabia)',
-                                'Asia/Dubai' => 'Asia/Dubai (UAE)',
-                                'Asia/Kuwait' => 'Asia/Kuwait',
-                                'Asia/Bahrain' => 'Asia/Bahrain',
-                                'Asia/Qatar' => 'Asia/Qatar',
-                                'Africa/Cairo' => 'Africa/Cairo (Egypt)',
-                                'Europe/London' => 'Europe/London (UK)',
-                                'Europe/Paris' => 'Europe/Paris',
-                                'America/New_York' => 'America/New_York (US East)',
-                                'America/Los_Angeles' => 'America/Los_Angeles (US West)',
-                                'America/Chicago' => 'America/Chicago (US Central)',
-                                'UTC' => 'UTC',
-                            ])
-                            ->default('Asia/Riyadh')
-                            ->searchable()
-                            ->required(),
-
-                        Toggle::make('times_use_user_timezone')
-                            ->label(__('Use user timezone when set'))
-                            ->helperText(__('When ON, dates are shown in the user\'s timezone if they have set one in their profile. When OFF or if the user has no timezone, site timezone is used.'))
-                            ->default(false)
-                            ->onColor('success'),
-                    ])
-                    ->columns(2),
-
-                // ── SEO (Site-Wide Defaults) ───────────────────────────────────
-                Section::make(__('SEO'))
-                    ->icon(Heroicon::OutlinedMagnifyingGlass)
-                    ->description(__('These settings apply across your entire site. Individual pages and blog posts can override some of these. Used by search engines (Google, Bing) and social networks (Facebook, Twitter) when your links are shared.'))
-                    ->schema([
-                        FileUpload::make('seo_default_og_image')
-                            ->label(__('Default Share Image'))
-                            ->helperText(__('The image shown when a page or post is shared on social media (Facebook, Twitter, WhatsApp). Used when a page or post has no image of its own. Recommended size: 1200×630 pixels. Leave empty to show no image.'))
-                            ->image()
-                            ->directory('og-images')
-                            ->nullable()
-                            ->columnSpanFull(),
-
-                        Textarea::make('seo_default_meta_description')
-                            ->label(__('Default Meta Description'))
-                            ->helperText(__('Short text shown when your site appears in search results. Used when a page has no description of its own. Keep it under 160 characters. Example: "Buy from any store worldwide. We deliver to your door."'))
-                            ->rows(2)
-                            ->maxLength(200)
-                            ->columnSpanFull(),
-
-                        TextInput::make('seo_twitter_handle')
-                            ->label(__('Twitter / X Handle'))
-                            ->helperText(__('Your Twitter/X username without @. Example: wasetzon. Shown when links are shared on Twitter.'))
-                            ->placeholder('wasetzon')
-                            ->maxLength(30),
-
-                        TextInput::make('seo_google_verification')
-                            ->label(__('Google Search Console Verification'))
-                            ->helperText(__('The "content" value from the meta tag Google gives you when you add your site. Example: abc123xyz. Leave empty if not using Google Search Console.'))
-                            ->placeholder('abc123xyz...')
-                            ->maxLength(100),
-
-                        TextInput::make('seo_bing_verification')
-                            ->label(__('Bing Webmaster Verification'))
-                            ->helperText(__('The "content" value from the meta tag Bing gives you when you add your site. Example: 1234567890ABCD. Leave empty if not using Bing Webmaster Tools.'))
-                            ->placeholder('1234567890ABCD...')
-                            ->maxLength(100),
-                    ])
-                    ->columns(3)
-                    ->collapsible(),
-
-                // ── Blog ─────────────────────────────────────────────────────
-                Section::make(__('Blog'))
-                    ->icon(Heroicon::OutlinedNewspaper)
-                    ->schema([
-                        Toggle::make('blog_comments_enabled')
-                            ->label(__('Allow Blog Comments'))
-                            ->default(true)
-                            ->helperText(__('When OFF, the comment form and list are hidden on all blog posts.')),
-                    ]),
-
-                // ── Appearance ───────────────────────────────────────────────
-                Section::make(__('Appearance'))
-                    ->icon(Heroicon::OutlinedPaintBrush)
-                    ->description(__('Logo, colors, and typography. Use per-language when you have different logos or text for Arabic and English.'))
-                    ->schema([
-                        TextInput::make('primary_color')
-                            ->label(__('Primary Color (hex)'))
-                            ->placeholder('#f97316')
-                            ->maxLength(20),
-
-                        TextInput::make('font_family')
-                            ->label(__('Font Family'))
-                            ->placeholder(__('IBM Plex Sans Arabic')),
-
-                        Toggle::make('logo_use_per_language')
-                            ->label(__('Use per-language logo image'))
-                            ->helperText(__('When ON, you can upload a different logo image for Arabic and English.'))
-                            ->columnSpanFull()
-                            ->onColor('success'),
-
-                        Toggle::make('logo_text_use_per_language')
-                            ->label(__('Use per-language logo text'))
-                            ->helperText(__('When ON, text logo is localized (different text for Arabic and English). When OFF, one text is used for both. Recommended: ON.'))
-                            ->default(true)
-                            ->columnSpanFull()
-                            ->onColor('success'),
-
-                        // Single logo image (when per-language image is OFF)
-                        FileUpload::make('logo_image')
-                            ->label(__('Logo Image (all languages)'))
-                            ->helperText(__('Shown in header. Recommended: PNG/SVG, max height 48px. Leave empty to show text logo.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt')
-                            ->label(__('Logo Alt Text (SEO)'))
-                            ->helperText(__('Used in img alt attribute for accessibility and SEO. Leave empty to use logo text.'))
-                            ->placeholder(__('Site name and tagline'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
-
-                        // Per-language logo images (when per-language image is ON)
-                        FileUpload::make('logo_image_ar')
-                            ->label(__('Logo Image').' — '.__('Arabic'))
-                            ->helperText(__('Arabic version. Recommended: PNG/SVG, max height 48px.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        FileUpload::make('logo_image_en')
-                            ->label(__('Logo Image').' — '.__('English'))
-                            ->helperText(__('English version. Recommended: PNG/SVG, max height 48px.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt_ar')
-                            ->label(__('Logo Alt Text (SEO)').' — '.__('Arabic'))
-                            ->helperText(__('Used in img alt for Arabic pages. Leave empty to use logo text.'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt_en')
-                            ->label(__('Logo Alt Text (SEO)').' — '.__('English'))
-                            ->helperText(__('Used in img alt for English pages. Leave empty to use logo text.'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        // Single logo text (when per-language text is OFF)
-                        TextInput::make('logo_text')
-                            ->label(__('Logo Text (all languages)'))
-                            ->helperText(__('Shown when no logo image is uploaded. Used for both Arabic and English when per-language text is OFF.'))
-                            ->visible(fn ($get) => ! $get('logo_text_use_per_language')),
-
-                        // Per-language logo text (when per-language text is ON)
-                        TextInput::make('logo_text_ar')
-                            ->label(__('Logo Text').' — '.__('Arabic'))
-                            ->helperText(__('Shown when no logo image is uploaded.'))
-                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
-
-                        TextInput::make('logo_text_en')
-                            ->label(__('Logo Text').' — '.__('English'))
-                            ->helperText(__('Shown when no logo image is uploaded.'))
-                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
-                    ])
-                    ->columns(3)
-                    ->collapsible(false),
-
-                // ── Hero Section ─────────────────────────────────────────────
-                Section::make(__('Hero Section'))
-                    ->icon(Heroicon::OutlinedHome)
-                    ->description(__('Homepage hero: title, subtitle, product input, and WhatsApp button. Leave text fields empty to use default translations.'))
-                    ->collapsed(false)
-                    ->schema([
-                        TextInput::make('hero_title')
-                            ->label(__('hero.main_title'))
-                            ->placeholder(__('Shop from any store in the world'))
-                            ->maxLength(120),
-
-                        Textarea::make('hero_subtitle')
-                            ->label(__('hero.subtitle'))
-                            ->rows(2)
-                            ->placeholder(__('Send us the product links you want to buy. We handle the purchase, packaging, and shipping straight to your door.'))
-                            ->maxLength(400),
-
-                        TextInput::make('hero_input_placeholder')
-                            ->label(__('hero.input_placeholder'))
-                            ->placeholder(__('Paste a product link, or describe it if you don\'t have one'))
-                            ->maxLength(120),
-
-                        TextInput::make('hero_button_text')
-                            ->label(__('hero.button_text'))
-                            ->placeholder(__('Start Order'))
-                            ->maxLength(40),
-
-                        Toggle::make('hero_input_required')
-                            ->label(__('hero.input_required'))
-                            ->helperText(__('hero.input_required_help'))
-                            ->default(false),
-
-                        Toggle::make('hero_show_whatsapp')
-                            ->label(__('hero.show_whatsapp'))
-                            ->helperText(__('hero.show_whatsapp_help'))
-                            ->default(true)
-                            ->onColor('success'),
-
-                        TextInput::make('hero_whatsapp_button_text')
-                            ->label(__('hero.whatsapp_button_text'))
-                            ->placeholder(__('Or order via WhatsApp'))
-                            ->maxLength(60)
-                            ->visible(fn ($get) => (bool) $get('hero_show_whatsapp')),
-
-                        TextInput::make('hero_whatsapp_number')
-                            ->label(__('hero.whatsapp_number'))
-                            ->helperText(__('hero.whatsapp_number_help'))
-                            ->placeholder('966501234567')
-                            ->maxLength(20)
-                            ->visible(fn ($get) => (bool) $get('hero_show_whatsapp')),
-
-                        Toggle::make('hero_show_name_change_notice')
-                            ->label(__('hero.show_name_change_notice'))
-                            ->helperText(__('hero.show_name_change_notice_help'))
-                            ->default(true),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
                 // ── Order Auto Reply ─────────────────────────────────────────
                 Section::make(__('Order Auto Reply'))
                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)
@@ -616,12 +281,14 @@ class SettingsPage extends Page
                     ->schema([
                         Textarea::make('auto_comment_with_price')
                             ->label(__('When prices entered'))
-                            ->helperText(__('Placeholders: :subtotal, :commission, :total, :site_name, :whatsapp. WhatsApp numbers become clickable wa.me links.'))
+                            ->placeholder(__('orders.auto_comment_with_price', ['subtotal' => ':subtotal', 'commission' => ':commission', 'total' => ':total', 'site_name' => ':site_name', 'whatsapp' => ':whatsapp', 'payment_url' => ':payment_url', 'terms_url' => ':terms_url', 'faq_url' => ':faq_url', 'shipping_url' => ':shipping_url', 'company_name' => ':company_name']))
+                            ->helperText(__('Placeholders: :subtotal, :commission, :total, :site_name, :whatsapp, :payment_url, :terms_url, :faq_url, :shipping_url, :company_name'))
                             ->rows(12)
                             ->columnSpanFull(),
 
                         Textarea::make('auto_comment_no_price')
                             ->label(__('When no prices entered'))
+                            ->placeholder(__('orders.auto_comment_no_price', ['whatsapp' => ':whatsapp']))
                             ->helperText(__('Placeholders: :whatsapp'))
                             ->rows(4)
                             ->columnSpanFull(),
@@ -664,6 +331,7 @@ class SettingsPage extends Page
 
                         Textarea::make('order_success_message_ar')
                             ->label(__('settings.order_success_message_ar'))
+                            ->placeholder(__('order.success_message'))
                             ->helperText(__('settings.order_success_message_help'))
                             ->rows(4)
                             ->maxLength(2000)
@@ -671,6 +339,7 @@ class SettingsPage extends Page
 
                         Textarea::make('order_success_message_en')
                             ->label(__('settings.order_success_message_en'))
+                            ->placeholder(__('order.success_message'))
                             ->helperText(__('settings.order_success_message_help'))
                             ->rows(4)
                             ->maxLength(2000)
@@ -678,26 +347,32 @@ class SettingsPage extends Page
 
                         TextInput::make('order_success_go_to_order_ar')
                             ->label(__('settings.order_success_go_to_order_ar'))
+                            ->placeholder(__('order.success_go_to_order'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_go_to_order_en')
                             ->label(__('settings.order_success_go_to_order_en'))
+                            ->placeholder(__('order.success_go_to_order'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_redirect_prefix_ar')
                             ->label(__('settings.order_success_redirect_prefix_ar'))
+                            ->placeholder(__('order.success_redirect_countdown_prefix'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_redirect_prefix_en')
                             ->label(__('settings.order_success_redirect_prefix_en'))
+                            ->placeholder(__('order.success_redirect_countdown_prefix'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_redirect_suffix_ar')
                             ->label(__('settings.order_success_redirect_suffix_ar'))
+                            ->placeholder(__('order.success_redirect_countdown_suffix'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_redirect_suffix_en')
                             ->label(__('settings.order_success_redirect_suffix_en'))
+                            ->placeholder(__('order.success_redirect_countdown_suffix'))
                             ->maxLength(500),
 
                         TextInput::make('order_success_redirect_seconds')
@@ -786,7 +461,16 @@ class SettingsPage extends Page
                                 '1' => __('Option 1 — Responsive (default)'),
                                 '2' => __('Option 2 — Cart system'),
                                 '3' => __('Option 3 — Cards everywhere'),
+                                '4' => __('Option 4 — Wizard'),
                             ]),
+
+                        Toggle::make('order_form_show_add_test_items')
+                            ->label(__('settings.order_form_show_add_test_items'))
+                            ->helperText(__('settings.order_form_show_add_test_items_help')),
+
+                        Toggle::make('order_form_show_reset_all')
+                            ->label(__('settings.order_form_show_reset_all'))
+                            ->helperText(__('settings.order_form_show_reset_all_help')),
 
                         TextInput::make('orders_per_hour_customer')
                             ->label(__('Orders/hour — Customer'))
@@ -899,10 +583,9 @@ class SettingsPage extends Page
                 // ── Shipping Rates ────────────────────────────────────────────
                 Section::make(__('Shipping Rates'))
                     ->icon(Heroicon::OutlinedTruck)
-                    ->description(__('SAR prices used by the public shipping calculator. Changes take effect immediately.'))
+                    ->description(__('settings.shipping_rates_desc'))
                     ->schema([
-                        // ── Aramex ──────────────────────────────────────
-                        \Filament\Schemas\Components\Section::make('Aramex — '.__('Economy Shipping'))
+                        \Filament\Schemas\Components\Section::make(__('settings.shipping_aramex_section'))
                             ->schema([
                                 TextInput::make('aramex_first_half_kg')
                                     ->label(__('First 0.5 kg (SAR)'))
@@ -918,13 +601,12 @@ class SettingsPage extends Page
 
                                 TextInput::make('aramex_delivery_days')
                                     ->label(__('Est. Delivery'))
-                                    ->placeholder('7-10')
+                                    ->placeholder(__('settings.placeholder_delivery_days'))
                                     ->helperText(__('Shown on calculator, e.g. "7-10 days"')),
                             ])
                             ->columns(4),
 
-                        // ── DHL ──────────────────────────────────────────
-                        \Filament\Schemas\Components\Section::make('DHL — '.__('Express Shipping'))
+                        \Filament\Schemas\Components\Section::make(__('settings.shipping_dhl_section'))
                             ->schema([
                                 TextInput::make('dhl_first_half_kg')
                                     ->label(__('First 0.5 kg (SAR)'))
@@ -940,12 +622,11 @@ class SettingsPage extends Page
 
                                 TextInput::make('dhl_delivery_days')
                                     ->label(__('Est. Delivery'))
-                                    ->placeholder('7-10'),
+                                    ->placeholder(__('settings.placeholder_delivery_days')),
                             ])
                             ->columns(4),
 
-                        // ── US Domestic ───────────────────────────────────
-                        \Filament\Schemas\Components\Section::make(__('US Domestic Shipping'))
+                        \Filament\Schemas\Components\Section::make(__('settings.shipping_domestic'))
                             ->schema([
                                 TextInput::make('domestic_first_half_kg')
                                     ->label(__('First 0.5 kg (SAR)'))
@@ -957,46 +638,9 @@ class SettingsPage extends Page
 
                                 TextInput::make('domestic_delivery_days')
                                     ->label(__('Est. Delivery'))
-                                    ->placeholder('4-7'),
+                                    ->placeholder(__('settings.placeholder_delivery_days_short')),
                             ])
                             ->columns(3),
-
-                        // ── Carrier Tracking URLs ─────────────────────────
-                        \Filament\Schemas\Components\Section::make(__('Carrier Tracking URLs'))
-                            ->description(__('Use {tracking} as the placeholder for the tracking number. Shown to customers as a clickable link on the order page.'))
-                            ->schema([
-                                TextInput::make('carrier_url_aramex')
-                                    ->label(__('carriers.aramex'))
-                                    ->nullable()
-                                    ->rules(['nullable', 'regex:/^https?:\/\/.+/'])
-                                    ->placeholder('https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}')
-                                    ->helperText(__('Leave blank to show tracking number only (no link).')),
-
-                                TextInput::make('carrier_url_smsa')
-                                    ->label(__('carriers.smsa'))
-                                    ->nullable()
-                                    ->rules(['nullable', 'regex:/^https?:\/\/.+/'])
-                                    ->placeholder('https://www.smsaexpress.com/track/?tracknumbers={tracking}'),
-
-                                TextInput::make('carrier_url_dhl')
-                                    ->label(__('carriers.dhl'))
-                                    ->nullable()
-                                    ->rules(['nullable', 'regex:/^https?:\/\/.+/'])
-                                    ->placeholder('https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}'),
-
-                                TextInput::make('carrier_url_fedex')
-                                    ->label(__('carriers.fedex'))
-                                    ->nullable()
-                                    ->rules(['nullable', 'regex:/^https?:\/\/.+/'])
-                                    ->placeholder('https://www.fedextrack/?trknbr={tracking}'),
-
-                                TextInput::make('carrier_url_ups')
-                                    ->label(__('carriers.ups'))
-                                    ->nullable()
-                                    ->rules(['nullable', 'regex:/^https?:\/\/.+/'])
-                                    ->placeholder('https://www.ups.com/track?tracknum={tracking}'),
-                            ])
-                            ->columns(1),
                     ])
                     ->collapsible(),
 
@@ -1041,7 +685,6 @@ class SettingsPage extends Page
                             ->onColor('success')
                             ->helperText(__('Fetch rates automatically each day via Laravel scheduler (php artisan schedule:run).')),
 
-                        // Markup % and per-currency list (add/edit/remove currencies)
                         TextInput::make('exchange_rates_markup_percent')
                             ->label(__('Markup %'))
                             ->numeric()
@@ -1057,7 +700,7 @@ class SettingsPage extends Page
                                     ->label(__('Code'))
                                     ->required()
                                     ->maxLength(10)
-                                    ->placeholder('USD')
+                                    ->placeholder(__('settings.placeholder_currency'))
                                     ->helperText(__('ISO 4217 code (e.g. USD, EUR)')),
 
                                 TextInput::make('label')
@@ -1126,7 +769,6 @@ class SettingsPage extends Page
                     ->icon(Heroicon::OutlinedBolt)
                     ->description(__('Enable or disable each quick-action button shown on the order detail page.'))
                     ->schema([
-                        // Customer section
                         Toggle::make('qa_customer_section')
                             ->label(__('Show Customer Quick Actions Section'))
                             ->onColor('success')
@@ -1152,7 +794,6 @@ class SettingsPage extends Page
                             ->label('❌ '.__('Customer: Cancel Order'))
                             ->onColor('danger'),
 
-                        // Staff section
                         Toggle::make('qa_team_section')
                             ->label(__('Show Staff Quick Actions Section'))
                             ->onColor('success')
@@ -1174,7 +815,6 @@ class SettingsPage extends Page
                             ->label('🔗 '.__('Staff: Merge Orders'))
                             ->onColor('success'),
 
-                        // Legacy staff quick buttons
                         Toggle::make('qa_mark_paid')
                             ->label(__('Staff: Mark as Paid'))
                             ->onColor('success'),
@@ -1194,158 +834,6 @@ class SettingsPage extends Page
                     ->columns(2)
                     ->collapsible(),
 
-                // ── Email / SMTP ──────────────────────────────────────────────
-                Section::make(__('Email / SMTP'))
-                    ->icon(Heroicon::OutlinedEnvelope)
-                    ->description(__('Leave disabled until SMTP is configured. Use the Test button to verify.'))
-                    ->schema([
-                        SchemaActions::make([
-                            Action::make('sendTestEmail')
-                                ->label(__('Send Test Email'))
-                                ->icon(Heroicon::OutlinedPaperAirplane)
-                                ->color('info')
-                                ->action(function (): void {
-                                    $data = $this->form->getState();
-                                    $host = trim((string) ($data['smtp_host'] ?? ''));
-                                    $port = (int) ($data['smtp_port'] ?? 587);
-                                    $username = trim((string) ($data['smtp_username'] ?? ''));
-                                    $password = (string) ($data['smtp_password'] ?? '');
-                                    $encryption = trim((string) ($data['smtp_encryption'] ?? 'tls'));
-                                    $fromName = trim((string) ($data['email_from_name'] ?? 'Wasetzon'));
-                                    $fromAddress = trim((string) ($data['email_from_address'] ?? ''));
-
-                                    if ($host === '') {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_configure_first'))
-                                            ->warning()
-                                            ->send();
-
-                                        return;
-                                    }
-
-                                    $recipient = auth()->user()?->email;
-                                    if (! $recipient) {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_no_recipient'))
-                                            ->warning()
-                                            ->send();
-
-                                        return;
-                                    }
-
-                                    $originalHost = config('mail.mailers.smtp.host');
-                                    $originalPort = config('mail.mailers.smtp.port');
-                                    $originalUsername = config('mail.mailers.smtp.username');
-                                    $originalPassword = config('mail.mailers.smtp.password');
-                                    $originalEncryption = config('mail.mailers.smtp.encryption');
-                                    $originalFrom = config('mail.from');
-
-                                    try {
-                                        Config::set('mail.mailers.smtp.host', $host);
-                                        Config::set('mail.mailers.smtp.port', $port);
-                                        Config::set('mail.mailers.smtp.username', $username ?: null);
-                                        Config::set('mail.mailers.smtp.password', $password ?: null);
-                                        Config::set('mail.mailers.smtp.encryption', $encryption !== '' ? $encryption : null);
-                                        Config::set('mail.from', [
-                                            'address' => $fromAddress ?: 'noreply@'.(parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com'),
-                                            'name' => $fromName ?: config('app.name'),
-                                        ]);
-
-                                        Mail::mailer('smtp')
-                                            ->raw(__('settings.test_email_body'), function ($message) use ($recipient): void {
-                                                $message->to($recipient)
-                                                    ->subject(__('settings.test_email_subject'));
-                                            });
-
-                                        Notification::make()
-                                            ->title(__('settings.test_email_sent', ['email' => $recipient]))
-                                            ->success()
-                                            ->send();
-                                    } catch (\Throwable $e) {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_failed'))
-                                            ->body($e->getMessage())
-                                            ->danger()
-                                            ->send();
-                                    } finally {
-                                        Config::set('mail.mailers.smtp.host', $originalHost);
-                                        Config::set('mail.mailers.smtp.port', $originalPort);
-                                        Config::set('mail.mailers.smtp.username', $originalUsername);
-                                        Config::set('mail.mailers.smtp.password', $originalPassword);
-                                        Config::set('mail.mailers.smtp.encryption', $originalEncryption);
-                                        Config::set('mail.from', $originalFrom);
-                                    }
-                                }),
-                        ]),
-
-                        Toggle::make('email_enabled')
-                            ->label(__('Enable Email Sending'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
-
-                        TextInput::make('email_from_name')
-                            ->label(__('From Name')),
-
-                        TextInput::make('email_from_address')
-                            ->label(__('From Address'))
-                            ->email()
-                            ->nullable(),
-
-                        TextInput::make('smtp_host')
-                            ->label(__('SMTP Host')),
-
-                        TextInput::make('smtp_port')
-                            ->label(__('SMTP Port'))
-                            ->numeric(),
-
-                        TextInput::make('smtp_username')
-                            ->label(__('SMTP Username')),
-
-                        TextInput::make('smtp_password')
-                            ->label(__('SMTP Password'))
-                            ->password()
-                            ->revealable(),
-
-                        Select::make('smtp_encryption')
-                            ->label(__('Encryption'))
-                            ->options(['tls' => 'TLS', 'ssl' => 'SSL', '' => __('None')]),
-                    ])
-                    ->columns(3)
-                    ->collapsible(),
-
-                // ── Email Type Toggles ────────────────────────────────────────
-                Section::make(__('Email Type Toggles'))
-                    ->icon(Heroicon::OutlinedBell)
-                    ->description(__('Enable or disable each email type independently.'))
-                    ->schema([
-                        Toggle::make('email_registration')
-                            ->label(__('Registration Confirmation')),
-
-                        Toggle::make('email_welcome')
-                            ->label(__('Welcome Email')),
-
-                        Toggle::make('email_password_reset')
-                            ->label(__('Password Reset')),
-
-                        Toggle::make('email_comment_notification')
-                            ->label(__('Comment Notifications (opt-in)')),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
-                // ── Social Login ──────────────────────────────────────────────
-                Section::make(__('Social Login'))
-                    ->icon(Heroicon::OutlinedUserGroup)
-                    ->description(__('Allow users to sign in/up using third-party accounts. Requires OAuth credentials in .env.'))
-                    ->schema([
-                        Toggle::make('google_login_enabled')
-                            ->label(__('Enable Google Sign-In'))
-                            ->helperText(__('Shows a "Sign in with Google" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible(),
-
                 // ── Invoice ───────────────────────────────────────────────────
                 Section::make(__('Invoice'))
                     ->icon(Heroicon::OutlinedDocumentText)
@@ -1354,13 +842,13 @@ class SettingsPage extends Page
                         TextInput::make('invoice_filename_pattern')
                             ->label(__('Filename Pattern'))
                             ->helperText(__('Placeholders: {order_number}, {date}, {type}, {site_name}, {count}. Leave empty for default.'))
-                            ->placeholder('Invoice-{order_number}.pdf')
+                            ->placeholder(__('settings.placeholder_invoice_filename'))
                             ->maxLength(120),
 
                         TextInput::make('invoice_number_pattern')
                             ->label(__('orders.invoice_number_pattern'))
                             ->helperText(__('orders.invoice_number_pattern_help'))
-                            ->placeholder('{order_number}-{count}')
+                            ->placeholder(__('settings.placeholder_invoice_count'))
                             ->maxLength(80),
 
                         Toggle::make('invoice_show_type_label')
@@ -1474,45 +962,6 @@ class SettingsPage extends Page
                     ])
                     ->columns(1)
                     ->collapsible(),
-
-                // ── Contact ───────────────────────────────────────────────────
-                Section::make(__('Contact'))
-                    ->icon(Heroicon::OutlinedPhone)
-                    ->description(__('Used in footer and hero WhatsApp button. Hero uses hero_whatsapp_number when set, otherwise this number.'))
-                    ->schema([
-                        TextInput::make('whatsapp')
-                            ->label(__('WhatsApp Number'))
-                            ->helperText(__('Include country code, e.g. 966501234567'))
-                            ->placeholder('966501234567')
-                            ->maxLength(20),
-
-                        TextInput::make('contact_email')
-                            ->label(__('Contact Email'))
-                            ->email()
-                            ->nullable()
-                            ->maxLength(120),
-
-                        TextInput::make('commercial_registration')
-                            ->label(__('Commercial Registration'))
-                            ->maxLength(100),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
-                // ── Custom Scripts ────────────────────────────────────────────
-                Section::make(__('Custom Scripts'))
-                    ->icon(Heroicon::OutlinedCodeBracket)
-                    ->description(__('Injected into every page. Use for analytics, chat widgets, etc.'))
-                    ->schema([
-                        Textarea::make('header_scripts')
-                            ->label(__('Header Scripts (before </head>)'))
-                            ->rows(4),
-
-                        Textarea::make('footer_scripts')
-                            ->label(__('Footer Scripts (before </body>)'))
-                            ->rows(4),
-                    ])
-                    ->collapsible(),
             ])
             ->statePath('data');
     }
@@ -1528,7 +977,8 @@ class SettingsPage extends Page
     protected function getFormContentComponent(): \Filament\Schemas\Components\Component
     {
         return Form::make([EmbeddedSchema::make('form')])
-            ->id('settings-form')
+            ->id('order-settings-form')
+            ->live()
             ->livewireSubmitHandler('save')
             ->footer([
                 SchemaActions::make($this->getFormActions())
@@ -1559,40 +1009,13 @@ class SettingsPage extends Page
             $data = $this->data;
         }
 
+        $service = app(SettingsPersistService::class);
+
+        // Sync currencies repeater to Currency table
+        $service->syncCurrencies($data['currencies'] ?? []);
+
+        // Build group map and key lists for order-related settings only
         $groupMap = [
-            'site_name' => 'general',
-            'default_language' => 'general',
-            'default_currency' => 'general',
-            'site_timezone' => 'general',
-            'times_use_user_timezone' => 'general',
-            'seo_default_og_image' => 'seo',
-            'seo_default_meta_description' => 'seo',
-            'seo_twitter_handle' => 'seo',
-            'seo_google_verification' => 'seo',
-            'seo_bing_verification' => 'seo',
-            'blog_comments_enabled' => 'blog',
-            'primary_color' => 'appearance',
-            'font_family' => 'appearance',
-            'logo_use_per_language' => 'appearance',
-            'logo_text_use_per_language' => 'appearance',
-            'logo_image' => 'appearance',
-            'logo_image_ar' => 'appearance',
-            'logo_image_en' => 'appearance',
-            'logo_text' => 'appearance',
-            'logo_text_ar' => 'appearance',
-            'logo_text_en' => 'appearance',
-            'logo_alt' => 'appearance',
-            'logo_alt_ar' => 'appearance',
-            'logo_alt_en' => 'appearance',
-            'hero_title' => 'hero',
-            'hero_subtitle' => 'hero',
-            'hero_input_placeholder' => 'hero',
-            'hero_button_text' => 'hero',
-            'hero_input_required' => 'hero',
-            'hero_show_whatsapp' => 'hero',
-            'hero_whatsapp_button_text' => 'hero',
-            'hero_whatsapp_number' => 'hero',
-            'hero_show_name_change_notice' => 'hero',
             'auto_comment_with_price' => 'orders',
             'auto_comment_no_price' => 'orders',
             'order_success_screen_enabled' => 'orders',
@@ -1616,63 +1039,24 @@ class SettingsPage extends Page
             'order_edit_resubmit_window_minutes' => 'orders',
             'order_edit_window_minutes' => 'orders',
             'order_new_layout' => 'orders',
+            'order_form_show_add_test_items' => 'orders',
+            'order_form_show_reset_all' => 'orders',
             'orders_per_hour_customer' => 'orders',
             'orders_per_hour_admin' => 'orders',
             'orders_per_day_staff' => 'orders',
             'orders_per_month_customer' => 'orders',
             'orders_per_month_admin' => 'orders',
+            'orders_per_day_customer' => 'orders',
             'max_file_size_mb' => 'orders',
             'max_images_per_item' => 'orders',
             'max_images_per_order' => 'orders',
             'max_files_per_item_after_submit' => 'orders',
             'customer_can_add_files_after_submit' => 'orders',
-            'orders_per_day_customer' => 'orders',
             'comment_max_files' => 'orders',
             'comment_max_file_size_mb' => 'orders',
             'payment_notify_order_max_files' => 'orders',
             'payment_notify_standalone_max_files' => 'orders',
             'order_form_fields' => 'orders',
-            'email_enabled' => 'email',
-            'email_from_name' => 'email',
-            'email_from_address' => 'email',
-            'smtp_host' => 'email',
-            'smtp_port' => 'email',
-            'smtp_username' => 'email',
-            'smtp_password' => 'email',
-            'smtp_encryption' => 'email',
-            'email_registration' => 'email',
-            'email_welcome' => 'email',
-            'email_password_reset' => 'email',
-            'email_comment_notification' => 'email',
-            'google_login_enabled' => 'social',
-            'header_scripts' => 'scripts',
-            'footer_scripts' => 'scripts',
-            // Exchange rates (global only; per-currency in Currency model)
-            'exchange_rates_markup_percent' => 'exchange_rates',
-            'exchange_rates_auto_fetch' => 'exchange_rates',
-            // Commission
-            'commission_threshold_sar' => 'commission',
-            'commission_rate_above' => 'commission',
-            'commission_flat_below' => 'commission',
-            // Quick actions — customer section
-            'qa_customer_section' => 'quick_actions',
-            'qa_payment_notify' => 'quick_actions',
-            'qa_shipping_address_btn' => 'quick_actions',
-            'qa_similar_order' => 'quick_actions',
-            'qa_customer_merge' => 'quick_actions',
-            'qa_customer_cancel' => 'quick_actions',
-            // Quick actions — staff/team section
-            'qa_team_section' => 'quick_actions',
-            'qa_transfer_order' => 'quick_actions',
-            'qa_payment_tracking' => 'quick_actions',
-            'qa_shipping_tracking' => 'quick_actions',
-            'qa_team_merge' => 'quick_actions',
-            // Quick actions — legacy
-            'qa_mark_paid' => 'quick_actions',
-            'qa_mark_shipped' => 'quick_actions',
-            'qa_request_info' => 'quick_actions',
-            'qa_cancel_order' => 'quick_actions',
-            // Shipping rates
             'aramex_first_half_kg' => 'shipping',
             'aramex_rest_half_kg' => 'shipping',
             'aramex_over21_per_kg' => 'shipping',
@@ -1684,12 +1068,26 @@ class SettingsPage extends Page
             'domestic_first_half_kg' => 'shipping',
             'domestic_rest_half_kg' => 'shipping',
             'domestic_delivery_days' => 'shipping',
-            // Carrier tracking URLs
-            'carrier_url_aramex' => 'shipping',
-            'carrier_url_smsa' => 'shipping',
-            'carrier_url_dhl' => 'shipping',
-            'carrier_url_fedex' => 'shipping',
-            'carrier_url_ups' => 'shipping',
+            'exchange_rates_markup_percent' => 'exchange_rates',
+            'exchange_rates_auto_fetch' => 'exchange_rates',
+            'commission_threshold_sar' => 'commission',
+            'commission_rate_above' => 'commission',
+            'commission_flat_below' => 'commission',
+            'qa_customer_section' => 'quick_actions',
+            'qa_payment_notify' => 'quick_actions',
+            'qa_shipping_address_btn' => 'quick_actions',
+            'qa_similar_order' => 'quick_actions',
+            'qa_customer_merge' => 'quick_actions',
+            'qa_customer_cancel' => 'quick_actions',
+            'qa_team_section' => 'quick_actions',
+            'qa_transfer_order' => 'quick_actions',
+            'qa_payment_tracking' => 'quick_actions',
+            'qa_shipping_tracking' => 'quick_actions',
+            'qa_team_merge' => 'quick_actions',
+            'qa_mark_paid' => 'quick_actions',
+            'qa_mark_shipped' => 'quick_actions',
+            'qa_request_info' => 'quick_actions',
+            'qa_cancel_order' => 'quick_actions',
             'invoice_filename_pattern' => 'invoice',
             'invoice_number_pattern' => 'invoice',
             'invoice_show_type_label' => 'invoice',
@@ -1707,47 +1105,29 @@ class SettingsPage extends Page
             'invoice_footer_text' => 'invoice',
             'invoice_show_order_items' => 'invoice',
             'invoice_custom_lines' => 'invoice',
-            'whatsapp' => 'contact',
-            'contact_email' => 'contact',
-            'commercial_registration' => 'contact',
         ];
 
         $booleanKeys = [
-            'email_enabled', 'email_registration', 'email_welcome',
-            'email_password_reset', 'email_comment_notification',
-            'invoice_show_order_items',
-            'invoice_show_type_label',
-            'invoice_show_company_details',
-            'invoice_show_due_date',
-            'google_login_enabled',
-            'exchange_rates_auto_fetch',
+            'order_success_screen_enabled', 'order_edit_enabled',
+            'order_form_show_add_test_items', 'order_form_show_reset_all',
+            'customer_can_add_files_after_submit', 'exchange_rates_auto_fetch',
             'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
             'qa_similar_order', 'qa_customer_merge', 'qa_customer_cancel',
             'qa_team_section', 'qa_transfer_order', 'qa_payment_tracking',
             'qa_shipping_tracking', 'qa_team_merge',
             'qa_mark_paid', 'qa_mark_shipped', 'qa_request_info', 'qa_cancel_order',
-            'order_edit_enabled',
-            'order_success_screen_enabled',
-            'customer_can_add_files_after_submit',
-            'blog_comments_enabled',
-            'hero_input_required',
-            'hero_show_whatsapp',
-            'hero_show_name_change_notice',
-            'logo_use_per_language',
-            'logo_text_use_per_language',
-            'times_use_user_timezone',
+            'invoice_show_order_items', 'invoice_show_type_label',
+            'invoice_show_company_details', 'invoice_show_due_date',
         ];
 
         $integerKeys = [
-            'smtp_port', 'max_products_per_order',
             'order_success_redirect_seconds', 'order_success_screen_threshold',
-            'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
-            'orders_per_hour_customer', 'orders_per_hour_admin',
-            'orders_per_day_staff', 'orders_per_month_customer', 'orders_per_month_admin',
-            'max_file_size_mb', 'orders_per_day_customer',
-            'max_images_per_item', 'max_images_per_order',
-            'max_files_per_item_after_submit',
-            'comment_max_files', 'comment_max_file_size_mb',
+            'order_edit_click_window_minutes', 'order_edit_resubmit_window_minutes',
+            'order_edit_window_minutes', 'max_products_per_order',
+            'orders_per_hour_customer', 'orders_per_hour_admin', 'orders_per_day_staff',
+            'orders_per_month_customer', 'orders_per_month_admin', 'orders_per_day_customer',
+            'max_file_size_mb', 'max_images_per_item', 'max_images_per_order',
+            'max_files_per_item_after_submit', 'comment_max_files', 'comment_max_file_size_mb',
             'payment_notify_order_max_files', 'payment_notify_standalone_max_files',
             'aramex_first_half_kg', 'aramex_rest_half_kg', 'aramex_over21_per_kg',
             'dhl_first_half_kg', 'dhl_rest_half_kg', 'dhl_over21_per_kg',
@@ -1762,143 +1142,27 @@ class SettingsPage extends Page
 
         $jsonKeys = ['order_form_fields', 'invoice_custom_lines', 'invoice_type_labels', 'invoice_company_details'];
 
-        // Keys not saved to settings table (handled separately or read-only)
         $skipKeys = ['exchange_rates', 'currencies'];
 
-        // Sync currencies repeater to Currency table
-        $this->syncCurrenciesFromData($data['currencies'] ?? []);
+        $service->persist(
+            $data,
+            $groupMap,
+            $booleanKeys,
+            $integerKeys,
+            $floatKeys,
+            $jsonKeys,
+            $skipKeys
+        );
 
-        foreach ($data as $key => $value) {
-            if (in_array($key, $skipKeys)) {
-                continue;
-            }
+        // Rebuild the exchange_rates JSON blob
+        $service->syncExchangeRates($data);
 
-            $group = $groupMap[$key] ?? 'general';
-
-            // FileUpload may return array with single path; normalize to string
-            if (in_array($key, ['logo_image', 'logo_image_ar', 'logo_image_en']) && is_array($value)) {
-                $value = $value[0] ?? '';
-            }
-
-            if (in_array($key, $jsonKeys) || (is_array($value) && ! in_array($key, $floatKeys))) {
-                if (is_array($value)) {
-                    usort($value, fn ($a, $b) => ($a['sort_order'] ?? 99) <=> ($b['sort_order'] ?? 99));
-                }
-                $type = 'json';
-            } elseif (is_bool($value) || in_array($key, $booleanKeys)) {
-                $type = 'boolean';
-            } elseif (in_array($key, $floatKeys)) {
-                // Blank override = store empty string (means "use auto")
-                $type = ($value === '' || $value === null) ? 'string' : 'string';
-            } elseif (is_numeric($value) && ! str_contains((string) $value, '.') && in_array($key, $integerKeys)) {
-                $type = 'integer';
-            } else {
-                $type = 'string';
-            }
-
-            Setting::set($key, $value ?? '', $type, $group);
-        }
-
-        // Rebuild the exchange_rates JSON blob to reflect updated markup + overrides
-        $this->syncExchangeRatesJson($data);
+        $this->data = array_merge($this->data, $data);
+        $this->data['exchange_rates'] = Setting::get('exchange_rates', []);
 
         Notification::make()
             ->title(__('Settings saved'))
             ->success()
             ->send();
-    }
-
-    /**
-     * Persist repeater currencies to the Currency table (create/update/delete).
-     *
-     * @param  array<int, array{id?: int, code?: string, label?: string, manual_rate?: string|float, auto_fetch?: bool, markup_percent?: string|float}>  $items
-     */
-    protected function syncCurrenciesFromData(array $items): void
-    {
-        $keptIds = [];
-
-        foreach ($items as $index => $item) {
-            $code = trim((string) ($item['code'] ?? ''));
-            if ($code === '') {
-                continue;
-            }
-            $code = strtoupper($code);
-
-            $manualRate = isset($item['manual_rate']) && $item['manual_rate'] !== '' && is_numeric($item['manual_rate'])
-                ? (float) $item['manual_rate']
-                : null;
-            $markupPercent = isset($item['markup_percent']) && $item['markup_percent'] !== '' && is_numeric($item['markup_percent'])
-                ? (float) $item['markup_percent']
-                : null;
-
-            $currency = isset($item['id']) && $item['id']
-                ? Currency::find($item['id'])
-                : null;
-
-            if ($currency) {
-                $currency->update([
-                    'code' => $code,
-                    'label' => trim((string) ($item['label'] ?? '')) ?: null,
-                    'manual_rate' => $manualRate,
-                    'auto_fetch' => (bool) ($item['auto_fetch'] ?? true),
-                    'markup_percent' => $markupPercent,
-                    'sort_order' => $index,
-                ]);
-            } else {
-                $currency = Currency::create([
-                    'code' => $code,
-                    'label' => trim((string) ($item['label'] ?? '')) ?: null,
-                    'manual_rate' => $manualRate,
-                    'auto_fetch' => (bool) ($item['auto_fetch'] ?? true),
-                    'markup_percent' => $markupPercent,
-                    'sort_order' => $index,
-                ]);
-            }
-            $keptIds[] = $currency->id;
-        }
-
-        Currency::whereNotIn('id', $keptIds)->delete();
-    }
-
-    /**
-     * Re-save the exchange_rates JSON blob after settings are updated.
-     * Applies global markup and per-currency manual overrides from Currency model.
-     */
-    protected function syncExchangeRatesJson(array $data): void
-    {
-        $er = Setting::get('exchange_rates', []) ?: [];
-
-        if (empty($er['rates'])) {
-            $er['rates'] = FetchExchangeRates::DEFAULT_RATES;
-        }
-
-        $markup = (float) ($data['exchange_rates_markup_percent'] ?? 3);
-        $er['markup_percent'] = $markup;
-        $er['auto_fetch_enabled'] = (bool) ($data['exchange_rates_auto_fetch'] ?? true);
-
-        $currencies = Currency::ordered()->get();
-
-        foreach ($currencies as $model) {
-            $cur = $model->code;
-            if (! isset($er['rates'][$cur])) {
-                $er['rates'][$cur] = FetchExchangeRates::DEFAULT_RATES[$cur] ?? [
-                    'auto' => true, 'market' => 0, 'manual' => null, 'final' => 0,
-                ];
-            }
-
-            $er['rates'][$cur]['manual'] = $model->manual_rate;
-            $perMarkup = $model->markup_percent ?? $markup;
-
-            if ($model->manual_rate !== null) {
-                $er['rates'][$cur]['final'] = (float) $model->manual_rate;
-            } else {
-                $market = (float) ($er['rates'][$cur]['market'] ?? 0);
-                $er['rates'][$cur]['final'] = $market > 0
-                    ? round($market * (1 + $perMarkup / 100), 4)
-                    : ($er['rates'][$cur]['final'] ?? 0);
-            }
-        }
-
-        Setting::set('exchange_rates', $er, 'json', 'exchange_rates');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ColorHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,11 +31,13 @@ class Post extends Model
         'status',
         'published_at',
         'allow_comments',
+        'is_pinned',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
         'allow_comments' => 'boolean',
+        'is_pinned' => 'boolean',
     ];
 
     public function author(): BelongsTo
@@ -72,5 +75,19 @@ class Post extends Model
         $locale = app()->getLocale();
 
         return $locale === 'ar' ? ($this->excerpt_ar ?: $this->excerpt_en ?? '') : ($this->excerpt_en ?: $this->excerpt_ar ?? '');
+    }
+
+    /** Deterministic placeholder color for posts without featured image. Uses primary color from settings. Same post = same color. */
+    public function getPlaceholderColors(): array
+    {
+        $primary = trim((string) Setting::get('primary_color', '#f97316')) ?: '#f97316';
+        $vary = $this->id % 6;
+        $lightenPct = 78 + ($vary * 2);
+        $darkenPct = 35 + ($vary * 3);
+
+        return [
+            'bg' => ColorHelper::lighten($primary, $lightenPct),
+            'text' => ColorHelper::darken($primary, $darkenPct),
+        ];
     }
 }
