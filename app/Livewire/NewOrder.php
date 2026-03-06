@@ -77,7 +77,7 @@ class NewOrder extends Component
 
     public string $modalSuccess = '';
 
-    public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = ''): void
+    public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = '')
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->maxImagesPerItem = max(1, (int) Setting::get('max_images_per_item', 3));
@@ -86,12 +86,13 @@ class NewOrder extends Component
         $this->currencies = order_form_currencies();
         $this->exchangeRates = $this->buildExchangeRates();
 
-        // Edit mode: ?edit={id} — must be logged in, load order, start resubmit window
+        // Edit mode: ?edit={id} — redirect to order page for inline edit (System 1)
         $editId = $edit ?? (int) request()->query('edit', 0);
         if ($editId && Auth::check()) {
-            $this->prefillFromEdit($editId);
-
-            return;
+            $order = Order::find($editId);
+            if ($order) {
+                return $this->redirect(route('orders.show', $order));
+            }
         }
 
         if ($duplicate_from && Auth::check()) {

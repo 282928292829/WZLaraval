@@ -78,16 +78,18 @@ class MigrateOrderFiles extends Command
         $this->line('');
         $this->line('--- Product images (p_img_N) ---');
 
+        $prefix = DB::connection('legacy')->getTablePrefix();
+
         $attachmentIds = DB::connection('legacy')
-            ->table('postmeta')
-            ->join('posts', 'posts.ID', '=', 'postmeta.post_id')
+            ->table('postmeta as pm')
+            ->join('posts', 'posts.ID', '=', 'pm.post_id')
             ->where('posts.post_type', 'orders')
-            ->where('postmeta.meta_key', 'like', 'p_img_%')
-            ->whereRaw('postmeta.meta_value REGEXP \'^[0-9]+$\'')
+            ->where('pm.meta_key', 'like', 'p_img_%')
+            ->whereRaw("{$prefix}pm.meta_value REGEXP '^[0-9]+$'")
             ->select(
-                'postmeta.post_id',
-                'postmeta.meta_key',
-                DB::connection('legacy')->raw('CAST(postmeta.meta_value AS UNSIGNED) as attachment_id')
+                'pm.post_id',
+                'pm.meta_key',
+                DB::connection('legacy')->raw("CAST({$prefix}pm.meta_value AS UNSIGNED) as attachment_id")
             )
             ->get();
 
@@ -205,13 +207,15 @@ class MigrateOrderFiles extends Command
         $fallbackUserId = $deletedUserId ?? DB::table('users')->min('id');
         $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
 
+        $prefix = DB::connection('legacy')->getTablePrefix();
+
         $baseQuery = DB::connection('legacy')
             ->table('commentmeta as cm')
             ->join('comments as c', 'c.comment_ID', '=', 'cm.comment_id')
             ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
             ->where('cm.meta_key', 'attachmentId')
-            ->whereRaw('cm.meta_value REGEXP \'^[0-9]+$\'');
+            ->whereRaw("{$prefix}cm.meta_value REGEXP '^[0-9]+$'");
 
         $total = (clone $baseQuery)->count();
         $this->line("Found {$total} comment attachment meta rows");

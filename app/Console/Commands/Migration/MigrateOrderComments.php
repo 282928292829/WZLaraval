@@ -34,6 +34,14 @@ class MigrateOrderComments extends Command
     {
         $this->info('=== MigrateOrderComments ===');
 
+        // Critical: fail if any order has NULL wp_post_id. Downstream mapping depends on it.
+        $nullCount = DB::table('orders')->whereNull('wp_post_id')->count();
+        if ($nullCount > 0) {
+            $this->error("{$nullCount} orders have NULL wp_post_id. Fix before running order-comments.");
+
+            return self::FAILURE;
+        }
+
         $userMap = DB::table('users')->pluck('id', 'email')->toArray();
         $deletedUserId = DB::table('users')->where('email', DeletedUserSeeder::EMAIL)->value('id');
 
@@ -45,11 +53,15 @@ class MigrateOrderComments extends Command
 
         $wpPostToOrderId = $this->buildWpPostToOrderIdMap();
 
+        $prefix = DB::connection('legacy')->getTablePrefix();
+
         $total = DB::connection('legacy')
             ->table('comments as c')
             ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
+            ->where('p.post_status', 'publish')
             ->whereIn('c.comment_approved', ['1', '0'])
+            ->whereRaw("TRIM({$prefix}c.comment_content) != ''")
             ->count();
 
         $this->line("Source: {$total} order comments");
@@ -61,7 +73,9 @@ class MigrateOrderComments extends Command
             ->table('comments as c')
             ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
             ->where('p.post_type', 'orders')
+            ->where('p.post_status', 'publish')
             ->whereIn('c.comment_approved', ['1', '0'])
+            ->whereRaw("TRIM({$prefix}c.comment_content) != ''")
             ->select('c.*')
             ->orderBy('c.comment_ID')
             ->chunk((int) $this->option('chunk'), function ($comments) use (
@@ -103,9 +117,10 @@ class MigrateOrderComments extends Command
                         $isSystem = true;
                     }
 
-                    $body = trim($comment->comment_content);
+                    $body = trim((string) $comment->comment_content);
 
-                    if (empty($body)) {
+                    // Match verification rule: skip only when TRIM(body) === '' (exact same as legacy)
+                    if ($body === '') {
                         $this->skipped++;
 
                         continue;
