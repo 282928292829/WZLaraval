@@ -32,69 +32,37 @@
 
         {{-- Bank Cards --}}
         @php
-        $banks = [
-            [
-                'name'    => __('payment.alrajhi'),
-                'logo'    => '/images/banks/rajhi.svg',
-                'account' => '624608010055610',
-                'iban'    => 'SA4180000624608010055610',
-            ],
-            [
-                'name'    => __('payment.alahli'),
-                'logo'    => '/images/banks/snb.svg',
-                'account' => '26561106000110',
-                'iban'    => 'SA9710000026561106000110',
-            ],
-            [
-                'name'    => __('payment.albilad'),
-                'logo'    => '/images/banks/albilad.svg',
-                'account' => '436117332070002',
-                'iban'    => 'SA9315000436117332070002',
-            ],
-            [
-                'name'    => __('payment.alinma'),
-                'logo'    => '/images/banks/alinma.svg',
-                'account' => '68222222010000',
-                'iban'    => 'SA8905000068222222010000',
-            ],
-            [
-                'name'    => __('payment.sab'),
-                'logo'    => '/images/banks/sab.svg',
-                'account' => '611065905001',
-                'iban'    => 'SA8345000000611065905001',
-            ],
-            [
-                'name'    => __('payment.riyad'),
-                'logo'    => '/images/banks/riyad.svg',
-                'account' => '00000000000000',
-                'iban'    => 'SA0000000000000000000000',
-            ],
-            [
-                'name'    => __('payment.saib'),
-                'logo'    => '/images/banks/saib.svg',
-                'account' => '0128605051001',
-                'iban'    => 'SA4465000000128605051001',
-            ],
-        ];
+        $banks = \App\Models\Setting::get('payment_banks', []) ?: [];
+        $paymentCompanyName = trim((string) \App\Models\Setting::get('payment_company_name', '')) ?: config('app.name');
+        $whatsappForContact = preg_replace('/\D/', '', \App\Models\Setting::get('whatsapp', '966500000000'));
+        $contactEmail = trim((string) \App\Models\Setting::get('contact_email', '')) ?: config('mail.from.address', '');
         @endphp
 
         <div class="space-y-4 mb-6" x-data="copyHelper()">
-            @foreach($banks as $bank)
+            @forelse($banks as $bank)
                 <div class="bg-white border border-gray-200 border-r-4 border-r-primary-500 rounded-xl p-5 shadow-sm">
                     <div class="flex items-center gap-3 mb-4">
-                        @if(!empty($bank['logo']))
-                            <img src="{{ $bank['logo'] }}" alt="{{ $bank['name'] }}" class="h-8 w-auto object-contain flex-shrink-0">
+                        @php
+                            $bankLogoUrl = !empty($bank['logo']) ? (str_starts_with($bank['logo'], 'http') ? $bank['logo'] : asset(ltrim($bank['logo'], '/'))) : '';
+                        @endphp
+                        @if($bankLogoUrl)
+                            <img src="{{ $bankLogoUrl }}" alt="{{ $bank['name'] }}" class="h-8 w-auto object-contain flex-shrink-0">
                         @endif
                         <h2 class="text-lg font-bold text-gray-900">{{ $bank['name'] }}</h2>
                     </div>
 
+                    @php
+                        $beneficiaryName = trim((string) ($bank['beneficiary'] ?? '')) ?: $paymentCompanyName;
+                    @endphp
                     @if(empty($bank['account']) || empty($bank['iban']))
                         {{-- Placeholder: account details not yet configured --}}
                         <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg px-4 py-5 text-center">
                             <p class="text-gray-500 text-sm mb-3">{{ __('payment.account_details_soon') }}</p>
-                            <a href="https://wa.me/00966556063500" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition" target="_blank" rel="noopener">
+                            @if($whatsappForContact)
+                            <a href="https://wa.me/{{ $whatsappForContact }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition" target="_blank" rel="noopener">
                                 📱 {{ __('payment.contact_whatsapp') }}
                             </a>
+                            @endif
                         </div>
                     @else
                         <div class="space-y-3">
@@ -102,9 +70,9 @@
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 pb-3 border-b border-gray-100">
                                 <span class="text-sm font-semibold text-gray-500 sm:w-40 flex-shrink-0">{{ __('payment.beneficiary_name') }}</span>
                                 <div class="flex items-center gap-3 flex-1">
-                                    <span class="font-semibold text-gray-900 text-sm flex-1">{{ __('payment.company_name') }}</span>
+                                    <span class="font-semibold text-gray-900 text-sm flex-1">{{ $beneficiaryName }}</span>
                                     <button
-                                        @click="copy('{{ __('payment.company_name') }}', $el)"
+                                        @click="copy(@js($beneficiaryName), $el)"
                                         class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex-shrink-0"
                                     >{{ __('payment.copy') }}</button>
                                 </div>
@@ -134,7 +102,12 @@
                         </div>
                     @endif
                 </div>
-            @endforeach
+            @empty
+                <div class="bg-gray-50 border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center">
+                    <p class="text-gray-500">{{ __('payment.account_details_soon') }}</p>
+                    <p class="text-gray-400 text-sm mt-2">{{ __('payment.configure_banks_hint') }}</p>
+                </div>
+            @endforelse
         </div>
 
         {{-- International customers --}}
@@ -170,12 +143,16 @@
             <h3 class="text-lg font-bold text-gray-900 mb-2">{{ __('payment.need_help') }}</h3>
             <p class="text-gray-500 text-sm mb-5">{{ __('payment.team_ready') }}</p>
             <div class="flex gap-3 justify-center flex-wrap">
-                <a href="https://wa.me/00966556063500" class="px-5 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition">
+                @if($whatsappForContact)
+                <a href="https://wa.me/{{ $whatsappForContact }}" class="px-5 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition">
                     📱 {{ __('payment.whatsapp') }}
                 </a>
-                <a href="mailto:info@wasetzon.com" class="px-5 py-2.5 bg-gray-800 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 transition">
+                @endif
+                @if($contactEmail)
+                <a href="mailto:{{ $contactEmail }}" class="px-5 py-2.5 bg-gray-800 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 transition">
                     📧 {{ __('payment.email') }}
                 </a>
+                @endif
             </div>
         </div>
 

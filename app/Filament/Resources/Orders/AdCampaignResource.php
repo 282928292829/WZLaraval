@@ -26,7 +26,7 @@ class AdCampaignResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string
     {
@@ -40,7 +40,7 @@ class AdCampaignResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('Orders');
+        return __('Order Setup');
     }
 
     public static function canAccess(): bool
@@ -66,7 +66,7 @@ class AdCampaignResource extends Resource
 
                 TextInput::make('destination_url')
                     ->label(__('Destination URL'))
-                    ->helperText(__('Optional. If empty, redirects to homepage.'))
+                    ->helperText(__('ad_campaigns.destination_url_empty_helper'))
                     ->placeholder('https://… or /path')
                     ->nullable()
                     ->maxLength(500),
@@ -114,6 +114,13 @@ class AdCampaignResource extends Resource
                     ->label(__('Slug'))
                     ->copyable()
                     ->sortable(),
+
+                TextColumn::make('tracking_link')
+                    ->label(__('Tracking Link'))
+                    ->state(fn (AdCampaign $record): string => url()->route('go', ['slug' => $record->slug]))
+                    ->copyable()
+                    ->copyMessage(__('ad_campaigns.tracking_link_copied'))
+                    ->placeholder('—'),
 
                 TextColumn::make('platform')
                     ->label(__('Platform'))

@@ -27,7 +27,7 @@ test('admin can access users in Filament', function (): void {
 test('admin can access settings page in Filament', function (): void {
     $admin = User::where('email', 'admin@wasetzon.test')->first();
 
-    $response = $this->actingAs($admin)->get(route('filament.admin.pages.settings-page'));
+    $response = $this->actingAs($admin)->get(route('filament.admin.pages.general-settings-page'));
 
     $response->assertOk();
 });
@@ -68,7 +68,7 @@ test('superadmin can access role create page in Filament', function (): void {
 test('staff cannot access Filament panel', function (): void {
     $staff = User::where('email', 'staff@wasetzon.test')->first();
 
-    $response = $this->actingAs($staff)->get(route('filament.admin.pages.settings-page'));
+    $response = $this->actingAs($staff)->get(route('filament.admin.pages.general-settings-page'));
 
     $response->assertForbidden();
 });

@@ -21,11 +21,12 @@
 <div class="max-w-4xl mx-auto px-4 py-5 sm:py-6 space-y-4">
 
     {{-- Filter form --}}
-    <div x-data="{ open: {{ request()->hasAny(['search','internal','sort','per_page']) ? 'true' : 'false' }} }">
+    @php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit']; @endphp
+    <div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }">
         <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold text-gray-700">
                 {{ __('orders.filters') }}
-                @if (request()->hasAny(['search', 'internal', 'sort', 'per_page']))
+                @if (request()->hasAny($filterKeys))
                     <span class="font-normal text-gray-500">· <a href="{{ $clearFiltersUrl }}" class="text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a></span>
                 @endif
             </h2>
@@ -52,6 +53,58 @@
                         <option value="1" @selected(request('internal') === '1')>{{ __('comments.internal_only') }}</option>
                         <option value="0" @selected(request('internal') === '0')>{{ __('comments.internal_exclude') }}</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.order_status_filter') }}</label>
+                    <select name="order_status" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="">{{ __('orders.all_statuses') }}</option>
+                        @foreach ($statuses ?? [] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('order_status') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.date_range_filter') }}</label>
+                    <select name="date_range" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="" @selected(request('date_range') === null)>{{ __('comments.date_range_all') }}</option>
+                        <option value="today" @selected(request('date_range') === 'today')>{{ __('comments.date_range_today') }}</option>
+                        <option value="7days" @selected(request('date_range') === '7days')>{{ __('comments.date_range_7days') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.awaiting_response') }}</label>
+                    <select name="awaiting" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="">{{ __('comments.awaiting_none') }}</option>
+                        <option value="customer" @selected(request('awaiting') === 'customer')>{{ __('comments.awaiting_customer') }}</option>
+                        <option value="staff" @selected(request('awaiting') === 'staff')>{{ __('comments.awaiting_staff') }}</option>
+                        <option value="staff_public" @selected(request('awaiting') === 'staff_public')>{{ __('comments.awaiting_staff_public') }}</option>
+                        <option value="staff_internal" @selected(request('awaiting') === 'staff_internal')>{{ __('comments.awaiting_staff_internal') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.no_response_for') }}</label>
+                    <select name="no_response_preset" @change="customNoResponse = ($event.target.value === 'custom')"
+                            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="">{{ __('comments.no_response_any') }}</option>
+                        @foreach (['4h','8h','24h','1d','2d','7d'] as $k)
+                            <option value="{{ $k }}" @selected(request('no_response_preset') === $k)>{{ __('comments.no_response_' . $k) }}</option>
+                        @endforeach
+                        <option value="custom" @selected(request('no_response_preset') === 'custom')>{{ __('comments.no_response_custom') }}</option>
+                    </select>
+                </div>
+                <div x-show="customNoResponse" x-cloak class="sm:col-span-2 grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.no_response_value') }}</label>
+                        <input type="number" name="no_response_value" min="1" max="99" value="{{ request('no_response_value', 1) }}"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.no_response_unit') }}</label>
+                        <select name="no_response_unit" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                            <option value="hours" @selected(request('no_response_unit') === 'hours')>{{ __('comments.unit_hours') }}</option>
+                            <option value="days" @selected(request('no_response_unit') === 'days')>{{ __('comments.unit_days') }}</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('orders.sort_label') }}</label>
@@ -98,6 +151,7 @@
                          id: {{ $comment->id }},
                          body: @js($comment->body),
                          orderId: {{ $comment->order_id }},
+                         orderSlug: @js($comment->order?->order_number ?? (string) $comment->order_id),
                          orderNumber: @js($comment->order?->order_number ?? '#' . $comment->order_id),
                          author: @js($comment->user?->name ?? __('System')),
                          createdAt: @js($comment->created_at->format('d M Y, H:i')),
@@ -123,7 +177,8 @@
                         <div class="flex flex-wrap items-start justify-between gap-2">
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
-                                    <a href="{{ route('orders.show', $comment->order_id) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" @click.stop>
+                                    @php $orderSlug = $comment->order?->order_number ?? $comment->order_id; @endphp
+                                    <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" @click.stop>
                                         {{ $comment->order?->order_number ?? '#' . $comment->order_id }}
                                     </a>
                                     <span>·</span>
@@ -140,14 +195,14 @@
                                 <p class="text-sm text-gray-800 leading-relaxed line-clamp-3" dir="auto" x-text="body"></p>
                             </div>
                             <div class="flex items-center gap-2 shrink-0" @click.stop>
-                                <a href="{{ route('orders.show', $comment->order_id) }}" target="_blank" rel="noopener noreferrer"
+                                <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                     {{ __('comments.open_order') }}
                                 </a>
-                                <a href="{{ route('orders.show', $comment->order_id) }}#comment-{{ $comment->id }}" target="_blank" rel="noopener noreferrer"
+                                <a href="{{ route('orders.show', $orderSlug) }}#comment-{{ $comment->id }}" target="_blank" rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -166,7 +221,7 @@
                         <div class="px-4 py-4 bg-gray-50/50">
                             <div x-show="!editing">
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
-                                    <a :href="'{{ url('/orders') }}/' + orderId" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
+                                    <a :href="'{{ url('/orders') }}/' + orderSlug" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
                                     <span>·</span>
                                     <span x-text="author"></span>
                                     <span>·</span>
@@ -214,14 +269,14 @@
                                 </template>
 
                                 <div class="flex flex-wrap gap-2 mt-4">
-                                    <a :href="'{{ url('/orders') }}/' + orderId" target="_blank" rel="noopener noreferrer"
+                                    <a :href="'{{ url('/orders') }}/' + orderSlug" target="_blank" rel="noopener noreferrer"
                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
                                         {{ __('comments.open_order') }}
                                     </a>
-                                    <a :href="'{{ url('/orders') }}/' + orderId + '#comment-' + id" target="_blank" rel="noopener noreferrer"
+                                    <a :href="'{{ url('/orders') }}/' + orderSlug + '#comment-' + id" target="_blank" rel="noopener noreferrer"
                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>

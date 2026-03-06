@@ -1,4 +1,4 @@
-<tr class="border-b border-orange-100 bg-white" x-data="{
+<tr class="border-b border-primary-100 bg-white" x-data="{
   syncRowHeights(el) {
     const tr = el.closest('tr');
     if (!tr) return;
@@ -27,15 +27,15 @@
     el.classList.toggle('overflow-hidden', !o);
   }
 }">
-    <td class="p-2 align-top text-center">
+    <td class="p-2 align-middle text-center">
         <button type="button" class="w-7 h-7 inline-flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" @click.stop="removeItem(idx)" :aria-label="'{{ __('order_form.remove_row') }}'" title="{{ __('order_form.remove_row') }}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </button>
     </td>
-    <td class="p-2 align-top font-semibold text-sm text-slate-800" x-text="idx + 1"></td>
+    <td class="p-2 align-middle font-semibold text-sm text-slate-800 leading-none" x-text="idx + 1"></td>
     <td class="p-2 align-top min-w-0">
         <textarea x-model="item.url" @blur="calcTotals(); saveDraft()" :placeholder="idx === 0 ? '{{ __('order_form.url_placeholder') }}' : ''" rows="1"
-                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-orange-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
+                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
                   style="min-height: 2.5rem;"
                   :title="item.url || ''"
                   x-init="$nextTick(() => syncRowHeights($el))"
@@ -46,7 +46,7 @@
     </td>
     <td class="p-2 align-top min-w-0">
         <textarea x-model="item.color" @blur="saveDraft()" rows="1"
-                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-orange-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
+                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
                   style="min-height: 2.5rem;"
                   :title="item.color || ''"
                   x-init="$nextTick(() => syncRowHeights($el))"
@@ -57,7 +57,7 @@
     </td>
     <td class="p-2 align-top min-w-0">
         <textarea x-model="item.size" @blur="saveDraft()" rows="1"
-                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-orange-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
+                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
                   style="min-height: 2.5rem;"
                   :title="item.size || ''"
                   x-init="$nextTick(() => syncRowHeights($el))"
@@ -68,7 +68,7 @@
     </td>
     <td class="p-2 align-middle">
         <textarea x-model="item.qty" @input="convertArabicNums($event)" @blur="calcTotals(); saveDraft()" placeholder="1" rows="1" dir="rtl"
-                  class="order-form-input overflow-hidden w-full px-3 py-2 border border-orange-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
+                  class="order-form-input overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
                   style="min-height: 2.5rem;"
                   :title="item.qty || ''"
                   x-init="$nextTick(() => resizeQty($el))"
@@ -78,10 +78,10 @@
                     resizeQty($el);
                   "></textarea>
     </td>
-    <td class="p-2 align-middle"><input type="text" x-model="item.price" @input="convertArabicNums($event)" @blur="calcTotals(); saveDraft()" inputmode="decimal" placeholder="{{ __('placeholder.amount') }}" class="order-form-input w-full px-2 py-2 border border-orange-100 rounded-lg text-sm h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 max-w-full truncate" style="overflow:hidden;text-overflow:ellipsis" :title="item.price || ''"></td>
+    <td class="p-2 align-middle"><input type="text" x-model="item.price" @input="convertArabicNums($event)" @blur="calcTotals(); saveDraft()" inputmode="decimal" placeholder="{{ __('placeholder.amount') }}" class="order-form-input w-full px-2 py-2 border border-primary-100 rounded-lg text-sm h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 max-w-full truncate" style="overflow:hidden;text-overflow:ellipsis" :title="item.price || ''"></td>
     <td class="p-2 align-middle relative">
         <div class="relative">
-            <button type="button" @click="openCurrencyRow = openCurrencyRow === idx ? null : idx" class="order-form-input w-full min-w-0 h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-orange-100 hover:border-orange-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
+            <button type="button" @click="openCurrencyRow = openCurrencyRow === idx ? null : idx" class="order-form-input w-full min-w-0 h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
                     :title="currencyList[item.currency]?.label || ''">
                 <span class="truncate" x-text="currencyList[item.currency]?.label || item.currency || ''"></span>
                 <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': openCurrencyRow === idx }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -91,7 +91,7 @@
                  class="absolute top-full mt-1 z-30 min-w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ app()->getLocale() === 'ar' ? 'right-0 left-auto' : 'left-0 right-auto' }}">
                 <template x-for="(cur, code) in currencyList" :key="code">
                     <button type="button" @click="item.currency = code; onCurrencyChange(idx); calcTotals(); saveDraft(); openCurrencyRow = null"
-                            class="w-full px-3 py-2 text-start text-sm hover:bg-orange-50 focus:bg-orange-50 focus:outline-none transition-colors"
+                            class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors"
                             :class="{ 'bg-primary-50 text-primary-700 font-medium': item.currency === code }"
                             :title="cur.symbol ? (cur.label + ' (' + cur.symbol + ')') : cur.label">
                         <span x-text="cur.label || code"></span>
@@ -102,7 +102,7 @@
     </td>
     <td class="p-2 align-top min-w-0">
         <textarea x-model="item.notes" @blur="saveDraft()" :placeholder="idx === 0 ? '{{ __('order_form.notes_placeholder') }}' : ''" rows="1"
-                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-orange-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
+                  class="order-form-input order-field-sync overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-w-0 resize-none break-words"
                   style="min-height: 2.5rem;"
                   :title="item.notes || ''"
                   x-init="$nextTick(() => syncRowHeights($el))"
@@ -134,7 +134,7 @@
                            @change="handleFileSelect($event, idx)">
                     <label :for="'order-file-desktop-' + idx"
                            @click="if (!isLoggedIn) { $event.preventDefault(); $wire.openLoginModalForAttach(); }"
-                           class="border border-dashed border-orange-100 text-slate-500 bg-orange-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center hover:border-primary-500 hover:bg-orange-50 hover:text-primary-500 transition-colors">{{ __('order_form.attach') }}</label>
+                           class="border border-dashed border-primary-100 text-slate-500 bg-primary-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center hover:border-primary-500 hover:bg-primary-50 hover:text-primary-500 transition-colors">{{ __('order_form.attach') }}</label>
                 </span>
             </template>
         </div>

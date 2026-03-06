@@ -12,6 +12,7 @@ class OrderStatusAutomationLog extends Model
     protected $fillable = [
         'order_id',
         'order_status_automation_rule_id',
+        'order_comment_id',
     ];
 
     protected $casts = [
@@ -26,5 +27,10 @@ class OrderStatusAutomationLog extends Model
     public function rule(): BelongsTo
     {
         return $this->belongsTo(OrderStatusAutomationRule::class, 'order_status_automation_rule_id');
+    }
+
+    public function orderComment(): BelongsTo
+    {
+        return $this->belongsTo(OrderComment::class, 'order_comment_id');
     }
 }

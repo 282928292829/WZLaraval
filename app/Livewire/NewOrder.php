@@ -57,6 +57,12 @@ class NewOrder extends Component
     /** Set by ?product_url=... — pre-fills the first item's URL field */
     public string $productUrl = '';
 
+    /** Cart layout (Option 2): current form fields before adding to cart */
+    public array $currentItem = [];
+
+    /** Cart layout: single file for the current item being added */
+    public $currentItemFile = null;
+
     // Guest login modal
     public bool $showLoginModal = false;
 
@@ -95,14 +101,27 @@ class NewOrder extends Component
             }
         }
 
+        $layout = (string) Setting::get('order_new_layout', '1');
+
+        if ($layout === '2') {
+            $this->currentItem = $this->emptyItem($this->defaultCurrency);
+        }
+
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
+            if ($layout === '2' && ! empty($this->items)) {
+                $last = $this->items[array_key_last($this->items)];
+                $this->currentItem = $this->emptyItem($last['currency'] ?? $this->defaultCurrency);
+            }
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
-            // Pre-fill the first item with the provided URL
-            $firstItem = $this->emptyItem($this->defaultCurrency);
-            $firstItem['url'] = $product_url;
-            $this->items = [$firstItem];
+            if ($layout === '2') {
+                $this->currentItem['url'] = $product_url;
+            } else {
+                $firstItem = $this->emptyItem($this->defaultCurrency);
+                $firstItem['url'] = $product_url;
+                $this->items = [$firstItem];
+            }
         }
     }
 
@@ -219,6 +238,170 @@ class NewOrder extends Component
         unset($this->items[$index], $this->itemFiles[$index]);
         $this->items = array_values($this->items);
         $this->itemFiles = array_values($this->itemFiles);
+
+        if (count($this->items) === 0) {
+            $this->dispatch('cart-emptied');
+        }
+    }
+
+    /**
+     * Cart layout (Option 2): Add current form to cart. Empty URL and empty fields are allowed.
+     */
+    public function addToCart(): void
+    {
+        if (count($this->items) >= $this->maxProducts) {
+            $this->dispatch('notify', type: 'error', message: __('order_form.max_products', ['max' => $this->maxProducts]));
+
+            return;
+        }
+
+        $price = trim($this->currentItem['price'] ?? '');
+        if ($price !== '' && is_numeric($price) && (float) $price < 0) {
+            $this->dispatch('notify', type: 'error', message: __('order_form.cart_invalid_price'));
+
+            return;
+        }
+
+        $files = $this->currentItemFile ? [$this->currentItemFile] : [];
+        $fileCount = count($files);
+        $normalized = $this->normalizeItemFiles();
+        $totalFiles = array_sum(array_map('count', $normalized)) + $fileCount;
+
+        if ($fileCount > $this->maxImagesPerItem) {
+            $this->dispatch('notify', type: 'error',
+                message: __('order_form.max_per_item_exceeded', ['max' => $this->maxImagesPerItem]));
+
+            return;
+        }
+
+        if ($totalFiles > $this->maxImagesPerOrder) {
+            $this->dispatch('notify', type: 'error',
+                message: __('order.max_images_per_order_blocked', ['max' => $this->maxImagesPerOrder]));
+
+            return;
+        }
+
+        $item = [
+            'url' => trim($this->currentItem['url'] ?? ''),
+            'qty' => trim($this->currentItem['qty'] ?? '') !== '' ? (string) max(1, (int) $this->currentItem['qty']) : '1',
+            'color' => trim($this->currentItem['color'] ?? ''),
+            'size' => trim($this->currentItem['size'] ?? ''),
+            'price' => $price,
+            'currency' => trim($this->currentItem['currency'] ?? '') ?: $this->defaultCurrency,
+            'notes' => trim($this->currentItem['notes'] ?? ''),
+        ];
+
+        $newIndex = count($this->items);
+        $this->items[] = $item;
+        $this->itemFiles[$newIndex] = $files;
+
+        $lastCurrency = $item['currency'];
+        $this->currentItem = $this->emptyItem($lastCurrency);
+        $this->currentItemFile = null;
+
+        $this->dispatch('notify', type: 'success', message: __('order_form.cart_item_added'));
+    }
+
+    /**
+     * Cart layout: Edit item — move it back to the add-product form.
+     */
+    public function editCartItem(int $index): void
+    {
+        $item = $this->items[$index] ?? null;
+        if (! $item) {
+            return;
+        }
+
+        $this->currentItem = [
+            'url' => $item['url'] ?? '',
+            'qty' => $item['qty'] ?? '1',
+            'color' => $item['color'] ?? '',
+            'size' => $item['size'] ?? '',
+            'price' => $item['price'] ?? '',
+            'currency' => $item['currency'] ?? $this->defaultCurrency,
+            'notes' => $item['notes'] ?? '',
+        ];
+
+        $existingFiles = $this->normalizeItemFiles()[$index] ?? [];
+        $this->currentItemFile = $existingFiles[0] ?? null;
+
+        $this->removeItem($index);
+        $this->dispatch('notify', type: 'success', message: __('order_form.cart_item_moved_to_form'));
+    }
+
+    /**
+     * Cart layout: Add 5 test items (admin-enabled).
+     */
+    public function addFiveTestItems(): void
+    {
+        if (count($this->items) >= $this->maxProducts) {
+            $this->dispatch('notify', type: 'error',
+                message: __('order_form.max_products', ['max' => $this->maxProducts]));
+
+            return;
+        }
+
+        $urls = [
+            'https://www.amazon.com/dp/B0BSHF7LLL',
+            'https://www.ebay.com/itm/'.(string) random_int(100000000, 999999999),
+            'https://www.walmart.com/ip/'.(string) random_int(100000, 999999),
+            'https://www.target.com/p/product-'.(string) random_int(100, 999),
+            'https://www.aliexpress.com/item/'.(string) random_int(1000000000, 9999999999).'.html',
+        ];
+        $sizes = [
+            __('order_form.test_size_s'),
+            __('order_form.test_size_m'),
+            __('order_form.test_size_l'),
+            __('order_form.test_size_xl'),
+            __('order_form.test_size_us8'),
+            __('order_form.test_size_us10'),
+            __('order_form.test_size_one'),
+        ];
+        $currencies = ['USD', 'EUR', 'GBP'];
+        $colors = [
+            __('order_form.test_color_1'),
+            __('order_form.test_color_2'),
+            __('order_form.test_color_3'),
+            __('order_form.test_color_4'),
+            __('order_form.test_color_5'),
+        ];
+        $notes = [
+            __('order_form.test_note_1'),
+            __('order_form.test_note_2'),
+            __('order_form.test_note_3'),
+            __('order_form.test_note_4'),
+            __('order_form.test_note_5'),
+        ];
+
+        $toAdd = 5;
+        $lastCur = count($this->items) > 0 ? ($this->items[array_key_last($this->items)]['currency'] ?? $this->defaultCurrency) : $this->defaultCurrency;
+        for ($i = 0; $i < $toAdd && count($this->items) < $this->maxProducts; $i++) {
+            $cur = $currencies[$i % 3] ?? $lastCur;
+            $this->items[] = [
+                'url' => $urls[$i],
+                'qty' => (string) random_int(1, 2),
+                'color' => $colors[$i % 5],
+                'size' => $sizes[array_rand($sizes)],
+                'price' => (string) round(random_int(1500, 8000) / 100, 2),
+                'currency' => $cur,
+                'notes' => $notes[$i % 5],
+            ];
+            $lastCur = $cur;
+        }
+        $this->dispatch('notify', type: 'success', message: __('order.dev_5_items_added'));
+    }
+
+    /**
+     * Cart layout: Clear all items and notes (admin-enabled).
+     */
+    public function clearAllItems(): void
+    {
+        $this->items = [];
+        $this->orderNotes = '';
+        $this->itemFiles = [];
+        $this->currentItem = $this->emptyItem($this->defaultCurrency);
+        $this->currentItemFile = null;
+        $this->dispatch('notify', type: 'success', message: __('order_form.cleared'));
     }
 
     public function removeItemFile(int $itemIndex, int $fileIndex): void
@@ -689,6 +872,8 @@ class NewOrder extends Component
         $siteName = Setting::get('site_name') ?: config('app.name');
         $whatsapp = Setting::get('whatsapp', '');
         $whatsappDisplay = $whatsapp ?: '-';
+        $companyName = Setting::get('payment_company_name') ?: $siteName;
+        $baseUrl = rtrim(config('app.url'), '/');
 
         $replacements = [
             'subtotal' => number_format($order->subtotal, 0, '.', ','),
@@ -696,6 +881,11 @@ class NewOrder extends Component
             'total' => number_format($order->total_amount, 0, '.', ','),
             'site_name' => $siteName,
             'whatsapp' => $whatsappDisplay,
+            'company_name' => $companyName,
+            'payment_url' => $baseUrl.'/pages/payment-methods',
+            'terms_url' => $baseUrl.'/pages/terms-and-conditions',
+            'faq_url' => $baseUrl.'/pages/faq',
+            'shipping_url' => $baseUrl.'/pages/shipping-calculator',
         ];
 
         if ($hasPrices) {
@@ -706,7 +896,7 @@ class NewOrder extends Component
         } else {
             $template = Setting::get('auto_comment_no_price', '');
             $body = $template !== ''
-                ? str_replace(':whatsapp', $whatsappDisplay, $template)
+                ? str_replace(array_map(fn ($k) => ':'.$k, array_keys($replacements)), array_values($replacements), $template)
                 : __('orders.auto_comment_no_price', ['whatsapp' => $whatsappDisplay]);
         }
 
@@ -991,15 +1181,59 @@ class NewOrder extends Component
         return $defaults + ['OTHER' => 0];
     }
 
+    /**
+     * Compute cart summary (subtotal, commission, total in SAR) for layout 2.
+     *
+     * @return array{subtotal: float, commission: float, total: float, filledCount: int}
+     */
+    public function getCartSummary(): array
+    {
+        $rawSubtotal = 0;
+        $filledCount = 0;
+        foreach ($this->items as $item) {
+            $url = trim($item['url'] ?? '');
+            if ($url !== '') {
+                $filledCount++;
+            }
+            $qty = max(1, (int) ($item['qty'] ?? 1));
+            $price = is_numeric($item['price'] ?? null) ? (float) $item['price'] : 0;
+            $curr = $item['currency'] ?? 'USD';
+            $rate = $this->exchangeRates[$curr] ?? 0;
+            if ($price > 0 && $rate > 0) {
+                $rawSubtotal += $price * $qty * $rate;
+            }
+        }
+        $commission = CommissionCalculator::calculate($rawSubtotal);
+        $total = round($rawSubtotal + $commission, 2);
+        $subtotal = round($rawSubtotal, 2);
+
+        return [
+            'subtotal' => $subtotal,
+            'commission' => $commission,
+            'total' => $total,
+            'filledCount' => $filledCount,
+        ];
+    }
+
     public function render()
     {
         $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
-        $layout = Setting::get('order_new_layout', '1');
-        $viewName = $layout === '4' ? 'livewire.new-order-wizard' : 'livewire.new-order';
+        $layout = (string) Setting::get('order_new_layout', '1');
+        $viewName = match ($layout) {
+            '2' => 'livewire.new-order-cart',
+            '4' => 'livewire.new-order-wizard',
+            default => 'livewire.new-order',
+        };
         $view = view($viewName)
+            ->with('orderNewLayout', $layout)
+            ->with('showAddTestItems', (bool) Setting::get('order_form_show_add_test_items', false))
+            ->with('showResetAll', (bool) Setting::get('order_form_show_reset_all', true))
             ->with('commissionSettings', CommissionCalculator::getSettings())
             ->with('allowedMimeTypes', allowed_upload_mime_types())
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024);
+        if ($layout === '2') {
+            $view = $view->with('cartSummary', $this->getCartSummary());
+        }
 
         if ($this->editingOrderId) {
             return $view->title(__('orders.edit_order_title', ['number' => $this->editingOrderNumber]));

@@ -115,19 +115,22 @@
     <div class="absolute inset-0" @click="close()" aria-hidden="true"></div>
     <button type="button" @click="close()"
         class="absolute top-4 end-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
-        :aria-label="'{{ __('orders.close') }}'">
+        :aria-label="'{{ __('orders.close') }}'"
+        title="{{ __('orders.close') }}">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
     <button x-show="gallery.length > 1" x-transition
         type="button" @click="prev()"
         class="absolute start-2 sm:start-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
-        :aria-label="'{{ __('orders.prev') }}'">
+        :aria-label="'{{ __('orders.prev') }}'"
+        title="{{ __('orders.prev') }}">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
     </button>
     <button x-show="gallery.length > 1" x-transition
         type="button" @click="next()"
         class="absolute end-2 sm:end-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
-        :aria-label="'{{ __('orders.next') }}'">
+        :aria-label="'{{ __('orders.next') }}'"
+        title="{{ __('orders.next') }}">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
     </button>
     <div class="relative z-10 max-w-[90vw] max-h-[85vh] flex items-center justify-center">
@@ -517,7 +520,7 @@
                                 <div x-show="tipOpen" x-collapse class="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 space-y-1.5 text-xs text-blue-700">
                                     <p class="font-medium mb-1">{{ __('account.national_address_ways_intro') }}</p>
                                     <p><span class="font-medium">{{ __('account.step_1') }}</span> {{ __('account.national_address_tip_whatsapp') }}
-                                        <a href="https://wa.me/{{ __('account.whatsapp_number_wa') }}" target="_blank" rel="noopener" class="underline font-semibold" dir="ltr">{{ __('account.whatsapp_number') }}</a></p>
+                                        <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener" class="underline font-semibold" dir="ltr">{{ \App\Models\Setting::get('whatsapp', '') ?: $waNum }}</a></p>
                                     <p><span class="font-medium">{{ __('account.step_2') }}</span> {{ __('account.national_address_tip_apps') }}</p>
                                     <p><span class="font-medium">{{ __('account.step_3') }}</span> <a href="https://wa.me/{{ $waNum }}" target="_blank" rel="noopener" class="underline font-semibold">{{ __('account.national_address_tip_us') }}</a></p>
                                 </div>
@@ -546,303 +549,15 @@
         </div>
     @endif
 
-    {{-- ── Order Items (منتجات الطلب) — directly under order header ──────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h2 class="text-sm font-semibold text-gray-700">
-                {{ __('orders.items') }}
-                <span class="ms-1 text-xs font-normal text-gray-400">({{ $order->items->count() }})</span>
-            </h2>
-            <div class="flex items-center gap-3">
-                @if ($isStaff)
-                    <a href="{{ route('orders.export-excel', $order) }}"
-                        class="inline-flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium"
-                        title="{{ __('orders.export_excel') }}">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        {{ __('orders.export_excel') }}
-                    </a>
-                @endif
-                @if ($isStaff && auth()->user()->can('edit-prices'))
-                    <button type="button" x-data @click="$dispatch('open-edit-prices')"
-                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        {{ __('orders.edit_prices') }}
-                    </button>
-                @endif
-            </div>
-        </div>
-
-        {{-- Items table --}}
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm table-fixed">
-                <thead>
-                    <tr class="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50/50">
-                        <th class="px-4 py-2 font-medium text-start w-8">#</th>
-                        <th class="px-4 py-2 font-medium text-start w-[40%] min-w-0">{{ __('orders.product') }}</th>
-                        <th class="px-4 py-2 font-medium text-center w-14">{{ __('orders.qty') }}</th>
-                        <th class="px-4 py-2 font-medium text-start w-24 hidden sm:table-cell">{{ __('orders.color') }}</th>
-                        <th class="px-4 py-2 font-medium text-start w-24 hidden sm:table-cell">{{ __('orders.size') }}</th>
-                        <th class="px-4 py-2 font-medium text-start w-28 hidden sm:table-cell">{{ __('orders.price') }}</th>
-                        @if ($isStaff)
-                            <th class="px-4 py-2 font-medium text-start w-28 hidden sm:table-cell">{{ __('orders.final') }}</th>
-                        @endif
-                        <th class="px-4 py-2 font-medium text-start hidden md:table-cell">{{ __('orders.notes') }}</th>
-                        <th class="px-4 py-2 font-medium text-center w-14">{{ __('orders.image') }}</th>
-                        <th class="px-4 py-2 font-medium text-center w-28">{{ __('orders.attach') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse ($order->items as $i => $item)
-                        @php
-                            $itemAllFiles = collect();
-                            if ($item->image_path) {
-                                $itemAllFiles->push(['url' => Storage::disk('public')->url($item->image_path), 'source' => 'item', 'id' => $item->id, 'is_image' => true, 'name' => '']);
-                            }
-                            foreach ($order->files->where('order_item_id', $item->id) as $f) {
-                                $itemAllFiles->push(['url' => $f->url(), 'source' => 'file', 'id' => $f->id, 'is_image' => $f->isImage(), 'name' => $f->original_name]);
-                            }
-                            $itemFileCount = $itemAllFiles->count();
-                            $canAddFiles = $isStaff || ($isOwner && $customerCanAddFiles);
-                            $slotsLeft = max(0, $maxFilesPerItemAfterSubmit - $itemFileCount);
-                        @endphp
-                        <tr class="hover:bg-gray-50/50 transition-colors">
-
-                            {{-- # --}}
-                            <td class="px-4 py-3 align-middle">
-                                <span class="text-xs text-gray-500 font-medium">{{ $i + 1 }}</span>
-                            </td>
-
-                            {{-- URL / description: show text + Open (enabled when safe) + Copy --}}
-                            <td class="px-4 py-3 align-middle min-w-0">
-                                @if (trim($item->url ?? '') !== '')
-                                    @php
-                                        $safeUrl = safe_item_url($item->url);
-                                        $displayText = $safeUrl
-                                            ? (parse_url($safeUrl, PHP_URL_HOST) ?: $item->url)
-                                            : $item->url;
-                                        $displayText = preg_replace('/^www\./i', '', $displayText);
-                                    @endphp
-                                    <div class="flex flex-wrap items-center gap-1.5 min-w-0">
-                                        <span class="text-gray-800 font-medium truncate shrink-0 max-w-full" title="{{ $item->url }}">{{ $displayText }}</span>
-                                        @if ($safeUrl)
-                                            <a href="{{ $safeUrl }}" target="_blank" rel="noopener"
-                                                class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
-                                                {{ __('orders.view') }}
-                                            </a>
-                                        @else
-                                            <span class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                                                title="{{ __('orders.view_disabled_unsafe') }}">
-                                                {{ __('orders.view') }}
-                                            </span>
-                                        @endif
-                                        <button type="button"
-                                            x-data="{ copied: false }"
-                                            data-copy-url="{{ e($item->url) }}"
-                                            @click="(async () => {
-                                                const url = $el.getAttribute('data-copy-url');
-                                                try { await navigator.clipboard.writeText(url); } catch(e) {
-                                                    const ta = document.createElement('textarea'); ta.value = url;
-                                                    ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta);
-                                                    ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-                                                }
-                                                copied = true; setTimeout(() => copied = false, 2000);
-                                            })()"
-                                            class="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold py-1 px-2 rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
-                                            :class="copied && '!border-green-200 !bg-green-50 !text-green-700'"
-                                            title="{{ __('orders.copy') }}">
-                                            <span x-show="!copied">{{ __('orders.copy') }}</span>
-                                            <span x-show="copied" x-cloak>{{ __('orders.copied') }}</span>
-                                        </button>
-                                    </div>
-                                @else
-                                    <span class="text-gray-400">—</span>
-                                @endif
-                                {{-- Mobile-only: show hidden columns inline --}}
-                                <div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-400 sm:hidden">
-                                    @if ($item->color)
-                                        <span>{{ $item->color }}</span>
-                                    @endif
-                                    @if ($item->size)
-                                        <span>{{ $item->size }}</span>
-                                    @endif
-                                    @if ($item->currency && $item->unit_price)
-                                        <span>{{ number_format($item->unit_price, 2) }} {{ $item->currency }}</span>
-                                    @endif
-                                    @if ($isStaff && $item->final_price)
-                                        <span class="text-primary-600">{{ number_format($item->final_price, 2) }} SAR</span>
-                                    @endif
-                                    @if ($item->notes)
-                                        <span class="italic text-gray-300 md:hidden">{{ Str::limit($item->notes, 40) }}</span>
-                                    @endif
-                                </div>
-                            </td>
-
-                            {{-- Qty --}}
-                            <td class="px-2 py-3 align-middle text-center">
-                                <span class="text-xs font-semibold text-gray-800">{{ $item->qty }}</span>
-                            </td>
-
-                            {{-- Color --}}
-                            <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">
-                                {{ $item->color ?: '—' }}
-                            </td>
-
-                            {{-- Size --}}
-                            <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">
-                                {{ $item->size ?: '—' }}
-                            </td>
-
-                            {{-- Unit price --}}
-                            <td class="px-2 py-3 align-middle text-xs text-gray-600 hidden sm:table-cell tabular-nums" dir="ltr">
-                                @if ($item->currency && $item->unit_price)
-                                    {{ number_format($item->unit_price, 2) }} {{ $item->currency }}
-                                @else
-                                    —
-                                @endif
-                            </td>
-
-                            {{-- Final price (staff) --}}
-                            @if ($isStaff)
-                                <td class="px-2 py-3 align-middle text-xs hidden sm:table-cell tabular-nums" dir="ltr">
-                                    @if ($item->final_price)
-                                        <span class="font-medium text-primary-600">{{ number_format($item->final_price, 2) }} SAR</span>
-                                    @else
-                                        <span class="text-gray-300">—</span>
-                                    @endif
-                                </td>
-                            @endif
-
-                            {{-- Notes --}}
-                            <td class="px-4 py-3 align-middle text-xs text-gray-400 italic hidden md:table-cell max-w-[160px]">
-                                <div class="truncate" title="{{ $item->notes }}">
-                                    {{ $item->notes ?: '—' }}
-                                </div>
-                            </td>
-                            {{-- Image column: show all images/files per item --}}
-                            <td class="px-4 py-3 align-middle">
-                                @if ($itemAllFiles->isNotEmpty())
-                                    <div class="flex flex-wrap gap-1 justify-center">
-                                        @foreach ($itemAllFiles as $itemFile)
-                                            <div class="relative group">
-                                                @if ($itemFile['is_image'] ?? true)
-                                                    <button type="button"
-                                                        @click="$dispatch('open-lightbox', { src: '{{ $itemFile['url'] }}', gallery: window.orderLightboxImages })"
-                                                        class="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 block">
-                                                        <img src="{{ $itemFile['url'] }}" alt=""
-                                                            class="w-10 h-10 rounded-lg object-cover border border-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity">
-                                                    </button>
-                                                @else
-                                                    <a href="{{ $itemFile['url'] }}" target="_blank" class="shrink-0 w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-100 block"
-                                                        title="{{ $itemFile['name'] ?? '' }}">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                    </a>
-                                                @endif
-                                                @if ($isStaff)
-                                                    <form action="{{ route('orders.product-image.delete', $order) }}" method="POST" class="absolute -top-1 -end-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        x-data x-on:submit="if (!confirm($el.getAttribute('data-confirm'))) $event.preventDefault()"
-                                                        data-confirm="{{ __('orders.delete_image_confirm') }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        @if (($itemFile['source'] ?? '') === 'item')
-                                                            <input type="hidden" name="item_id" value="{{ $itemFile['id'] }}">
-                                                        @else
-                                                            <input type="hidden" name="file_id" value="{{ $itemFile['id'] }}">
-                                                        @endif
-                                                        <button type="submit" class="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs leading-none hover:bg-red-600" title="{{ __('orders.delete_image') }}">✕</button>
-                                                    </form>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <span class="text-xs text-gray-300">—</span>
-                                @endif
-                            </td>
-                            {{-- Attach column: per-row Add files (images, PDF, Excel, Word — up to configurable max) --}}
-                            <td class="px-4 py-3 align-middle">
-                                @if ($canAddFiles)
-                                    <div x-data="{ open: false, uploading: false }"
-                                         class="flex flex-col items-center gap-1">
-                                        <span class="text-xs text-gray-500">{{ $itemFileCount }}/{{ $maxFilesPerItemAfterSubmit }}</span>
-                                        @if ($slotsLeft > 0)
-                                            <button type="button" @click="open = !open"
-                                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                                                + {{ __('orders.add_files') }}
-                                            </button>
-                                            <form x-show="open" x-collapse
-                                                @submit.prevent="
-                                                    const form = $el;
-                                                    const m = window.orderShowToastMessages || {};
-                                                    const filesInput = form.querySelector('input[type=file]');
-                                                    if (!filesInput || !filesInput.files || filesInput.files.length === 0) {
-                                                        $dispatch('order-toast', { type: 'error', message: m.required || 'Please select at least one file.' });
-                                                        return;
-                                                    }
-                                                    uploading = true;
-                                                    const fd = new FormData(form);
-                                                    fetch(form.action, {
-                                                        method: 'POST',
-                                                        body: fd,
-                                                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                                                    })
-                                                    .then(r => r.json().catch(() => ({})))
-                                                    .then(data => {
-                                                        uploading = false;
-                                                        if (data.success) {
-                                                            $dispatch('order-toast', { type: 'success', message: data.message || m.uploaded });
-                                                            form.reset();
-                                                            open = false;
-                                                            window.location.reload();
-                                                        } else {
-                                                            const errMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(' ') : null) || m.failed;
-                                                            $dispatch('order-toast', { type: 'error', message: errMsg });
-                                                        }
-                                                    })
-                                                    .catch(() => {
-                                                        uploading = false;
-                                                        $dispatch('order-toast', { type: 'error', message: m.failed });
-                                                    });
-                                                "
-                                                action="{{ route('orders.items.files.store', [$order, $item->id]) }}"
-                                                method="POST" enctype="multipart/form-data"
-                                                class="mt-1 flex flex-col items-center gap-1">
-                                                @csrf
-                                                <input type="file" name="files[]" multiple
-                                                    accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
-                                                    class="text-xs w-28">
-                                                <button type="submit" :disabled="uploading"
-                                                    class="text-xs bg-primary-500 hover:bg-primary-600 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    <span x-text="uploading ? (window.orderShowToastMessages?.uploading || 'Uploading…') : (window.orderShowToastMessages?.upload || 'Upload')"></span>
-                                                </button>
-                                            </form>
-                                        @else
-                                            <span class="text-xs text-gray-400">{{ __('orders.max_reached') }}</span>
-                                        @endif
-                                    </div>
-                                @else
-                                    <span class="text-xs text-gray-400">—</span>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $isStaff ? 11 : 10 }}" class="px-4 py-8 text-center text-sm text-gray-400">{{ __('orders.no_items') }}</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Customer: edit items within window (hidden when admin disables order edit) --}}
-        @if ($orderEditEnabled && $canEditItems)
-            <div class="border-t border-amber-100 bg-amber-50 px-4 py-2.5 flex items-center gap-2 text-xs text-amber-700">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-                {{ __('orders.click_edit_within', ['time' => $clickEditRemaining]) }}
-                <a href="{{ route('new-order') }}?edit={{ $order->id }}" class="ms-auto font-medium text-amber-800 hover:underline">
-                    {{ __('orders.edit_items') }} →
-                </a>
-            </div>
-        @endif
-    </div>
+    {{-- ── Order Items (منتجات الطلب) — inline edit on same page when within window ──────────── --}}
+    @livewire('order-item-edit', [
+        'order' => $order,
+        'canEditItems' => $canEditItems,
+        'orderEditEnabled' => $orderEditEnabled,
+        'clickEditRemaining' => $clickEditRemaining,
+        'isOwner' => $isOwner,
+        'isStaff' => $isStaff,
+    ])
 
     {{-- ── Staff: edit prices panel ───────────────────────────────────────── --}}
     @can('edit-prices')
@@ -996,29 +711,11 @@
     {{-- ── Tracking Card (customer-visible) ──────────────────────────────── --}}
     @if ($order->tracking_number)
         @php
-            $carrierUrlTemplates = [
-                'aramex' => \App\Models\Setting::get('carrier_url_aramex', 'https://www.aramex.com/track/results?mode=0&ShipmentNumber={tracking}'),
-                'smsa'   => \App\Models\Setting::get('carrier_url_smsa',   'https://www.smsaexpress.com/track/?tracknumbers={tracking}'),
-                'dhl'    => \App\Models\Setting::get('carrier_url_dhl',    'https://www.dhl.com/sa-en/home/tracking/tracking-express.html?submit=1&tracking-id={tracking}'),
-                'fedex'  => \App\Models\Setting::get('carrier_url_fedex',  'https://www.fedextrack/?trknbr={tracking}'),
-                'ups'    => \App\Models\Setting::get('carrier_url_ups',    'https://www.ups.com/track?tracknum={tracking}'),
-            ];
-            $carrierLabels = [
-                'aramex' => __('carriers.aramex'),
-                'smsa'   => __('carriers.smsa'),
-                'dhl'    => __('carriers.dhl'),
-                'fedex'  => __('carriers.fedex'),
-                'ups'    => __('carriers.ups'),
-                'other'  => __('orders.carrier_other'),
-            ];
-            $trackingUrl = null;
-            if ($order->tracking_company && isset($carrierUrlTemplates[$order->tracking_company])) {
-                $tpl = $carrierUrlTemplates[$order->tracking_company];
-                if (!empty($tpl)) {
-                    $trackingUrl = str_replace('{tracking}', urlencode($order->tracking_number), $tpl);
-                }
-            }
-            $carrierLabel = $carrierLabels[$order->tracking_company ?? ''] ?? $order->tracking_company;
+            $trackingCarrier = $trackingCarriers->firstWhere('slug', $order->tracking_company);
+            $trackingUrl = $trackingCarrier ? $trackingCarrier->getTrackingUrl($order->tracking_number) : null;
+            $carrierLabel = $trackingCarrier
+                ? $trackingCarrier->display_name
+                : ($order->tracking_company === 'other' ? __('orders.carrier_other') : $order->tracking_company);
         @endphp
 
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4"
@@ -1534,11 +1231,9 @@
                                             <select name="second_shipping_company" x-model="shippingCompany"
                                                 class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                                 <option value="">{{ __('orders.select_carrier') }}</option>
-                                                <option value="aramex">{{ __('carriers.aramex') }}</option>
-                                                <option value="smsa">{{ __('carriers.smsa') }}</option>
-                                                <option value="dhl">{{ __('carriers.dhl') }}</option>
-                                                <option value="fedex">{{ __('carriers.fedex') }}</option>
-                                                <option value="ups">{{ __('carriers.ups') }}</option>
+                                                @foreach ($trackingCarriers as $c)
+                                                    <option value="{{ $c->slug }}">{{ $c->display_name }}</option>
+                                                @endforeach
                                                 <option value="other">{{ __('orders.carrier_other') }}</option>
                                             </select>
                                         </div>
@@ -1633,11 +1328,9 @@
                                     <select name="tracking_company"
                                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
                                         <option value="">{{ __('orders.select_carrier') }}</option>
-                                        <option value="aramex" @selected($order->tracking_company === 'aramex')>{{ __('carriers.aramex') }}</option>
-                                        <option value="smsa" @selected($order->tracking_company === 'smsa')>{{ __('carriers.smsa') }}</option>
-                                        <option value="dhl" @selected($order->tracking_company === 'dhl')>{{ __('carriers.dhl') }}</option>
-                                        <option value="fedex" @selected($order->tracking_company === 'fedex')>{{ __('carriers.fedex') }}</option>
-                                        <option value="ups" @selected($order->tracking_company === 'ups')>{{ __('carriers.ups') }}</option>
+                                        @foreach ($trackingCarriers as $c)
+                                            <option value="{{ $c->slug }}" @selected($order->tracking_company === $c->slug)>{{ $c->display_name }}</option>
+                                        @endforeach
                                         <option value="other" @selected($order->tracking_company === 'other')>{{ __('orders.carrier_other') }}</option>
                                     </select>
                                 </div>

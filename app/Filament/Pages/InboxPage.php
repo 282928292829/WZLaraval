@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 
 class InboxPage extends Page
 {
@@ -22,7 +23,7 @@ class InboxPage extends Page
         return __('inbox.inbox');
     }
 
-    public function getTitle(): string
+    public function getTitle(): string|Htmlable
     {
         return __('inbox.inbox');
     }
@@ -34,11 +35,6 @@ class InboxPage extends Page
 
     public function mount(): void
     {
-        $this->redirect(route('inbox.index'));
-    }
-
-    public static function getSlug(?\Filament\Panel $panel = null): string
-    {
-        return 'inbox';
+        $this->redirect(route('inbox.index'), navigate: false);
     }
 }

@@ -12,14 +12,26 @@
 
         <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
 
-        @php $primaryColor = \App\Models\Setting::get('primary_color', '#f97316'); @endphp
-        <style>:root { --primary: {{ $primaryColor }}; --primary-hover: {{ \App\Support\ColorHelper::darken($primaryColor, 5) }}; }</style>
-
+        @php
+            $primaryColor = trim((string) \App\Models\Setting::get('primary_color', '#f97316'));
+            $primaryHover = \App\Support\ColorHelper::darken($primaryColor, 5);
+            $primaryLight = \App\Support\ColorHelper::lighten($primaryColor, 92);
+            $primaryLight2 = \App\Support\ColorHelper::lighten($primaryColor, 80);
+        @endphp
         {{-- Fonts: Inter (Latin) + IBM Plex Sans Arabic --}}
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|ibm-plex-sans-arabic:300,400,500,600,700&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <style>:root {
+            --primary: {{ $primaryColor }};
+            --primary-hover: {{ $primaryHover }};
+            --color-primary-50: {{ $primaryLight }};
+            --color-primary-100: {{ $primaryLight2 }};
+            --color-primary-400: {{ $primaryColor }};
+            --color-primary-500: {{ $primaryColor }};
+            --color-primary-600: {{ $primaryHover }};
+        }</style>
         @livewireStyles
     </head>
     <body class="antialiased bg-gray-50 text-gray-900 min-h-screen flex flex-col" style="font-family: {{ \App\Support\FontHelper::cssFontFamily() }};">
@@ -40,8 +52,20 @@
             </div>
         </div>
 
+        @php
+            $yearInitiated = trim((string) \App\Models\Setting::get('copyright_year_initiated', ''));
+            $currentYear = date('Y');
+            $copyrightYear = ($yearInitiated !== '' && preg_match('/^\d{4}$/', $yearInitiated) && (int) $yearInitiated <= (int) $currentYear)
+                ? ((int) $yearInitiated === (int) $currentYear ? $currentYear : $yearInitiated . '–' . $currentYear)
+                : $currentYear;
+        @endphp
         <footer class="py-5 text-center text-xs text-gray-400">
-            <span>&copy; {{ date('Y') }} {{ __('app.name') }}</span>
+            <span>&copy; {{ $copyrightYear }} {{ __('app.name') }}.</span>
+            <a href="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}"
+               class="ml-2 text-gray-400 hover:text-gray-500"
+               style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
+                ({{ app()->getLocale() === 'ar' ? __('English') : __('Arabic') }})
+            </a>
         </footer>
 
         @livewireScripts
