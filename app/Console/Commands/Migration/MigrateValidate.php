@@ -31,6 +31,7 @@ class MigrateValidate extends Command
         $this->checkOrders();
         $this->checkOrderItems();
         $this->checkOrderComments();
+        $this->checkUserMapping();
         $this->checkPosts();
         $this->checkPostComments();
         $this->checkPages();
@@ -304,6 +305,57 @@ class MigrateValidate extends Command
             'status' => '~',
             'note' => 'Functional WP pages skipped intentionally',
         ];
+    }
+
+    private function checkUserMapping(): void
+    {
+        $legacyMap = DB::connection('legacy')
+            ->table('posts as p')
+            ->join('users as u', 'u.ID', '=', 'p.post_author')
+            ->where('p.post_type', 'orders')
+            ->where('p.post_status', 'publish')
+            ->pluck('u.user_email', 'p.ID')
+            ->mapWithKeys(fn ($v, $k) => [(int) $k => (string) $v])
+            ->toArray();
+
+        $laravelMap = DB::table('orders as o')
+            ->join('users as u', 'u.id', '=', 'o.user_id')
+            ->whereNotNull('o.wp_post_id')
+            ->pluck('u.email', 'o.wp_post_id')
+            ->mapWithKeys(fn ($v, $k) => [(int) $k => (string) $v])
+            ->toArray();
+
+        $mismatches = [];
+        foreach ($legacyMap as $wpPostId => $legacyEmail) {
+            $laravelEmail = $laravelMap[$wpPostId] ?? null;
+            if ($laravelEmail === null || strcasecmp((string) $legacyEmail, (string) $laravelEmail) !== 0) {
+                $mismatches[] = [
+                    'wp_post_id' => $wpPostId,
+                    'legacy' => $legacyEmail,
+                    'laravel' => $laravelEmail ?? '?',
+                ];
+            }
+        }
+
+        $count = count($mismatches);
+        $ok = $count === 0;
+
+        $this->results[] = [
+            'entity' => 'user_mapping',
+            'legacy' => '-',
+            'laravel' => '-',
+            'status' => $ok ? '✓' : '✗',
+            'note' => $ok ? '0 mismatches' : "{$count} orders: post_author email != order.user_id email",
+        ];
+
+        if (! $ok) {
+            foreach (array_slice($mismatches, 0, 10) as $m) {
+                $this->issues[] = "Order wp_post_id {$m['wp_post_id']}: legacy {$m['legacy']} != Laravel {$m['laravel']}";
+            }
+            if ($count > 10) {
+                $this->issues[] = '... and '.($count - 10).' more user mapping mismatches';
+            }
+        }
     }
 
     private function checkForeignKeyIntegrity(): void
