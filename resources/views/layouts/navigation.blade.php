@@ -58,7 +58,7 @@
                             {{ __('My Orders') }}
                         </a>
 
-                        @if (!auth()->user()->can('view-all-orders') && auth()->user()->hasAnyRole(['admin', 'superadmin']))
+                        @if (!auth()->user()->can('view-all-orders') && auth()->user()->can('access-filament'))
                             <a href="{{ url('/admin') }}"
                                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                                 {{ __('Admin Panel') }}
@@ -106,73 +106,33 @@
 
                     @auth
                         @can('view-all-orders')
-                            {{-- Team dropdown: Orders, Comments, Inbox, Admin — after General Info --}}
-                            <div class="relative" x-data="{ teamOpen: false }" @click.outside="teamOpen = false">
-                                @php
-                                    $inboxUnread = \App\Models\Activity::whereNull('read_at')->count();
-                                    $isAdmin = auth()->user()->hasAnyRole(['admin', 'superadmin']);
-                                @endphp
-                                <button @click="teamOpen = !teamOpen"
-                                        :aria-expanded="teamOpen"
-                                        class="relative flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                                    {{ __('nav.team') }}
-                                    @if ($inboxUnread > 0)
-                                        <span class="absolute top-1 end-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    @endif
-                                    <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="{ 'rotate-180': teamOpen }"
-                                         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-
-                                <div x-show="teamOpen"
-                                     x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="opacity-0 scale-95"
-                                     x-transition:enter-end="opacity-100 scale-100"
-                                     x-transition:leave="transition ease-in duration-75"
-                                     x-transition:leave-start="opacity-100 scale-100"
-                                     x-transition:leave-end="opacity-0 scale-95"
-                                     class="absolute start-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
-                                     style="display: none;">
-                                    <a href="{{ route('orders.all') }}"
-                                       class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                        </svg>
-                                        {{ __('staff.all_orders') }}
-                                    </a>
-                                    <a href="{{ route('comments.index') }}"
-                                       class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                                        </svg>
-                                        {{ __('Comments') }}
-                                    </a>
-                                    <a href="{{ route('inbox.index') }}"
-                                       class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                        </svg>
-                                        {{ __('inbox.inbox') }}
-                                        @if ($inboxUnread > 0)
-                                            <span class="ms-auto inline-flex items-center justify-center min-w-[18px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                                                {{ $inboxUnread > 9 ? '9+' : $inboxUnread }}
-                                            </span>
-                                        @endif
-                                    </a>
-                                    @if ($isAdmin)
-                                        <div class="border-t border-gray-100 my-1"></div>
-                                        <a href="{{ url('/admin') }}"
-                                           class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            </svg>
-                                            {{ __('Admin Panel') }}
-                                        </a>
-                                    @endif
-                                </div>
-                            </div>
+                            @php
+                                $inboxUnread = \App\Models\Activity::whereNull('read_at')->count();
+                            @endphp
+                            <span class="text-gray-300 select-none">|</span>
+                            <a href="{{ route('orders.all') }}"
+                               class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                                {{ __('staff.all_orders') }}
+                            </a>
+                            <a href="{{ route('comments.index') }}"
+                               class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                                {{ __('Comments') }}
+                            </a>
+                            <a href="{{ route('inbox.index') }}"
+                               class="relative flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                                {{ __('inbox.inbox') }}
+                                @if ($inboxUnread > 0)
+                                    <span class="ms-1 inline-flex items-center justify-center min-w-[16px] h-3.5 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                                        {{ $inboxUnread > 9 ? '9+' : $inboxUnread }}
+                                    </span>
+                                @endif
+                            </a>
+                            @can('access-filament')
+                                <a href="{{ url('/admin') }}"
+                                   class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                                    {{ __('Admin Panel') }}
+                                </a>
+                            @endcan
                         @endcan
                     @endauth
                 </div>
@@ -298,7 +258,7 @@
                     {{ __('My Orders') }}
                 </a>
 
-                @if (!auth()->user()->can('view-all-orders') && auth()->user()->hasAnyRole(['admin', 'superadmin']))
+                @if (!auth()->user()->can('view-all-orders') && auth()->user()->can('access-filament'))
                     <a href="{{ url('/admin') }}" @click="open = false"
                        class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         {{ __('Admin Panel') }}
@@ -361,12 +321,12 @@
                                 </span>
                             @endif
                         </a>
-                        @if (auth()->user()->hasAnyRole(['admin', 'superadmin']))
+                        @can('access-filament')
                             <a href="{{ url('/admin') }}" @click="open = false"
                                class="flex items-center px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                                 {{ __('Admin Panel') }}
                             </a>
-                        @endif
+                        @endcan
                     </div>
                 @endcan
             @endauth

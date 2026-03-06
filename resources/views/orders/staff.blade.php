@@ -5,7 +5,7 @@
                 <h1 class="text-xl font-semibold text-gray-900">{{ __('staff.all_orders') }}</h1>
                 <p class="mt-0.5 text-sm text-gray-500">
                     {{ $orders->total() }} {{ __('orders.orders') }}
-                    @if (request()->hasAny(['search','status','from','to']))
+                    @if (request()->hasAny(['search','status','from','to','awaiting','no_response_preset','no_response_value','no_response_unit']))
                         — <a href="{{ route('orders.all') }}"
                              class="text-primary-500 hover:text-primary-600 font-medium transition-colors">
                             {{ __('staff.clear_filters') }}
@@ -13,15 +13,15 @@
                     @endif
                 </p>
             </div>
-            @if(auth()->user()->hasRole('superadmin'))
-                <a href="{{ route('orders.all', array_merge(request()->only(['search','status','from','to']), ['export' => 'csv'])) }}"
+            @can('export-csv')
+                <a href="{{ route('orders.all', array_merge(request()->only(['search','status','from','to','awaiting','no_response_preset','no_response_value','no_response_unit','sort','per_page']), ['export' => 'csv'])) }}"
                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     {{ __('staff.export_csv') }}
                 </a>
-            @endif
+            @endcan
         </div>
     </x-slot>
 
@@ -30,7 +30,7 @@
         selected: [],
         bulkStatus: '',
         selectMode: false,
-        filtersOpen: {{ request()->hasAny(['status','from','to']) ? 'true' : 'false' }},
+        filtersOpen: {{ request()->hasAny(['status','from','to','awaiting','no_response_preset','no_response_value','no_response_unit']) ? 'true' : 'false' }},
         get allIds() {
             return [...document.querySelectorAll('.order-checkbox')].map(el => el.value);
         },
@@ -126,11 +126,11 @@
                         <button type="button"
                                 @click="selectMode = !selectMode; if (!selectMode) exitSelectMode();"
                                 :class="selectMode ? 'bg-primary-100 border-primary-300 text-primary-700' : 'bg-white border-gray-200 text-gray-600'"
-                                class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium border rounded-xl hover:border-primary-300 hover:text-primary-600 transition-colors shrink-0">
+                                :title="selectMode ? '{{ __('staff.done') }}' : '{{ __('staff.select_orders') }}'"
+                                class="inline-flex items-center justify-center p-2.5 text-sm font-medium border rounded-xl hover:border-primary-300 hover:text-primary-600 transition-colors shrink-0">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                             </svg>
-                            <span x-text="selectMode ? '{{ __('staff.done') }}' : '{{ __('staff.select_orders') }}'"></span>
                         </button>
                     @endif
                     {{-- Search input --}}
@@ -161,7 +161,8 @@
                     <button type="button"
                             @click="filtersOpen = !filtersOpen"
                             :class="filtersOpen ? 'bg-primary-50 border-primary-300 text-primary-700' : 'bg-white border-gray-200 text-gray-600'"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm border rounded-xl hover:border-primary-300 hover:text-primary-600 transition-colors">
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm border rounded-xl hover:border-primary-300 hover:text-primary-600 transition-colors"
+                            title="{{ __('orders.filters') }}">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
                         </svg>
@@ -181,6 +182,49 @@
                      x-transition:enter-start="opacity-0 -translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0"
                      class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+
+                    {{-- Awaiting response --}}
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('comments.awaiting_response') }}</label>
+                        <select name="awaiting" id="awaiting-select"
+                                class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
+                            <option value="">{{ __('comments.awaiting_none') }}</option>
+                            <option value="customer" @selected(request('awaiting') === 'customer')>{{ __('comments.awaiting_customer') }}</option>
+                            <option value="staff" @selected(request('awaiting') === 'staff')>{{ __('comments.awaiting_staff') }}</option>
+                            <option value="staff_public" @selected(request('awaiting') === 'staff_public')>{{ __('comments.awaiting_staff_public') }}</option>
+                            <option value="staff_internal" @selected(request('awaiting') === 'staff_internal')>{{ __('comments.awaiting_staff_internal') }}</option>
+                        </select>
+                    </div>
+
+                    {{-- No response for (presets) --}}
+                    <div id="no-response-preset-wrap">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('comments.no_response_for') }}</label>
+                        <select name="no_response_preset" id="no-response-preset"
+                                class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
+                            <option value="">{{ __('comments.no_response_any') }}</option>
+                            @foreach (['4h' => '4h', '8h' => '8h', '24h' => '24h', '1d' => '1d', '2d' => '2d', '7d' => '7d'] as $k => $v)
+                                <option value="{{ $k }}" @selected(request('no_response_preset') === $k)>{{ __('comments.no_response_' . $k) }}</option>
+                            @endforeach
+                            <option value="custom" @selected(request('no_response_preset') === 'custom')>{{ __('comments.no_response_custom') }}</option>
+                        </select>
+                    </div>
+
+                    {{-- Custom no response (value + unit) --}}
+                    <div id="no-response-custom-wrap" class="sm:col-span-2 grid grid-cols-2 gap-2" style="display: {{ request('no_response_preset') === 'custom' ? 'grid' : 'none' }};">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('comments.no_response_value') }}</label>
+                            <input type="number" name="no_response_value" min="1" max="99" value="{{ request('no_response_value', 1) }}"
+                                   class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('comments.no_response_unit') }}</label>
+                            <select name="no_response_unit"
+                                    class="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 focus:outline-none">
+                                <option value="hours" @selected(request('no_response_unit') === 'hours')>{{ __('comments.unit_hours') }}</option>
+                                <option value="days" @selected(request('no_response_unit') === 'days')>{{ __('comments.unit_days') }}</option>
+                            </select>
+                        </div>
+                    </div>
 
                     {{-- From date --}}
                     <div>
@@ -220,6 +264,12 @@
                     </div>
                 </div>
             </form>
+            <script>
+                document.getElementById('no-response-preset')?.addEventListener('change', function() {
+                    const wrap = document.getElementById('no-response-custom-wrap');
+                    wrap.style.display = this.value === 'custom' ? 'grid' : 'none';
+                });
+            </script>
 
             {{-- ── Orders table (desktop) ──────────────────────────────────── --}}
             @if ($orders->isEmpty())
@@ -231,11 +281,11 @@
                     </div>
                     <p class="text-sm font-medium text-gray-500">{{ __('staff.no_orders_yet') }}</p>
                     <p class="text-xs text-gray-400 mt-1">
-                        {{ request()->hasAny(['search','status','from','to'])
+                        {{ request()->hasAny(['search','status','from','to','awaiting','no_response_preset','no_response_value','no_response_unit'])
                             ? (__('staff.no_orders_match_your_filters'))
                             : (__('staff.no_orders_in_the_system')) }}
                     </p>
-                    @if (request()->hasAny(['search','status','from','to']))
+                    @if (request()->hasAny(['search','status','from','to','awaiting','no_response_preset','no_response_value','no_response_unit']))
                         <a href="{{ route('orders.all') }}"
                            class="mt-4 text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">
                             {{ __('staff.clear_filters') }}
@@ -341,12 +391,14 @@
                                         </td>
                                         <td class="w-4"></td>
                                         <td class="px-3 py-3 text-center">
-                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
+                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500"
+                                                  title="{{ __('staff.items') }}">
                                                 {{ $order->items_count ?? 0 }}
                                             </span>
                                         </td>
                                         <td class="px-3 py-3 text-center">
-                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500">
+                                            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500"
+                                                  title="{{ __('staff.comments_count') }}">
                                                 {{ $order->comments_count ?? 0 }}
                                             </span>
                                         </td>
@@ -458,14 +510,16 @@
                         <div class="flex items-center gap-1">
                             {{-- Previous --}}
                             @if ($orders->onFirstPage())
-                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 cursor-not-allowed">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 cursor-not-allowed"
+                                      title="{{ __('common.prev_page') }}">
                                     <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                                     </svg>
                                 </span>
                             @else
                                 <a href="{{ $orders->previousPageUrl() }}"
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                                   title="{{ __('common.prev_page') }}">
                                     <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                                     </svg>
@@ -499,13 +553,15 @@
                             {{-- Next --}}
                             @if ($orders->hasMorePages())
                                 <a href="{{ $orders->nextPageUrl() }}"
-                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                                   title="{{ __('common.next_page') }}">
                                     <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                     </svg>
                                 </a>
                             @else
-                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 cursor-not-allowed">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 cursor-not-allowed"
+                                      title="{{ __('common.next_page') }}">
                                     <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                     </svg>

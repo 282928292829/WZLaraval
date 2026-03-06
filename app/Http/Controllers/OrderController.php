@@ -22,10 +22,12 @@ use App\Models\OrderFile;
 use App\Models\OrderItem;
 use App\Models\OrderTimeline;
 use App\Models\Setting;
+use App\Models\ShippingCompany;
 use App\Models\UserActivityLog;
 use App\Models\UserAddress;
 use App\Services\CommissionCalculator;
 use App\Services\ImageConversionService;
+use App\Services\OrderCommentFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -64,11 +66,12 @@ class OrderController extends Controller
         $orderEditEnabled = (bool) Setting::get('order_edit_enabled', true);
         $clickWindowMinutes = (int) Setting::get('order_edit_click_window_minutes', 10);
         $clickEditDeadline = $order->created_at->copy()->addMinutes($clickWindowMinutes);
+        $inResubmitWindow = $order->can_edit_until && now()->lt($order->can_edit_until);
 
         $canEditItems = $orderEditEnabled
             && $isOwner
             && ! $order->is_paid
-            && now()->lt($clickEditDeadline);
+            && (now()->lt($clickEditDeadline) || $inResubmitWindow);
 
         // Recent orders (same customer) for merge dropdown — staff only
         $recentOrders = collect();
@@ -110,13 +113,17 @@ class OrderController extends Controller
             cookie()->queue($cookieName, (string) ($visits + 1), 60 * 24 * 365); // 1 year
         }
 
-        $clickEditRemaining = $canEditItems ? now()->diffForHumans($clickEditDeadline, true) : null;
+        $clickEditRemaining = $canEditItems
+            ? now()->diffForHumans($inResubmitWindow ? $order->can_edit_until : $clickEditDeadline, true)
+            : null;
 
         $invoiceDefaults = $this->invoiceDefaultsForOrder($order);
         $commissionSettings = CommissionCalculator::getSettings();
 
+        $trackingCarriers = ShippingCompany::forTracking()->get();
+
         return view('orders.show', compact(
-            'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery', 'invoiceDefaults', 'commissionSettings'
+            'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery', 'invoiceDefaults', 'commissionSettings', 'trackingCarriers'
         ));
     }
 
@@ -874,7 +881,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        if ($request->get('export') === 'csv' && $user->hasRole('superadmin')) {
+        if ($request->get('export') === 'csv' && $user->can('export-csv')) {
             return $this->exportCsv($request);
         }
 
@@ -976,6 +983,20 @@ class OrderController extends Controller
             $query->whereDate('created_at', '<=', $to);
         }
 
+        $awaiting = $request->get('awaiting');
+        if (in_array($awaiting, OrderCommentFilterService::LAST_REPLY_VALUES, true)) {
+            $preset = $request->get('no_response_preset');
+            $customValue = $request->filled('no_response_value') ? (int) $request->get('no_response_value') : null;
+            $customUnit = $request->get('no_response_unit');
+            $orderIdsSubquery = OrderCommentFilterService::orderIdsAwaitingResponseSubquery(
+                $awaiting,
+                $preset === 'custom' ? 'custom' : $preset,
+                $customValue,
+                in_array($customUnit, ['hours', 'days'], true) ? $customUnit : null
+            );
+            $query->whereIn('id', $orderIdsSubquery);
+        }
+
         $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
         $requestedPerPage = (int) $request->get('per_page');
         $allowedPerPage = [25, 50, 100, 250];
@@ -1057,6 +1078,20 @@ class OrderController extends Controller
 
         if ($to = $request->get('to')) {
             $query->whereDate('created_at', '<=', $to);
+        }
+
+        $awaiting = $request->get('awaiting');
+        if (in_array($awaiting, OrderCommentFilterService::LAST_REPLY_VALUES, true)) {
+            $preset = $request->get('no_response_preset');
+            $customValue = $request->filled('no_response_value') ? (int) $request->get('no_response_value') : null;
+            $customUnit = $request->get('no_response_unit');
+            $orderIdsSubquery = OrderCommentFilterService::orderIdsAwaitingResponseSubquery(
+                $awaiting,
+                $preset === 'custom' ? 'custom' : $preset,
+                $customValue,
+                in_array($customUnit, ['hours', 'days'], true) ? $customUnit : null
+            );
+            $query->whereIn('id', $orderIdsSubquery);
         }
 
         $orders = $query->orderBy('created_at', 'desc')->limit(10000)->get();

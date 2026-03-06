@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
     Artisan::call('db:seed', ['--class' => 'RoleAndPermissionSeeder']);
@@ -43,6 +44,23 @@ test('superadmin can access roles in Filament', function (): void {
     $superadmin = User::where('email', 'superadmin@wasetzon.test')->first();
 
     $response = $this->actingAs($superadmin)->get(route('filament.admin.resources.roles.index'));
+
+    $response->assertOk();
+});
+
+test('superadmin can access role edit page in Filament', function (): void {
+    $superadmin = User::where('email', 'superadmin@wasetzon.test')->first();
+    $role = Role::first();
+
+    $response = $this->actingAs($superadmin)->get(route('filament.admin.resources.roles.edit', ['record' => $role->getKey()]));
+
+    $response->assertOk();
+});
+
+test('superadmin can access role create page in Filament', function (): void {
+    $superadmin = User::where('email', 'superadmin@wasetzon.test')->first();
+
+    $response = $this->actingAs($superadmin)->get(route('filament.admin.resources.roles.create'));
 
     $response->assertOk();
 });

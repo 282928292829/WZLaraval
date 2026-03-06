@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -22,12 +23,32 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Whether the user has staff-level access (staff, admin, or superadmin role).
-     * Use instead of hasAnyRole(['staff', 'admin', 'superadmin']) to avoid copy-paste errors.
+     * Whether the user has staff-level access (can view all orders).
+     * Use permission-based check instead of role names.
      */
     public function isStaffOrAbove(): bool
     {
-        return $this->hasAnyRole(['staff', 'admin', 'superadmin']);
+        return $this->can('view-all-orders');
+    }
+
+    /**
+     * Scope: users who have the view-all-orders permission (via role or direct).
+     */
+    public function scopeStaff(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q): Builder {
+            return $q->whereHas('permissions', fn ($p) => $p->where('name', 'view-all-orders'))
+                ->orWhereHas('roles', fn ($r) => $r->whereHas('permissions', fn ($p) => $p->where('name', 'view-all-orders')));
+        });
+    }
+
+    /**
+     * Scope: users who do not have the view-all-orders permission.
+     */
+    public function scopeNonStaff(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('permissions', fn ($p) => $p->where('name', 'view-all-orders'))
+            ->whereDoesntHave('roles', fn ($r) => $r->whereHas('permissions', fn ($p) => $p->where('name', 'view-all-orders')));
     }
 
     /**
