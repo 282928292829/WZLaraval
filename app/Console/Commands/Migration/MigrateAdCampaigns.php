@@ -12,12 +12,11 @@ use Illuminate\Support\Facades\DB;
  * Source:  wp_posts + wp_postmeta  (legacy connection)
  * Target:  ad_campaigns            (default connection)
  *
- * Run before migrate:users (ad_campaign_id is set on users during registration attribution).
+ * Postmeta: unique_url, website, clicks, register, orders, purchase
  */
 class MigrateAdCampaigns extends Command
 {
-    protected $signature = 'migrate:ad-campaigns
-                            {--fresh : Truncate ad_campaigns before migrating}';
+    protected $signature = 'migrate:ad-campaigns';
 
     protected $description = 'Migrate ad campaigns (myads) from legacy WordPress into ad_campaigns';
 
@@ -26,13 +25,13 @@ class MigrateAdCampaigns extends Command
         $this->info('=== MigrateAdCampaigns ===');
 
         $legacy = DB::connection('legacy');
-        if (! $legacy->getSchemaBuilder()->hasTable('wp_posts')) {
-            $this->error('Legacy wp_posts table not found.');
+        if (! $legacy->getSchemaBuilder()->hasTable('posts')) {
+            $this->error('Legacy posts table not found.');
 
             return self::FAILURE;
         }
 
-        $posts = $legacy->table('wp_posts')
+        $posts = $legacy->table('posts')
             ->where('post_type', 'myads')
             ->where('post_status', 'publish')
             ->orderBy('ID')
@@ -44,16 +43,8 @@ class MigrateAdCampaigns extends Command
             return self::SUCCESS;
         }
 
-        if ($this->option('fresh')) {
-            $this->warn('Truncating ad_campaigns …');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            DB::table('users')->update(['ad_campaign_id' => null]);
-            DB::table('ad_campaigns')->truncate();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-        }
-
         $postIds = $posts->pluck('ID')->all();
-        $metaRows = $legacy->table('wp_postmeta')
+        $metaRows = $legacy->table('postmeta')
             ->whereIn('post_id', $postIds)
             ->whereIn('meta_key', ['unique_url', 'website', 'clicks', 'register', 'orders', 'purchase'])
             ->get();

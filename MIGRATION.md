@@ -4,9 +4,9 @@
 
 ## Overview
 
-Migrate ~66k+ orders and related data from the legacy WordPress system into Laravel. Data source: legacy DB dump. Behavior reference: new WordPress site (`Wordpress/pwa3/app/public/`). WordPress DB is accessible for migration.
+Migrate ~66k+ orders and related data from the legacy WordPress system into Laravel. **Sole source:** `Wordpress/pwa3/old-wordpress/` (legacy site). Legacy DB dump and uploads path point here. Do NOT use app/public.
 
-**Source:** Legacy site SQL dump (`pwa3/old-wordpress/wasetzonjan302026.sql`) — all 20 sites use this format.
+**Sole source:** Legacy site at `Wordpress/pwa3/old-wordpress/`. SQL dump: `old-wordpress/wasetzonjan302026.sql`. Do NOT use `app/public` — that is a separate test site.
 
 ## Key Paths
 
@@ -14,7 +14,9 @@ Migrate ~66k+ orders and related data from the legacy WordPress system into Lara
 - Legacy uploads: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/old-wordpress/old-wp-content/uploads/`
 - Laravel site: `wasetzonlaraval/`
 
-**Config:** `config/migration.php` defines `legacy_uploads_path` (from `LEGACY_UPLOADS_PATH` env). Set in `.env` for migration.
+**Config:** `config/migration.php` defines:
+- `legacy_db_prefix` — Table prefix for legacy DB (default `wp_`). Set `LEGACY_DB_PREFIX` in `.env`.
+- `legacy_uploads_path` — Absolute path to legacy uploads. Set `LEGACY_UPLOADS_PATH` in `.env`.
 
 ## Phases
 
@@ -85,9 +87,11 @@ Write generic, reusable migration scripts:
 php -d memory_limit=512M artisan migrate:all
 ```
 
-Or with fresh truncate: `php artisan migrate:all --fresh`
+Or with fresh truncate: `php artisan migrate:all --fresh` (truncates all target tables once at start; sub-commands run without --fresh)
 
 Or dry-run (validate only): `php artisan migrate:all --dry-run`
+
+Or with dev users after migration: `php artisan migrate:all --seed-dev`
 
 Steps run in order: ad-campaigns, comment-templates, users, addresses, orders, order-comments, timeline, fix-merges, order-files, posts, post-comments, pages, assign-superadmins, validate.
 
@@ -101,6 +105,9 @@ Steps run in order: ad-campaigns, comment-templates, users, addresses, orders, o
 - Spot-check: sample orders with full chain (user → order → items → comments → timeline)
 - Referential integrity: no orphaned FKs
 - Status distribution: compare WP vs Laravel status counts
+- migrate:verify-order-numbers — 100% order number match with legacy
+- migrate:verify-order-comments — 100% per-order comment count match
+- User mapping audit — every order's user must match legacy post_author (by email). 0 mismatches
 
 ## Phase 5 — Pre-Production Checklist (Blocking)
 
@@ -110,17 +117,25 @@ Steps run in order: ad-campaigns, comment-templates, users, addresses, orders, o
 
 2. **Dry-run** — `php artisan migrate:all --dry-run` runs `migrate:validate` only. Use this to verify the legacy connection and schema before importing.
 
+2b. **After migrate:orders** — Run a check that NO order has NULL wp_post_id. If any exist, fix before proceeding. This prevents wrong user assignment and missing comments.
+
 3. **Full migration in staging** — Run `php artisan migrate:all --fresh` (or incremental without `--fresh`) against a staging copy of the legacy DB. Expect ~66k+ orders.
 
 4. **Validate** — `php artisan migrate:validate --sample=20` checks row counts, spot-checks orders, and FK integrity. Fix any issues before production.
 
-5. **Spot-check** — Manually verify sample orders in the Laravel UI: user → order → items → comments → timeline. Document any mapping fixes here.
+5. **Verify order numbers** — `php artisan migrate:verify-order-numbers` must report 100% match.
+
+5b. **Verify order comments** — `php artisan migrate:verify-order-comments` must report 0 mismatches.
+
+5c. **Verify user mapping** — Every order must have user email matching legacy post_author. Run audit; must be 0 mismatches.
+
+6. **Spot-check** — Manually verify sample orders in the Laravel UI: user → order → items → comments → timeline. Document any mapping fixes here.
 
 ## Migration Template Design
 
 The Wasetzon codebase doubles as the template for all 19 remaining legacy sites:
 
-- **Features reference:** New WordPress site (`pwa3/app/public/`) — replicate functionality only, design UI from scratch
+- **Source:** Legacy site (`pwa3/old-wordpress/`) — schema and data only; design UI from scratch in Laravel
 - **Data migration:** Read from legacy site SQL dump (custom post types, meta tables)
 - Migration scripts are written as generic transformers (legacy WordPress meta → relational schema)
 - No Wasetzon-specific hardcoding in migration logic

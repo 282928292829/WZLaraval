@@ -53,7 +53,7 @@ return [
             'unix_socket' => env('LEGACY_DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
+            'prefix' => env('LEGACY_DB_PREFIX', 'wp_'),
             'strict' => false,
         ],
 
