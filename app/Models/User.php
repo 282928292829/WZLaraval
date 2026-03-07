@@ -66,6 +66,7 @@ class User extends Authenticatable implements FilamentUser
         'phone_secondary',
         'google_id',
         'twitter_id',
+        'facebook_id',
         'apple_id',
         'avatar',
         'is_banned',
@@ -168,9 +169,18 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Send the password reset notification using admin-configurable templates.
+     * Only sends when email_enabled and email_password_reset toggles are enabled.
      */
     public function sendPasswordResetNotification(mixed $token): void
     {
+        if (! \App\Models\Setting::get('email_enabled', false)) {
+            return;
+        }
+
+        if (! \App\Models\Setting::get('email_password_reset', true)) {
+            return;
+        }
+
         $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
 }

@@ -58,7 +58,12 @@ class IntegrationsSettingsPage extends Page
     }
 
     /** @var list<string> */
-    protected const INTEGRATION_KEYS = ['google_login_enabled'];
+    protected const INTEGRATION_KEYS = [
+        'google_login_enabled',
+        'twitter_login_enabled',
+        'facebook_login_enabled',
+        'apple_login_enabled',
+    ];
 
     public function mount(): void
     {
@@ -83,6 +88,9 @@ class IntegrationsSettingsPage extends Page
     {
         return [
             'google_login_enabled' => '0',
+            'twitter_login_enabled' => '0',
+            'facebook_login_enabled' => '0',
+            'apple_login_enabled' => '0',
         ];
     }
 
@@ -102,6 +110,24 @@ class IntegrationsSettingsPage extends Page
                                         Toggle::make('google_login_enabled')
                                             ->label(__('Enable Google Sign-In'))
                                             ->helperText(__('Shows a "Sign in with Google" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
+
+                                        Toggle::make('twitter_login_enabled')
+                                            ->label(__('Enable X (Twitter) Sign-In'))
+                                            ->helperText(__('Shows a "Sign in with X" button. Set TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET in your .env file first. Uses OAuth 2.0.'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
+
+                                        Toggle::make('facebook_login_enabled')
+                                            ->label(__('Enable Facebook Sign-In'))
+                                            ->helperText(__('Shows a "Sign in with Facebook" button. Set FACEBOOK_CLIENT_ID and FACEBOOK_CLIENT_SECRET in your .env file first.'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
+
+                                        Toggle::make('apple_login_enabled')
+                                            ->label(__('Enable Apple Sign-In'))
+                                            ->helperText(__('Shows a "Sign in with Apple" button. Configure APPLE_CLIENT_ID, APPLE_KEY_ID, APPLE_TEAM_ID, APPLE_PRIVATE_KEY in your .env file. See socialiteproviders/apple docs.'))
                                             ->onColor('success')
                                             ->columnSpanFull(),
                                     ])
@@ -155,8 +181,18 @@ class IntegrationsSettingsPage extends Page
             $data = $this->data;
         }
 
-        $groupMap = ['google_login_enabled' => 'social'];
-        $booleanKeys = ['google_login_enabled'];
+        $groupMap = [
+            'google_login_enabled' => 'social',
+            'twitter_login_enabled' => 'social',
+            'facebook_login_enabled' => 'social',
+            'apple_login_enabled' => 'social',
+        ];
+        $booleanKeys = [
+            'google_login_enabled',
+            'twitter_login_enabled',
+            'facebook_login_enabled',
+            'apple_login_enabled',
+        ];
 
         $service = app(SettingsPersistService::class);
         $service->persist(
