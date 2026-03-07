@@ -333,6 +333,65 @@ class PageSeeder extends Seeder
                 'menu_order' => 3,
             ],
 
+            // ─── Contact Us ───────────────────────────────────────────────────
+            [
+                'slug' => 'contact-us',
+                'title_ar' => 'تواصل معنا',
+                'title_en' => 'Contact Us',
+                'body_ar' => 'contact-us-template',
+                'body_en' => 'contact-us-template',
+                'seo_title_ar' => 'تواصل معنا — وسيط زون',
+                'seo_title_en' => 'Contact Us — Wasetzon',
+                'seo_description_ar' => 'تواصل مع فريق وسيط زون عبر البريد الإلكتروني أو واتساب أو نموذج التواصل.',
+                'seo_description_en' => 'Contact the Wasetzon team via email, WhatsApp, or the contact form.',
+                'is_published' => true,
+                'show_in_header' => true,
+                'show_in_footer' => true,
+                'menu_order' => 4,
+            ],
+
+            // ─── Terms and Conditions (footer policies) ───────────────────────
+            [
+                'slug' => 'terms-and-conditions',
+                'title_ar' => 'الشروط والأحكام',
+                'title_en' => 'Terms & Conditions',
+                'body_ar' => '<p>الشروط والأحكام لاستخدام خدمة وسيط زون. يرجى الاطلاع على هذه الشروط قبل تقديم أي طلب.</p>
+<p>باستخدام الموقع وخدماتنا، فإنك توافق على الالتزام بهذه الشروط. نحتفظ بحق تعديلها في أي وقت.</p>
+<p><strong>للاستفسارات:</strong> <a href="mailto:info@wasetzon.com" class="text-primary-600 hover:underline">info@wasetzon.com</a></p>',
+                'body_en' => '<p>Terms and conditions for using Wasetzon service. Please review these terms before placing any order.</p>
+<p>By using our site and services, you agree to comply with these terms. We reserve the right to modify them at any time.</p>
+<p><strong>For inquiries:</strong> <a href="mailto:info@wasetzon.com" class="text-primary-600 hover:underline">info@wasetzon.com</a></p>',
+                'seo_title_ar' => 'الشروط والأحكام — وسيط زون',
+                'seo_title_en' => 'Terms & Conditions — Wasetzon',
+                'seo_description_ar' => 'الشروط والأحكام لاستخدام خدمة وسيط زون.',
+                'seo_description_en' => 'Terms and conditions for using Wasetzon service.',
+                'is_published' => true,
+                'show_in_header' => false,
+                'show_in_footer' => true,
+                'menu_order' => 10,
+            ],
+
+            // ─── Privacy Policy (footer policies) ─────────────────────────────
+            [
+                'slug' => 'privacy-policy',
+                'title_ar' => 'سياسة الخصوصية',
+                'title_en' => 'Privacy Policy',
+                'body_ar' => '<p>سياسة الخصوصية تحدد كيف نجمع ونستخدم ونحمي معلوماتك الشخصية.</p>
+<p>نلتزم بحماية خصوصيتك وفقًا لأفضل الممارسات والقوانين المعمول بها. لا نبيع ولا نشارك بياناتك مع أطراف ثالثة لأغراض تسويقية.</p>
+<p><strong>للاستفسارات:</strong> <a href="mailto:info@wasetzon.com" class="text-primary-600 hover:underline">info@wasetzon.com</a></p>',
+                'body_en' => '<p>Our privacy policy describes how we collect, use, and protect your personal information.</p>
+<p>We are committed to protecting your privacy in accordance with best practices and applicable laws. We do not sell or share your data with third parties for marketing purposes.</p>
+<p><strong>For inquiries:</strong> <a href="mailto:info@wasetzon.com" class="text-primary-600 hover:underline">info@wasetzon.com</a></p>',
+                'seo_title_ar' => 'سياسة الخصوصية — وسيط زون',
+                'seo_title_en' => 'Privacy Policy — Wasetzon',
+                'seo_description_ar' => 'سياسة الخصوصية لخدمة وسيط زون.',
+                'seo_description_en' => 'Privacy policy for Wasetzon service.',
+                'is_published' => true,
+                'show_in_header' => false,
+                'show_in_footer' => true,
+                'menu_order' => 11,
+            ],
+
             // ─── Refund Policy (footer only, not in header dropdown) ─────────
             [
                 'slug' => 'refund-policy',
@@ -381,7 +440,7 @@ class PageSeeder extends Seeder
                 'is_published' => true,
                 'show_in_header' => false,
                 'show_in_footer' => true,
-                'menu_order' => 4,
+                'menu_order' => 12,
             ],
 
             // ─── Testimonials ────────────────────────────────────────────────

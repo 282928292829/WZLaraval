@@ -14,6 +14,8 @@ use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -88,17 +90,24 @@ class IntegrationsSettingsPage extends Page
     {
         return $schema
             ->components([
-                Section::make(__('Social Login'))
-                    ->icon(Heroicon::OutlinedUserGroup)
-                    ->description(__('Allow users to sign in/up using third-party accounts. Requires OAuth credentials in .env.'))
-                    ->schema([
-                        Toggle::make('google_login_enabled')
-                            ->label(__('Enable Google Sign-In'))
-                            ->helperText(__('Shows a "Sign in with Google" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible(),
+                Tabs::make('integrations-settings-tabs')
+                    ->tabs([
+                        Tab::make(__('Social Login'))
+                            ->icon(Heroicon::OutlinedUserGroup)
+                            ->schema([
+                                Section::make(__('Social Login'))
+                                    ->icon(Heroicon::OutlinedUserGroup)
+                                    ->description(__('Allow users to sign in/up using third-party accounts. Requires OAuth credentials in .env.'))
+                                    ->schema([
+                                        Toggle::make('google_login_enabled')
+                                            ->label(__('Enable Google Sign-In'))
+                                            ->helperText(__('Shows a "Sign in with Google" button on the login and register pages. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file first.'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible(),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }
