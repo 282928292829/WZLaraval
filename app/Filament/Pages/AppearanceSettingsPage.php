@@ -146,183 +146,193 @@ class AppearanceSettingsPage extends Page
     {
         return $schema
             ->components([
-                Section::make(__('Appearance'))
-                    ->icon(Heroicon::OutlinedPaintBrush)
-                    ->description(__('Logo, colors, and typography. Use per-language when you have different logos or text for Arabic and English.'))
-                    ->schema([
-                        TextInput::make('primary_color')
-                            ->label(__('Primary Color (hex)'))
-                            ->placeholder(__('settings.placeholder_hex_color'))
-                            ->maxLength(20),
-
-                        TextInput::make('font_family')
-                            ->label(__('Font Family'))
-                            ->placeholder(__('IBM Plex Sans Arabic')),
-
-                        Toggle::make('logo_use_per_language')
-                            ->label(__('Use per-language logo image'))
-                            ->helperText(__('When ON, you can upload a different logo image for Arabic and English.'))
-                            ->columnSpanFull()
-                            ->onColor('success'),
-
-                        Toggle::make('logo_text_use_per_language')
-                            ->label(__('Use per-language logo text'))
-                            ->helperText(__('When ON, text logo is localized (different text for Arabic and English). When OFF, one text is used for both. Recommended: ON.'))
-                            ->default(true)
-                            ->columnSpanFull()
-                            ->onColor('success'),
-
-                        FileUpload::make('logo_image')
-                            ->label(__('Logo Image (all languages)'))
-                            ->helperText(__('Shown in header. Recommended: PNG/SVG, max height 48px. Leave empty to show text logo.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt')
-                            ->label(__('Logo Alt Text (SEO)'))
-                            ->helperText(__('Used in img alt attribute for accessibility and SEO. Leave empty to use logo text.'))
-                            ->placeholder(__('Site name and tagline'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
-
-                        FileUpload::make('logo_image_ar')
-                            ->label(__('Logo Image').' — '.__('Arabic'))
-                            ->helperText(__('Arabic version. Recommended: PNG/SVG, max height 48px.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        FileUpload::make('logo_image_en')
-                            ->label(__('Logo Image').' — '.__('English'))
-                            ->helperText(__('English version. Recommended: PNG/SVG, max height 48px.'))
-                            ->image()
-                            ->directory('logos')
-                            ->maxSize(512)
-                            ->nullable()
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt_ar')
-                            ->label(__('Logo Alt Text (SEO)').' — '.__('Arabic'))
-                            ->placeholder(__('Site name and tagline'))
-                            ->helperText(__('Used in img alt for Arabic pages. Leave empty to use logo text.'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_alt_en')
-                            ->label(__('Logo Alt Text (SEO)').' — '.__('English'))
-                            ->placeholder(__('Site name and tagline'))
-                            ->helperText(__('Used in img alt for English pages. Leave empty to use logo text.'))
-                            ->maxLength(120)
-                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
-
-                        TextInput::make('logo_text')
-                            ->label(__('Logo Text (all languages)'))
-                            ->placeholder(config('app.name'))
-                            ->helperText(__('Shown when no logo image is uploaded. Used for both Arabic and English when per-language text is OFF. Leave empty to use site name.'))
-                            ->visible(fn ($get) => ! $get('logo_text_use_per_language')),
-
-                        TextInput::make('logo_text_ar')
-                            ->label(__('Logo Text').' — '.__('Arabic'))
-                            ->placeholder(config('app.name'))
-                            ->helperText(__('Shown when no logo image is uploaded. Leave empty to use site name.'))
-                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
-
-                        TextInput::make('logo_text_en')
-                            ->label(__('Logo Text').' — '.__('English'))
-                            ->placeholder(config('app.name'))
-                            ->helperText(__('Shown when no logo image is uploaded. Leave empty to use site name.'))
-                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
-                    ])
-                    ->columns(3)
-                    ->collapsible(false),
-
-                Section::make(__('font.section_title'))
-                    ->icon(Heroicon::OutlinedLanguage)
-                    ->description(__('font.section_description'))
-                    ->schema([
-                        Radio::make('font_source')
-                            ->label(__('font.source_label'))
-                            ->options([
-                                '' => __('font.source_default'),
-                                'google' => __('font.source_google'),
-                                'upload' => __('font.source_upload'),
-                            ])
-                            ->default('')
-                            ->live()
-                            ->descriptions([
-                                '' => __('font.source_default_help'),
-                                'google' => __('font.source_google_help'),
-                                'upload' => __('font.source_upload_help'),
-                            ])
-                            ->columnSpanFull(),
-
-                        Tabs::make(__('font.config_tabs'))
-                            ->tabs([
-                                Tab::make(__('font.tab_google'))
-                                    ->icon(Heroicon::OutlinedGlobeAlt)
+                Tabs::make('appearance-settings-tabs')
+                    ->tabs([
+                        Tab::make(__('Logo & Colors'))
+                            ->icon(Heroicon::OutlinedPaintBrush)
+                            ->schema([
+                                Section::make(__('Appearance'))
+                                    ->icon(Heroicon::OutlinedPaintBrush)
+                                    ->description(__('Logo, colors, and typography. Use per-language when you have different logos or text for Arabic and English.'))
                                     ->schema([
-                                        TextInput::make('font_google_url')
-                                            ->label(__('font.google_url_label'))
-                                            ->placeholder(__('font.google_url_placeholder'))
-                                            ->url()
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function (?string $state): void {
-                                                $family = FontHelper::extractFontFamilyFromGoogleUrl($state ?? '');
-                                                if ($family !== null) {
-                                                    $this->data['font_family'] = $family;
-                                                    $this->form->fill($this->data);
-                                                }
-                                            })
-                                            ->helperText(__('font.google_url_help'))
-                                            ->visible(fn ($get) => $get('font_source') === 'google')
-                                            ->columnSpanFull(),
-                                    ]),
+                                        TextInput::make('primary_color')
+                                            ->label(__('Primary Color (hex)'))
+                                            ->placeholder(__('settings.placeholder_hex_color'))
+                                            ->maxLength(20),
 
-                                Tab::make(__('font.tab_upload'))
-                                    ->icon(Heroicon::OutlinedArrowUpTray)
+                                        TextInput::make('font_family')
+                                            ->label(__('Font Family'))
+                                            ->placeholder(__('IBM Plex Sans Arabic')),
+
+                                        Toggle::make('logo_use_per_language')
+                                            ->label(__('Use per-language logo image'))
+                                            ->helperText(__('When ON, you can upload a different logo image for Arabic and English.'))
+                                            ->columnSpanFull()
+                                            ->onColor('success'),
+
+                                        Toggle::make('logo_text_use_per_language')
+                                            ->label(__('Use per-language logo text'))
+                                            ->helperText(__('When ON, text logo is localized (different text for Arabic and English). When OFF, one text is used for both. Recommended: ON.'))
+                                            ->default(true)
+                                            ->columnSpanFull()
+                                            ->onColor('success'),
+
+                                        FileUpload::make('logo_image')
+                                            ->label(__('Logo Image (all languages)'))
+                                            ->helperText(__('Shown in header. Recommended: PNG/SVG, max height 48px. Leave empty to show text logo.'))
+                                            ->image()
+                                            ->directory('logos')
+                                            ->maxSize(512)
+                                            ->nullable()
+                                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
+
+                                        TextInput::make('logo_alt')
+                                            ->label(__('Logo Alt Text (SEO)'))
+                                            ->helperText(__('Used in img alt attribute for accessibility and SEO. Leave empty to use logo text.'))
+                                            ->placeholder(__('Site name and tagline'))
+                                            ->maxLength(120)
+                                            ->visible(fn ($get) => ! $get('logo_use_per_language')),
+
+                                        FileUpload::make('logo_image_ar')
+                                            ->label(__('Logo Image').' — '.__('Arabic'))
+                                            ->helperText(__('Arabic version. Recommended: PNG/SVG, max height 48px.'))
+                                            ->image()
+                                            ->directory('logos')
+                                            ->maxSize(512)
+                                            ->nullable()
+                                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
+
+                                        FileUpload::make('logo_image_en')
+                                            ->label(__('Logo Image').' — '.__('English'))
+                                            ->helperText(__('English version. Recommended: PNG/SVG, max height 48px.'))
+                                            ->image()
+                                            ->directory('logos')
+                                            ->maxSize(512)
+                                            ->nullable()
+                                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
+
+                                        TextInput::make('logo_alt_ar')
+                                            ->label(__('Logo Alt Text (SEO)').' — '.__('Arabic'))
+                                            ->placeholder(__('Site name and tagline'))
+                                            ->helperText(__('Used in img alt for Arabic pages. Leave empty to use logo text.'))
+                                            ->maxLength(120)
+                                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
+
+                                        TextInput::make('logo_alt_en')
+                                            ->label(__('Logo Alt Text (SEO)').' — '.__('English'))
+                                            ->placeholder(__('Site name and tagline'))
+                                            ->helperText(__('Used in img alt for English pages. Leave empty to use logo text.'))
+                                            ->maxLength(120)
+                                            ->visible(fn ($get) => (bool) $get('logo_use_per_language')),
+
+                                        TextInput::make('logo_text')
+                                            ->label(__('Logo Text (all languages)'))
+                                            ->placeholder(config('app.name'))
+                                            ->helperText(__('Shown when no logo image is uploaded. Used for both Arabic and English when per-language text is OFF. Leave empty to use site name.'))
+                                            ->visible(fn ($get) => ! $get('logo_text_use_per_language')),
+
+                                        TextInput::make('logo_text_ar')
+                                            ->label(__('Logo Text').' — '.__('Arabic'))
+                                            ->placeholder(config('app.name'))
+                                            ->helperText(__('Shown when no logo image is uploaded. Leave empty to use site name.'))
+                                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
+
+                                        TextInput::make('logo_text_en')
+                                            ->label(__('Logo Text').' — '.__('English'))
+                                            ->placeholder(config('app.name'))
+                                            ->helperText(__('Shown when no logo image is uploaded. Leave empty to use site name.'))
+                                            ->visible(fn ($get) => (bool) $get('logo_text_use_per_language')),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible(false),
+                            ]),
+                        Tab::make(__('font.section_title'))
+                            ->icon(Heroicon::OutlinedLanguage)
+                            ->schema([
+                                Section::make(__('font.section_title'))
+                                    ->icon(Heroicon::OutlinedLanguage)
+                                    ->description(__('font.section_description'))
                                     ->schema([
-                                        FileUpload::make('font_uploaded_path')
-                                            ->label(__('font.upload_label'))
-                                            ->helperText(__('font.upload_help'))
-                                            ->directory('fonts')
-                                            ->acceptedFileTypes(['font/ttf', 'font/woff', 'font/woff2', 'application/font-woff', 'application/font-woff2', 'application/x-font-ttf', 'application/x-font-woff'])
-                                            ->maxSize(2048)
-                                            ->visibility('public')
-                                            ->visible(fn ($get) => $get('font_source') === 'upload')
+                                        Radio::make('font_source')
+                                            ->label(__('font.source_label'))
+                                            ->options([
+                                                '' => __('font.source_default'),
+                                                'google' => __('font.source_google'),
+                                                'upload' => __('font.source_upload'),
+                                            ])
+                                            ->default('')
+                                            ->live()
+                                            ->descriptions([
+                                                '' => __('font.source_default_help'),
+                                                'google' => __('font.source_google_help'),
+                                                'upload' => __('font.source_upload_help'),
+                                            ])
                                             ->columnSpanFull(),
 
-                                        TextInput::make('font_upload_family_name')
-                                            ->label(__('font.upload_family_label'))
-                                            ->placeholder(__('font.upload_family_placeholder'))
-                                            ->helperText(__('font.upload_family_help'))
-                                            ->visible(fn ($get) => $get('font_source') === 'upload')
+                                        Tabs::make(__('font.config_tabs'))
+                                            ->tabs([
+                                                Tab::make(__('font.tab_google'))
+                                                    ->icon(Heroicon::OutlinedGlobeAlt)
+                                                    ->schema([
+                                                        TextInput::make('font_google_url')
+                                                            ->label(__('font.google_url_label'))
+                                                            ->placeholder(__('font.google_url_placeholder'))
+                                                            ->url()
+                                                            ->live(onBlur: true)
+                                                            ->afterStateUpdated(function (?string $state): void {
+                                                                $family = FontHelper::extractFontFamilyFromGoogleUrl($state ?? '');
+                                                                if ($family !== null) {
+                                                                    $this->data['font_family'] = $family;
+                                                                    $this->form->fill($this->data);
+                                                                }
+                                                            })
+                                                            ->helperText(__('font.google_url_help'))
+                                                            ->visible(fn ($get) => $get('font_source') === 'google')
+                                                            ->columnSpanFull(),
+                                                    ]),
+
+                                                Tab::make(__('font.tab_upload'))
+                                                    ->icon(Heroicon::OutlinedArrowUpTray)
+                                                    ->schema([
+                                                        FileUpload::make('font_uploaded_path')
+                                                            ->label(__('font.upload_label'))
+                                                            ->helperText(__('font.upload_help'))
+                                                            ->directory('fonts')
+                                                            ->acceptedFileTypes(['font/ttf', 'font/woff', 'font/woff2', 'application/font-woff', 'application/font-woff2', 'application/x-font-ttf', 'application/x-font-woff'])
+                                                            ->maxSize(2048)
+                                                            ->visibility('public')
+                                                            ->visible(fn ($get) => $get('font_source') === 'upload')
+                                                            ->columnSpanFull(),
+
+                                                        TextInput::make('font_upload_family_name')
+                                                            ->label(__('font.upload_family_label'))
+                                                            ->placeholder(__('font.upload_family_placeholder'))
+                                                            ->helperText(__('font.upload_family_help'))
+                                                            ->visible(fn ($get) => $get('font_source') === 'upload')
+                                                            ->columnSpanFull(),
+                                                    ]),
+                                            ])
+                                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
                                             ->columnSpanFull(),
-                                    ]),
-                            ])
-                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
-                            ->columnSpanFull(),
 
-                        TextInput::make('font_family')
-                            ->label(__('font.active_family_label'))
-                            ->helperText(__('font.active_family_help'))
-                            ->placeholder(FontHelper::DEFAULT_AR)
-                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
-                            ->columnSpanFull(),
+                                        TextInput::make('font_family')
+                                            ->label(__('font.active_family_label'))
+                                            ->helperText(__('font.active_family_help'))
+                                            ->placeholder(FontHelper::DEFAULT_AR)
+                                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
+                                            ->columnSpanFull(),
 
-                        Placeholder::make('font_preview')
-                            ->label(__('font.preview_label'))
-                            ->content(fn (): \Illuminate\Contracts\Support\Htmlable => $this->buildFontPreviewHtml())
-                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
-                            ->columnSpanFull()
-                            ->live(),
-                    ])
-                    ->columns(1)
-                    ->collapsible(),
+                                        Placeholder::make('font_preview')
+                                            ->label(__('font.preview_label'))
+                                            ->content(fn (): \Illuminate\Contracts\Support\Htmlable => $this->buildFontPreviewHtml())
+                                            ->visible(fn ($get) => in_array($get('font_source'), ['google', 'upload']))
+                                            ->columnSpanFull()
+                                            ->live(),
+                                    ])
+                                    ->columns(1)
+                                    ->collapsible(),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }

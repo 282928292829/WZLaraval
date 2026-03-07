@@ -17,6 +17,8 @@ use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Config;
@@ -175,155 +177,168 @@ class EmailSettingsPage extends Page
     {
         return $schema
             ->components([
-                Section::make(__('Email / SMTP'))
-                    ->icon(Heroicon::OutlinedEnvelope)
-                    ->description(__('Leave disabled until SMTP is configured. Use the Test button to verify.'))
-                    ->schema([
-                        SchemaActions::make([
-                            Action::make('sendTestEmail')
-                                ->label(__('Send Test Email'))
-                                ->icon(Heroicon::OutlinedPaperAirplane)
-                                ->color('info')
-                                ->action(function (): void {
-                                    $data = $this->form->getState();
-                                    $host = trim((string) ($data['smtp_host'] ?? ''));
-                                    $port = (int) ($data['smtp_port'] ?? 587);
-                                    $username = trim((string) ($data['smtp_username'] ?? ''));
-                                    $password = (string) ($data['smtp_password'] ?? '');
-                                    $encryption = trim((string) ($data['smtp_encryption'] ?? 'tls'));
-                                    $fromName = trim((string) ($data['email_from_name'] ?? config('app.name')));
-                                    $fromAddress = trim((string) ($data['email_from_address'] ?? ''));
+                Tabs::make('email-settings-tabs')
+                    ->tabs([
+                        Tab::make(__('SMTP'))
+                            ->icon(Heroicon::OutlinedEnvelope)
+                            ->schema([
+                                Section::make(__('Email / SMTP'))
+                                    ->icon(Heroicon::OutlinedEnvelope)
+                                    ->description(__('Leave disabled until SMTP is configured. Use the Test button to verify.'))
+                                    ->schema([
+                                        SchemaActions::make([
+                                            Action::make('sendTestEmail')
+                                                ->label(__('Send Test Email'))
+                                                ->icon(Heroicon::OutlinedPaperAirplane)
+                                                ->color('info')
+                                                ->action(function (): void {
+                                                    $data = $this->form->getState();
+                                                    $host = trim((string) ($data['smtp_host'] ?? ''));
+                                                    $port = (int) ($data['smtp_port'] ?? 587);
+                                                    $username = trim((string) ($data['smtp_username'] ?? ''));
+                                                    $password = (string) ($data['smtp_password'] ?? '');
+                                                    $encryption = trim((string) ($data['smtp_encryption'] ?? 'tls'));
+                                                    $fromName = trim((string) ($data['email_from_name'] ?? config('app.name')));
+                                                    $fromAddress = trim((string) ($data['email_from_address'] ?? ''));
 
-                                    if ($host === '') {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_configure_first'))
-                                            ->warning()
-                                            ->send();
+                                                    if ($host === '') {
+                                                        Notification::make()
+                                                            ->title(__('settings.test_email_configure_first'))
+                                                            ->warning()
+                                                            ->send();
 
-                                        return;
-                                    }
+                                                        return;
+                                                    }
 
-                                    $recipient = auth()->user()?->email;
-                                    if (! $recipient) {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_no_recipient'))
-                                            ->warning()
-                                            ->send();
+                                                    $recipient = auth()->user()?->email;
+                                                    if (! $recipient) {
+                                                        Notification::make()
+                                                            ->title(__('settings.test_email_no_recipient'))
+                                                            ->warning()
+                                                            ->send();
 
-                                        return;
-                                    }
+                                                        return;
+                                                    }
 
-                                    $originalHost = config('mail.mailers.smtp.host');
-                                    $originalPort = config('mail.mailers.smtp.port');
-                                    $originalUsername = config('mail.mailers.smtp.username');
-                                    $originalPassword = config('mail.mailers.smtp.password');
-                                    $originalEncryption = config('mail.mailers.smtp.encryption');
-                                    $originalFrom = config('mail.from');
+                                                    $originalHost = config('mail.mailers.smtp.host');
+                                                    $originalPort = config('mail.mailers.smtp.port');
+                                                    $originalUsername = config('mail.mailers.smtp.username');
+                                                    $originalPassword = config('mail.mailers.smtp.password');
+                                                    $originalEncryption = config('mail.mailers.smtp.encryption');
+                                                    $originalFrom = config('mail.from');
 
-                                    try {
-                                        Config::set('mail.mailers.smtp.host', $host);
-                                        Config::set('mail.mailers.smtp.port', $port);
-                                        Config::set('mail.mailers.smtp.username', $username ?: null);
-                                        Config::set('mail.mailers.smtp.password', $password ?: null);
-                                        Config::set('mail.mailers.smtp.encryption', $encryption !== '' ? $encryption : null);
-                                        Config::set('mail.from', [
-                                            'address' => $fromAddress ?: 'noreply@'.(parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com'),
-                                            'name' => $fromName ?: config('app.name'),
-                                        ]);
+                                                    try {
+                                                        Config::set('mail.mailers.smtp.host', $host);
+                                                        Config::set('mail.mailers.smtp.port', $port);
+                                                        Config::set('mail.mailers.smtp.username', $username ?: null);
+                                                        Config::set('mail.mailers.smtp.password', $password ?: null);
+                                                        Config::set('mail.mailers.smtp.encryption', $encryption !== '' ? $encryption : null);
+                                                        Config::set('mail.from', [
+                                                            'address' => $fromAddress ?: 'noreply@'.(parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com'),
+                                                            'name' => $fromName ?: config('app.name'),
+                                                        ]);
 
-                                        Mail::mailer('smtp')
-                                            ->raw(__('settings.test_email_body'), function ($message) use ($recipient): void {
-                                                $message->to($recipient)
-                                                    ->subject(__('settings.test_email_subject'));
-                                            });
+                                                        Mail::mailer('smtp')
+                                                            ->raw(__('settings.test_email_body'), function ($message) use ($recipient): void {
+                                                                $message->to($recipient)
+                                                                    ->subject(__('settings.test_email_subject'));
+                                                            });
 
-                                        Notification::make()
-                                            ->title(__('settings.test_email_sent', ['email' => $recipient]))
-                                            ->success()
-                                            ->send();
-                                    } catch (\Throwable $e) {
-                                        Notification::make()
-                                            ->title(__('settings.test_email_failed'))
-                                            ->body($e->getMessage())
-                                            ->danger()
-                                            ->send();
-                                    } finally {
-                                        Config::set('mail.mailers.smtp.host', $originalHost);
-                                        Config::set('mail.mailers.smtp.port', $originalPort);
-                                        Config::set('mail.mailers.smtp.username', $originalUsername);
-                                        Config::set('mail.mailers.smtp.password', $originalPassword);
-                                        Config::set('mail.mailers.smtp.encryption', $originalEncryption);
-                                        Config::set('mail.from', $originalFrom);
-                                    }
-                                }),
-                        ]),
+                                                        Notification::make()
+                                                            ->title(__('settings.test_email_sent', ['email' => $recipient]))
+                                                            ->success()
+                                                            ->send();
+                                                    } catch (\Throwable $e) {
+                                                        Notification::make()
+                                                            ->title(__('settings.test_email_failed'))
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    } finally {
+                                                        Config::set('mail.mailers.smtp.host', $originalHost);
+                                                        Config::set('mail.mailers.smtp.port', $originalPort);
+                                                        Config::set('mail.mailers.smtp.username', $originalUsername);
+                                                        Config::set('mail.mailers.smtp.password', $originalPassword);
+                                                        Config::set('mail.mailers.smtp.encryption', $originalEncryption);
+                                                        Config::set('mail.from', $originalFrom);
+                                                    }
+                                                }),
+                                        ]),
 
-                        Toggle::make('email_enabled')
-                            ->label(__('Enable Email Sending'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
+                                        Toggle::make('email_enabled')
+                                            ->label(__('Enable Email Sending'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
 
-                        TextInput::make('email_from_name')
-                            ->label(__('From Name')),
+                                        TextInput::make('email_from_name')
+                                            ->label(__('From Name')),
 
-                        TextInput::make('email_from_address')
-                            ->label(__('From Address'))
-                            ->email()
-                            ->nullable(),
+                                        TextInput::make('email_from_address')
+                                            ->label(__('From Address'))
+                                            ->email()
+                                            ->nullable(),
 
-                        TextInput::make('smtp_host')
-                            ->label(__('SMTP Host')),
+                                        TextInput::make('smtp_host')
+                                            ->label(__('SMTP Host')),
 
-                        TextInput::make('smtp_port')
-                            ->label(__('SMTP Port'))
-                            ->numeric(),
+                                        TextInput::make('smtp_port')
+                                            ->label(__('SMTP Port'))
+                                            ->numeric(),
 
-                        TextInput::make('smtp_username')
-                            ->label(__('SMTP Username')),
+                                        TextInput::make('smtp_username')
+                                            ->label(__('SMTP Username')),
 
-                        TextInput::make('smtp_password')
-                            ->label(__('SMTP Password'))
-                            ->password()
-                            ->revealable(),
+                                        TextInput::make('smtp_password')
+                                            ->label(__('SMTP Password'))
+                                            ->password()
+                                            ->revealable(),
 
-                        Select::make('smtp_encryption')
-                            ->label(__('Encryption'))
-                            ->options(['tls' => 'TLS', 'ssl' => 'SSL', '' => __('None')]),
-                    ])
-                    ->columns(3)
-                    ->collapsible(),
+                                        Select::make('smtp_encryption')
+                                            ->label(__('Encryption'))
+                                            ->options(['tls' => 'TLS', 'ssl' => 'SSL', '' => __('None')]),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible(),
+                            ]),
+                        Tab::make(__('Email Type Toggles'))
+                            ->icon(Heroicon::OutlinedBell)
+                            ->schema([
+                                Section::make(__('Email Type Toggles'))
+                                    ->icon(Heroicon::OutlinedBell)
+                                    ->description(__('Enable or disable each email type independently.'))
+                                    ->schema([
+                                        Toggle::make('email_registration')
+                                            ->label(__('Registration Confirmation')),
 
-                Section::make(__('Email Type Toggles'))
-                    ->icon(Heroicon::OutlinedBell)
-                    ->description(__('Enable or disable each email type independently.'))
-                    ->schema([
-                        Toggle::make('email_registration')
-                            ->label(__('Registration Confirmation')),
+                                        Toggle::make('email_welcome')
+                                            ->label(__('Welcome Email')),
 
-                        Toggle::make('email_welcome')
-                            ->label(__('Welcome Email')),
+                                        Toggle::make('email_password_reset')
+                                            ->label(__('Password Reset')),
 
-                        Toggle::make('email_password_reset')
-                            ->label(__('Password Reset')),
-
-                        Toggle::make('email_comment_notification')
-                            ->label(__('Comment Notifications (opt-in)')),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
-                Section::make(__('Email Templates'))
-                    ->icon(Heroicon::OutlinedDocumentText)
-                    ->description(__('settings.email_templates_desc'))
-                    ->schema([
-                        $this->emailTemplateSection('registration', __('Registration Confirmation'), __('settings.email_placeholders_registration')),
-                        $this->emailTemplateSection('welcome', __('Welcome Email'), __('settings.email_placeholders_welcome')),
-                        $this->emailTemplateSection('password_reset', __('Password Reset'), __('settings.email_placeholders_password_reset')),
-                        $this->emailTemplateSection('comment_notification', __('Comment Notifications'), __('settings.email_placeholders_comment')),
-                        $this->emailTemplateSection('order_confirmation', __('Order Confirmation'), __('settings.email_placeholders_order_confirmation')),
-                        $this->emailTemplateSection('status_change', __('Status Change'), __('settings.email_placeholders_status_change')),
-                    ])
-                    ->collapsible(),
+                                        Toggle::make('email_comment_notification')
+                                            ->label(__('Comment Notifications (opt-in)')),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsible(),
+                            ]),
+                        Tab::make(__('Email Templates'))
+                            ->icon(Heroicon::OutlinedDocumentText)
+                            ->schema([
+                                Section::make(__('Email Templates'))
+                                    ->icon(Heroicon::OutlinedDocumentText)
+                                    ->description(__('settings.email_templates_desc'))
+                                    ->schema([
+                                        $this->emailTemplateSection('registration', __('Registration Confirmation'), __('settings.email_placeholders_registration')),
+                                        $this->emailTemplateSection('welcome', __('Welcome Email'), __('settings.email_placeholders_welcome')),
+                                        $this->emailTemplateSection('password_reset', __('Password Reset'), __('settings.email_placeholders_password_reset')),
+                                        $this->emailTemplateSection('comment_notification', __('Comment Notifications'), __('settings.email_placeholders_comment')),
+                                        $this->emailTemplateSection('order_confirmation', __('Order Confirmation'), __('settings.email_placeholders_order_confirmation')),
+                                        $this->emailTemplateSection('status_change', __('Status Change'), __('settings.email_placeholders_status_change')),
+                                    ])
+                                    ->collapsible(),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }

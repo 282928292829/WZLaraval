@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CommentsController;
 use App\Http\Controllers\DevController;
 use App\Http\Controllers\GoController;
@@ -61,6 +63,11 @@ Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
 
 // Public static pages
 Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
+
+// Contact form (public, throttled)
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware('throttle:5,15')
+    ->name('contact.store');
 
 Route::get('/new-order', NewOrder::class)->name('new-order');
 
@@ -127,6 +134,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'can:view-all-orders'])->group(function () {
     Route::get('/comments', [CommentsController::class, 'index'])->name('comments.index');
+    Route::get('/contact-submissions/{contactSubmission}', [ContactController::class, 'show'])->name('contact-submissions.show');
     Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
     Route::post('/inbox/mark-all-read', [InboxController::class, 'markAllRead'])->name('inbox.mark-all-read');
     Route::post('/inbox/{activity}/mark-read', [InboxController::class, 'markRead'])->name('inbox.mark-read');

@@ -63,7 +63,7 @@
             {!! $slot ?? '' !!}
         </main>
 
-        @php $minimalFooter = true; @endphp
+        @php $minimalFooter = true; $hideFooter = true; @endphp
         @include('layouts.partials.footer')
 
         @livewireScripts

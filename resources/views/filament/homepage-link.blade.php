@@ -2,8 +2,7 @@
     href="{{ url('/') }}"
     target="_blank"
     rel="noopener noreferrer"
-    class="fi-topbar-item-btn inline-flex items-center gap-x-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 outline-none transition duration-75 hover:bg-gray-50 hover:text-gray-900 focus:bg-gray-50 focus:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-50 dark:focus:bg-white/5 dark:focus:text-gray-50"
+    class="fi-sidebar-item-button flex w-full items-center gap-x-3 rounded-lg px-2 py-2 text-sm font-medium text-gray-950 outline-none transition duration-75 hover:bg-gray-100 focus:bg-gray-100 dark:text-white dark:hover:bg-white/5 dark:focus:bg-white/5"
 >
-    {{ \Filament\Support\generate_icon_html(\Filament\Support\Icons\Heroicon::OutlinedHome, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-item-icon size-5'])) }}
-    <span class="fi-topbar-item-label">{{ __('Homepage') }}</span>
+    <span class="fi-sidebar-item-label">{{ __('Homepage') }}</span>
 </a>

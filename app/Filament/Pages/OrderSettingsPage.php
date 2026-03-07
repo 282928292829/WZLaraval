@@ -21,6 +21,8 @@ use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Artisan;
@@ -274,694 +276,708 @@ class OrderSettingsPage extends Page
     {
         return $schema
             ->components([
-                // ── Order Auto Reply ─────────────────────────────────────────
-                Section::make(__('Order Auto Reply'))
-                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
-                    ->description(__('Order auto-reply posted as system comment after order creation. Leave empty to use default translations.'))
-                    ->schema([
-                        Textarea::make('auto_comment_with_price')
-                            ->label(__('When prices entered'))
-                            ->placeholder(__('orders.auto_comment_with_price', ['subtotal' => ':subtotal', 'commission' => ':commission', 'total' => ':total', 'site_name' => ':site_name', 'whatsapp' => ':whatsapp', 'payment_url' => ':payment_url', 'terms_url' => ':terms_url', 'faq_url' => ':faq_url', 'shipping_url' => ':shipping_url', 'company_name' => ':company_name']))
-                            ->helperText(__('Placeholders: :subtotal, :commission, :total, :site_name, :whatsapp, :payment_url, :terms_url, :faq_url, :shipping_url, :company_name'))
-                            ->rows(12)
-                            ->columnSpanFull(),
+                Tabs::make('order-settings-tabs')
+                    ->tabs([
+                        Tab::make(__('Order Flow'))
+                            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                            ->schema([
+                                Section::make(__('Order Auto Reply'))
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                                    ->description(__('Order auto-reply posted as system comment after order creation. Leave empty to use default translations.'))
+                                    ->schema([
+                                        Textarea::make('auto_comment_with_price')
+                                            ->label(__('When prices entered'))
+                                            ->placeholder(__('orders.auto_comment_with_price', ['subtotal' => ':subtotal', 'commission' => ':commission', 'total' => ':total', 'site_name' => ':site_name', 'whatsapp' => ':whatsapp', 'payment_url' => ':payment_url', 'terms_url' => ':terms_url', 'faq_url' => ':faq_url', 'shipping_url' => ':shipping_url', 'company_name' => ':company_name']))
+                                            ->helperText(__('Placeholders: :subtotal, :commission, :total, :site_name, :whatsapp, :payment_url, :terms_url, :faq_url, :shipping_url, :company_name'))
+                                            ->rows(12)
+                                            ->columnSpanFull(),
 
-                        Textarea::make('auto_comment_no_price')
-                            ->label(__('When no prices entered'))
-                            ->placeholder(__('orders.auto_comment_no_price', ['whatsapp' => ':whatsapp']))
-                            ->helperText(__('Placeholders: :whatsapp'))
-                            ->rows(4)
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible(),
+                                        Textarea::make('auto_comment_no_price')
+                                            ->label(__('When no prices entered'))
+                                            ->placeholder(__('orders.auto_comment_no_price', ['whatsapp' => ':whatsapp']))
+                                            ->helperText(__('Placeholders: :whatsapp'))
+                                            ->rows(4)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible(),
 
-                // ── Order Success Screen ──────────────────────────────────────
-                Section::make(__('settings.order_success_screen'))
-                    ->icon(Heroicon::OutlinedCheckCircle)
-                    ->description(__('settings.order_success_screen_desc'))
-                    ->schema([
-                        Toggle::make('order_success_screen_enabled')
-                            ->label(__('settings.order_success_screen_enabled'))
-                            ->helperText(__('settings.order_success_screen_enabled_help'))
-                            ->default(true)
-                            ->onColor('success')
-                            ->columnSpanFull(),
+                                // ── Order Success Screen ──────────────────────────────────────
+                                Section::make(__('settings.order_success_screen'))
+                                    ->icon(Heroicon::OutlinedCheckCircle)
+                                    ->description(__('settings.order_success_screen_desc'))
+                                    ->schema([
+                                        Toggle::make('order_success_screen_enabled')
+                                            ->label(__('settings.order_success_screen_enabled'))
+                                            ->helperText(__('settings.order_success_screen_enabled_help'))
+                                            ->default(true)
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
 
-                        TextInput::make('order_success_title_ar')
-                            ->label(__('settings.order_success_title_ar'))
-                            ->maxLength(500)
-                            ->placeholder(__('order.success_title')),
+                                        TextInput::make('order_success_title_ar')
+                                            ->label(__('settings.order_success_title_ar'))
+                                            ->maxLength(500)
+                                            ->placeholder(__('order.success_title')),
 
-                        TextInput::make('order_success_title_en')
-                            ->label(__('settings.order_success_title_en'))
-                            ->maxLength(500)
-                            ->placeholder(__('order.success_title')),
+                                        TextInput::make('order_success_title_en')
+                                            ->label(__('settings.order_success_title_en'))
+                                            ->maxLength(500)
+                                            ->placeholder(__('order.success_title')),
 
-                        TextInput::make('order_success_subtitle_ar')
-                            ->label(__('settings.order_success_subtitle_ar'))
-                            ->helperText(__('settings.order_success_subtitle_help'))
-                            ->maxLength(500)
-                            ->placeholder(__('order.success_subtitle')),
+                                        TextInput::make('order_success_subtitle_ar')
+                                            ->label(__('settings.order_success_subtitle_ar'))
+                                            ->helperText(__('settings.order_success_subtitle_help'))
+                                            ->maxLength(500)
+                                            ->placeholder(__('order.success_subtitle')),
 
-                        TextInput::make('order_success_subtitle_en')
-                            ->label(__('settings.order_success_subtitle_en'))
-                            ->helperText(__('settings.order_success_subtitle_help'))
-                            ->maxLength(500)
-                            ->placeholder(__('order.success_subtitle')),
+                                        TextInput::make('order_success_subtitle_en')
+                                            ->label(__('settings.order_success_subtitle_en'))
+                                            ->helperText(__('settings.order_success_subtitle_help'))
+                                            ->maxLength(500)
+                                            ->placeholder(__('order.success_subtitle')),
 
-                        Textarea::make('order_success_message_ar')
-                            ->label(__('settings.order_success_message_ar'))
-                            ->placeholder(__('order.success_message'))
-                            ->helperText(__('settings.order_success_message_help'))
-                            ->rows(4)
-                            ->maxLength(2000)
-                            ->columnSpanFull(),
+                                        Textarea::make('order_success_message_ar')
+                                            ->label(__('settings.order_success_message_ar'))
+                                            ->placeholder(__('order.success_message'))
+                                            ->helperText(__('settings.order_success_message_help'))
+                                            ->rows(4)
+                                            ->maxLength(2000)
+                                            ->columnSpanFull(),
 
-                        Textarea::make('order_success_message_en')
-                            ->label(__('settings.order_success_message_en'))
-                            ->placeholder(__('order.success_message'))
-                            ->helperText(__('settings.order_success_message_help'))
-                            ->rows(4)
-                            ->maxLength(2000)
-                            ->columnSpanFull(),
+                                        Textarea::make('order_success_message_en')
+                                            ->label(__('settings.order_success_message_en'))
+                                            ->placeholder(__('order.success_message'))
+                                            ->helperText(__('settings.order_success_message_help'))
+                                            ->rows(4)
+                                            ->maxLength(2000)
+                                            ->columnSpanFull(),
 
-                        TextInput::make('order_success_go_to_order_ar')
-                            ->label(__('settings.order_success_go_to_order_ar'))
-                            ->placeholder(__('order.success_go_to_order'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_go_to_order_ar')
+                                            ->label(__('settings.order_success_go_to_order_ar'))
+                                            ->placeholder(__('order.success_go_to_order'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_go_to_order_en')
-                            ->label(__('settings.order_success_go_to_order_en'))
-                            ->placeholder(__('order.success_go_to_order'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_go_to_order_en')
+                                            ->label(__('settings.order_success_go_to_order_en'))
+                                            ->placeholder(__('order.success_go_to_order'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_redirect_prefix_ar')
-                            ->label(__('settings.order_success_redirect_prefix_ar'))
-                            ->placeholder(__('order.success_redirect_countdown_prefix'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_redirect_prefix_ar')
+                                            ->label(__('settings.order_success_redirect_prefix_ar'))
+                                            ->placeholder(__('order.success_redirect_countdown_prefix'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_redirect_prefix_en')
-                            ->label(__('settings.order_success_redirect_prefix_en'))
-                            ->placeholder(__('order.success_redirect_countdown_prefix'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_redirect_prefix_en')
+                                            ->label(__('settings.order_success_redirect_prefix_en'))
+                                            ->placeholder(__('order.success_redirect_countdown_prefix'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_redirect_suffix_ar')
-                            ->label(__('settings.order_success_redirect_suffix_ar'))
-                            ->placeholder(__('order.success_redirect_countdown_suffix'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_redirect_suffix_ar')
+                                            ->label(__('settings.order_success_redirect_suffix_ar'))
+                                            ->placeholder(__('order.success_redirect_countdown_suffix'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_redirect_suffix_en')
-                            ->label(__('settings.order_success_redirect_suffix_en'))
-                            ->placeholder(__('order.success_redirect_countdown_suffix'))
-                            ->maxLength(500),
+                                        TextInput::make('order_success_redirect_suffix_en')
+                                            ->label(__('settings.order_success_redirect_suffix_en'))
+                                            ->placeholder(__('order.success_redirect_countdown_suffix'))
+                                            ->maxLength(500),
 
-                        TextInput::make('order_success_redirect_seconds')
-                            ->label(__('settings.order_success_redirect_seconds'))
-                            ->helperText(__('settings.order_success_redirect_seconds_help'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(120)
-                            ->default(45),
+                                        TextInput::make('order_success_redirect_seconds')
+                                            ->label(__('settings.order_success_redirect_seconds'))
+                                            ->helperText(__('settings.order_success_redirect_seconds_help'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(120)
+                                            ->default(45),
 
-                        TextInput::make('order_success_screen_threshold')
-                            ->label(__('settings.order_success_screen_threshold'))
-                            ->helperText(__('settings.order_success_screen_threshold_help'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(10000)
-                            ->default(1000),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
-                // ── Order Rules ───────────────────────────────────────────────
-                Section::make(__('Order Rules'))
-                    ->icon(Heroicon::OutlinedShoppingCart)
-                    ->schema([
-                        TextInput::make('max_products_per_order')
-                            ->label(__('Max Products per Order'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(500),
-
-                        Toggle::make('order_edit_enabled')
-                            ->label(__('Allow Order Edit'))
-                            ->helperText(__('When OFF, the edit link is hidden from customers.')),
-
-                        TextInput::make('order_edit_click_window_minutes')
-                            ->label(__('Minutes to Click Edit (from submission)'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(60)
-                            ->helperText(__('Customer must click Edit within this time after placing order.')),
-
-                        TextInput::make('order_edit_resubmit_window_minutes')
-                            ->label(__('Minutes to Resubmit (from clicking Edit)'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(60)
-                            ->helperText(__('After clicking Edit, customer has this long to save changes.')),
-
-                        TextInput::make('order_edit_window_minutes')
-                            ->label(__('Edit Window (minutes) — legacy'))
-                            ->numeric()
-                            ->helperText(__('Deprecated. Use the two windows above.')),
-
-                        TextInput::make('orders_per_day_customer')
-                            ->label(__('Orders/day — Customer'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(1000)
-                            ->helperText(__('Max orders per user per day. 0 = unlimited.')),
-
-                        TextInput::make('orders_per_day_staff')
-                            ->label(__('Orders/day — Staff'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(1000)
-                            ->helperText(__('Max orders per staff per day. 0 = unlimited.')),
-
-                        TextInput::make('orders_per_month_customer')
-                            ->label(__('Orders/month — Customer'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(10000)
-                            ->helperText(__('Max orders per user per month. 0 = unlimited.')),
-
-                        TextInput::make('orders_per_month_admin')
-                            ->label(__('Orders/month — Admin'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(10000)
-                            ->helperText(__('Max orders per staff per month. 0 = unlimited.')),
-
-                        Select::make('order_new_layout')
-                            ->label(__('New-Order Form Layout'))
-                            ->options([
-                                '1' => __('Option 1 — Responsive (default)'),
-                                '2' => __('Option 2 — Cart system'),
-                                '3' => __('Option 3 — Cards everywhere'),
-                                '4' => __('Option 4 — Wizard'),
+                                        TextInput::make('order_success_screen_threshold')
+                                            ->label(__('settings.order_success_screen_threshold'))
+                                            ->helperText(__('settings.order_success_screen_threshold_help'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(10000)
+                                            ->default(1000),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsible(),
                             ]),
-
-                        Toggle::make('order_form_show_add_test_items')
-                            ->label(__('settings.order_form_show_add_test_items'))
-                            ->helperText(__('settings.order_form_show_add_test_items_help')),
-
-                        Toggle::make('order_form_show_reset_all')
-                            ->label(__('settings.order_form_show_reset_all'))
-                            ->helperText(__('settings.order_form_show_reset_all_help')),
-
-                        TextInput::make('orders_per_hour_customer')
-                            ->label(__('Orders/hour — Customer'))
-                            ->numeric(),
-
-                        TextInput::make('orders_per_hour_admin')
-                            ->label(__('Orders/hour — Admin'))
-                            ->numeric(),
-
-                        TextInput::make('max_file_size_mb')
-                            ->label(__('Max File Size (MB)'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(100)
-                            ->helperText(__('Maximum size per uploaded file. Default: 2 MB.')),
-
-                        TextInput::make('max_images_per_item')
-                            ->label(__('settings.max_images_per_item'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(20)
-                            ->helperText(__('settings.max_images_per_item_help')),
-
-                        TextInput::make('max_images_per_order')
-                            ->label(__('settings.max_images_per_order'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(100)
-                            ->helperText(__('settings.max_images_per_order_help')),
-
-                        TextInput::make('max_files_per_item_after_submit')
-                            ->label(__('settings.max_files_per_item_after_submit'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(20)
-                            ->helperText(__('settings.max_files_per_item_after_submit_help')),
-
-                        Toggle::make('customer_can_add_files_after_submit')
-                            ->label(__('settings.customer_can_add_files_after_submit'))
-                            ->helperText(__('settings.customer_can_add_files_after_submit_help')),
-
-                        TextInput::make('comment_max_files')
-                            ->label(__('settings.comment_max_files'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(20)
-                            ->helperText(__('settings.comment_max_files_help')),
-
-                        TextInput::make('comment_max_file_size_mb')
-                            ->label(__('settings.comment_max_file_size_mb'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(100)
-                            ->helperText(__('settings.comment_max_file_size_mb_help')),
-
-                        TextInput::make('payment_notify_order_max_files')
-                            ->label(__('settings.payment_notify_order_max_files'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(20)
-                            ->helperText(__('settings.payment_notify_order_max_files_help')),
-
-                        TextInput::make('payment_notify_standalone_max_files')
-                            ->label(__('settings.payment_notify_standalone_max_files'))
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(20)
-                            ->helperText(__('settings.payment_notify_standalone_max_files_help')),
-
-                    ])
-                    ->columns(3),
-
-                // ── Order Form Fields ─────────────────────────────────────────
-                Section::make(__('Order Form Fields'))
-                    ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
-                    ->description(__('Control which fields appear in the new-order form, their order, and which are collapsed under "show more" on mobile.'))
-                    ->schema([
-                        Repeater::make('order_form_fields')
-                            ->label('')
+                        Tab::make(__('Rules & Form'))
+                            ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
                             ->schema([
-                                TextInput::make('label_en')
-                                    ->label(__('Field'))
-                                    ->disabled()
-                                    ->dehydrated(true),
+                                Section::make(__('Order Rules'))
+                                    ->icon(Heroicon::OutlinedShoppingCart)
+                                    ->schema([
+                                        TextInput::make('max_products_per_order')
+                                            ->label(__('Max Products per Order'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(500),
 
-                                TextInput::make('sort_order')
-                                    ->label(__('Order'))
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->maxValue(99)
-                                    ->required()
-                                    ->helperText(__('Lower = appears first')),
+                                        Toggle::make('order_edit_enabled')
+                                            ->label(__('Allow Order Edit'))
+                                            ->helperText(__('When OFF, the edit link is hidden from customers.')),
 
-                                Toggle::make('optional')
-                                    ->label(__('In "show more" section'))
-                                    ->helperText(__('Collapsed on mobile by default')),
+                                        TextInput::make('order_edit_click_window_minutes')
+                                            ->label(__('Minutes to Click Edit (from submission)'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(60)
+                                            ->helperText(__('Customer must click Edit within this time after placing order.')),
 
-                                Toggle::make('enabled')
-                                    ->label(__('Enabled'))
-                                    ->helperText(__('Uncheck to hide field entirely')),
-                            ])
-                            ->addable(false)
-                            ->deletable(false)
-                            ->reorderable(false)
-                            ->columns(4)
-                            ->itemLabel(fn (array $state): ?string => $state['label_en'] ?? null),
-                    ])
-                    ->collapsible(),
+                                        TextInput::make('order_edit_resubmit_window_minutes')
+                                            ->label(__('Minutes to Resubmit (from clicking Edit)'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(60)
+                                            ->helperText(__('After clicking Edit, customer has this long to save changes.')),
 
-                // ── Shipping Rates ────────────────────────────────────────────
-                Section::make(__('Shipping Rates'))
-                    ->icon(Heroicon::OutlinedTruck)
-                    ->description(__('settings.shipping_rates_desc'))
-                    ->schema([
-                        \Filament\Schemas\Components\Section::make(__('settings.shipping_aramex_section'))
+                                        TextInput::make('order_edit_window_minutes')
+                                            ->label(__('Edit Window (minutes) — legacy'))
+                                            ->numeric()
+                                            ->helperText(__('Deprecated. Use the two windows above.')),
+
+                                        TextInput::make('orders_per_day_customer')
+                                            ->label(__('Orders/day — Customer'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(1000)
+                                            ->helperText(__('Max orders per user per day. 0 = unlimited.')),
+
+                                        TextInput::make('orders_per_day_staff')
+                                            ->label(__('Orders/day — Staff'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(1000)
+                                            ->helperText(__('Max orders per staff per day. 0 = unlimited.')),
+
+                                        TextInput::make('orders_per_month_customer')
+                                            ->label(__('Orders/month — Customer'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(10000)
+                                            ->helperText(__('Max orders per user per month. 0 = unlimited.')),
+
+                                        TextInput::make('orders_per_month_admin')
+                                            ->label(__('Orders/month — Admin'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(10000)
+                                            ->helperText(__('Max orders per staff per month. 0 = unlimited.')),
+
+                                        Select::make('order_new_layout')
+                                            ->label(__('New-Order Form Layout'))
+                                            ->options([
+                                                '1' => __('Option 1 — Responsive (default)'),
+                                                '2' => __('Option 2 — Cart system'),
+                                                '3' => __('Option 3 — Cards everywhere'),
+                                                '4' => __('Option 4 — Wizard'),
+                                            ]),
+
+                                        Toggle::make('order_form_show_add_test_items')
+                                            ->label(__('settings.order_form_show_add_test_items'))
+                                            ->helperText(__('settings.order_form_show_add_test_items_help')),
+
+                                        Toggle::make('order_form_show_reset_all')
+                                            ->label(__('settings.order_form_show_reset_all'))
+                                            ->helperText(__('settings.order_form_show_reset_all_help')),
+
+                                        TextInput::make('orders_per_hour_customer')
+                                            ->label(__('Orders/hour — Customer'))
+                                            ->numeric(),
+
+                                        TextInput::make('orders_per_hour_admin')
+                                            ->label(__('Orders/hour — Admin'))
+                                            ->numeric(),
+
+                                        TextInput::make('max_file_size_mb')
+                                            ->label(__('Max File Size (MB)'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(100)
+                                            ->helperText(__('Maximum size per uploaded file. Default: 2 MB.')),
+
+                                        TextInput::make('max_images_per_item')
+                                            ->label(__('settings.max_images_per_item'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(20)
+                                            ->helperText(__('settings.max_images_per_item_help')),
+
+                                        TextInput::make('max_images_per_order')
+                                            ->label(__('settings.max_images_per_order'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(100)
+                                            ->helperText(__('settings.max_images_per_order_help')),
+
+                                        TextInput::make('max_files_per_item_after_submit')
+                                            ->label(__('settings.max_files_per_item_after_submit'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(20)
+                                            ->helperText(__('settings.max_files_per_item_after_submit_help')),
+
+                                        Toggle::make('customer_can_add_files_after_submit')
+                                            ->label(__('settings.customer_can_add_files_after_submit'))
+                                            ->helperText(__('settings.customer_can_add_files_after_submit_help')),
+
+                                        TextInput::make('comment_max_files')
+                                            ->label(__('settings.comment_max_files'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(20)
+                                            ->helperText(__('settings.comment_max_files_help')),
+
+                                        TextInput::make('comment_max_file_size_mb')
+                                            ->label(__('settings.comment_max_file_size_mb'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(100)
+                                            ->helperText(__('settings.comment_max_file_size_mb_help')),
+
+                                        TextInput::make('payment_notify_order_max_files')
+                                            ->label(__('settings.payment_notify_order_max_files'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(20)
+                                            ->helperText(__('settings.payment_notify_order_max_files_help')),
+
+                                        TextInput::make('payment_notify_standalone_max_files')
+                                            ->label(__('settings.payment_notify_standalone_max_files'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(20)
+                                            ->helperText(__('settings.payment_notify_standalone_max_files_help')),
+
+                                    ])
+                                    ->columns(3),
+
+                                // ── Order Form Fields ─────────────────────────────────────────
+                                Section::make(__('Order Form Fields'))
+                                    ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+                                    ->description(__('Control which fields appear in the new-order form, their order, and which are collapsed under "show more" on mobile.'))
+                                    ->schema([
+                                        Repeater::make('order_form_fields')
+                                            ->label('')
+                                            ->schema([
+                                                TextInput::make('label_en')
+                                                    ->label(__('Field'))
+                                                    ->disabled()
+                                                    ->dehydrated(true),
+
+                                                TextInput::make('sort_order')
+                                                    ->label(__('Order'))
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->maxValue(99)
+                                                    ->required()
+                                                    ->helperText(__('Lower = appears first')),
+
+                                                Toggle::make('optional')
+                                                    ->label(__('In "show more" section'))
+                                                    ->helperText(__('Collapsed on mobile by default')),
+
+                                                Toggle::make('enabled')
+                                                    ->label(__('Enabled'))
+                                                    ->helperText(__('Uncheck to hide field entirely')),
+                                            ])
+                                            ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false)
+                                            ->columns(4)
+                                            ->itemLabel(fn (array $state): ?string => $state['label_en'] ?? null),
+                                    ])
+                                    ->collapsible(),
+                            ]),
+                        Tab::make(__('Shipping & Rates'))
+                            ->icon(Heroicon::OutlinedTruck)
                             ->schema([
-                                TextInput::make('aramex_first_half_kg')
-                                    ->label(__('First 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                Section::make(__('Shipping Rates'))
+                                    ->icon(Heroicon::OutlinedTruck)
+                                    ->description(__('settings.shipping_rates_desc'))
+                                    ->schema([
+                                        \Filament\Schemas\Components\Section::make(__('settings.shipping_aramex_section'))
+                                            ->schema([
+                                                TextInput::make('aramex_first_half_kg')
+                                                    ->label(__('First 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
 
-                                TextInput::make('aramex_rest_half_kg')
-                                    ->label(__('Each Additional 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                                TextInput::make('aramex_rest_half_kg')
+                                                    ->label(__('Each Additional 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
 
-                                TextInput::make('aramex_over21_per_kg')
-                                    ->label(__('Over 21 kg — per kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                                TextInput::make('aramex_over21_per_kg')
+                                                    ->label(__('Over 21 kg — per kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
 
-                                TextInput::make('aramex_delivery_days')
-                                    ->label(__('Est. Delivery'))
-                                    ->placeholder(__('settings.placeholder_delivery_days'))
-                                    ->helperText(__('Shown on calculator, e.g. "7-10 days"')),
-                            ])
-                            ->columns(4),
+                                                TextInput::make('aramex_delivery_days')
+                                                    ->label(__('Est. Delivery'))
+                                                    ->placeholder(__('settings.placeholder_delivery_days'))
+                                                    ->helperText(__('Shown on calculator, e.g. "7-10 days"')),
+                                            ])
+                                            ->columns(4),
 
-                        \Filament\Schemas\Components\Section::make(__('settings.shipping_dhl_section'))
+                                        \Filament\Schemas\Components\Section::make(__('settings.shipping_dhl_section'))
+                                            ->schema([
+                                                TextInput::make('dhl_first_half_kg')
+                                                    ->label(__('First 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
+
+                                                TextInput::make('dhl_rest_half_kg')
+                                                    ->label(__('Each Additional 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
+
+                                                TextInput::make('dhl_over21_per_kg')
+                                                    ->label(__('Over 21 kg — per kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
+
+                                                TextInput::make('dhl_delivery_days')
+                                                    ->label(__('Est. Delivery'))
+                                                    ->placeholder(__('settings.placeholder_delivery_days')),
+                                            ])
+                                            ->columns(4),
+
+                                        \Filament\Schemas\Components\Section::make(__('settings.shipping_domestic'))
+                                            ->schema([
+                                                TextInput::make('domestic_first_half_kg')
+                                                    ->label(__('First 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
+
+                                                TextInput::make('domestic_rest_half_kg')
+                                                    ->label(__('Each Additional 0.5 kg (SAR)'))
+                                                    ->numeric()->suffix('SAR')->minValue(0),
+
+                                                TextInput::make('domestic_delivery_days')
+                                                    ->label(__('Est. Delivery'))
+                                                    ->placeholder(__('settings.placeholder_delivery_days_short')),
+                                            ])
+                                            ->columns(3),
+                                    ])
+                                    ->collapsible(),
+
+                                // ── Exchange Rates ────────────────────────────────────────────
+                                Section::make(__('Exchange Rates'))
+                                    ->icon(Heroicon::OutlinedCurrencyDollar)
+                                    ->description(__('Rates are fetched from open.er-api.com (free, no key needed). Manual override per currency takes priority over the auto-calculated rate.'))
+                                    ->schema([
+                                        SchemaActions::make([
+                                            Action::make('fetchRatesNow')
+                                                ->label(__('Fetch Rates Now'))
+                                                ->icon(Heroicon::OutlinedArrowPath)
+                                                ->color('info')
+                                                ->requiresConfirmation()
+                                                ->modalHeading(__('Fetch Exchange Rates'))
+                                                ->modalDescription(__('This will call open.er-api.com and update the stored rates. Manual overrides will be preserved.'))
+                                                ->modalSubmitActionLabel(__('Fetch'))
+                                                ->action(function (): void {
+                                                    $exitCode = Artisan::call('rates:fetch');
+
+                                                    if ($exitCode === 0) {
+                                                        Notification::make()
+                                                            ->title(__('Rates updated successfully'))
+                                                            ->success()
+                                                            ->send();
+                                                        $this->mount();
+                                                    } else {
+                                                        Notification::make()
+                                                            ->title(__('Fetch failed — check API connection or logs'))
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ]),
+
+                                        Placeholder::make('exchange_rates_fetch_status')
+                                            ->label(__('Last Fetch'))
+                                            ->content(fn () => $this->buildFetchStatusString()),
+
+                                        Toggle::make('exchange_rates_auto_fetch')
+                                            ->label(__('Auto-Fetch Daily'))
+                                            ->onColor('success')
+                                            ->helperText(__('Fetch rates automatically each day via Laravel scheduler (php artisan schedule:run).')),
+
+                                        TextInput::make('exchange_rates_markup_percent')
+                                            ->label(__('Markup %'))
+                                            ->numeric()
+                                            ->suffix('%')
+                                            ->minValue(0)
+                                            ->maxValue(50)
+                                            ->helperText(__('Added on top of the market rate. Default: 3%')),
+
+                                        Repeater::make('currencies')
+                                            ->label(__('Currencies'))
+                                            ->schema([
+                                                TextInput::make('code')
+                                                    ->label(__('Code'))
+                                                    ->required()
+                                                    ->maxLength(10)
+                                                    ->placeholder(__('settings.placeholder_currency'))
+                                                    ->helperText(__('ISO 4217 code (e.g. USD, EUR)')),
+
+                                                TextInput::make('label')
+                                                    ->label(__('Label'))
+                                                    ->maxLength(100)
+                                                    ->placeholder(__('Optional display name')),
+
+                                                TextInput::make('manual_rate')
+                                                    ->label(__('Manual Rate (SAR)'))
+                                                    ->numeric()
+                                                    ->placeholder(__('Auto'))
+                                                    ->helperText(fn ($get): string => $this->rateInfoForCode($get('code') ?? '')),
+
+                                                Toggle::make('auto_fetch')
+                                                    ->label(__('Auto-fetch'))
+                                                    ->default(true)
+                                                    ->helperText(__('Include in daily rate fetch')),
+
+                                                TextInput::make('markup_percent')
+                                                    ->label(__('Markup %'))
+                                                    ->numeric()
+                                                    ->minValue(0)
+                                                    ->maxValue(50)
+                                                    ->placeholder(__('Use global')),
+                                            ])
+                                            ->columns(5)
+                                            ->reorderable()
+                                            ->itemLabel(fn (array $state): string => ($state['code'] ?? '') ?: __('New currency'))
+                                            ->addActionLabel(__('Add currency'))
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible(),
+                            ]),
+                        Tab::make(__('Commission & Actions'))
+                            ->icon(Heroicon::OutlinedBolt)
                             ->schema([
-                                TextInput::make('dhl_first_half_kg')
-                                    ->label(__('First 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                Section::make(__('Commission Rules'))
+                                    ->icon(Heroicon::OutlinedReceiptPercent)
+                                    ->description(__('Controls how service commission is calculated on orders. Used by the order form and the public calculator.'))
+                                    ->schema([
+                                        TextInput::make('commission_threshold_sar')
+                                            ->label(__('Threshold (SAR)'))
+                                            ->numeric()
+                                            ->suffix('SAR')
+                                            ->minValue(0)
+                                            ->helperText(__('Order value above this threshold → percentage commission. Below → flat fee.')),
 
-                                TextInput::make('dhl_rest_half_kg')
-                                    ->label(__('Each Additional 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                        TextInput::make('commission_rate_above')
+                                            ->label(__('% Above Threshold'))
+                                            ->numeric()
+                                            ->suffix('%')
+                                            ->minValue(0)
+                                            ->maxValue(100)
+                                            ->helperText(__('Commission percentage when order ≥ threshold. Default: 8%')),
 
-                                TextInput::make('dhl_over21_per_kg')
-                                    ->label(__('Over 21 kg — per kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                        TextInput::make('commission_flat_below')
+                                            ->label(__('Flat Fee Below Threshold (SAR)'))
+                                            ->numeric()
+                                            ->suffix('SAR')
+                                            ->minValue(0)
+                                            ->helperText(__('Fixed commission when order < threshold. Default: 50 SAR')),
+                                    ])
+                                    ->columns(3),
 
-                                TextInput::make('dhl_delivery_days')
-                                    ->label(__('Est. Delivery'))
-                                    ->placeholder(__('settings.placeholder_delivery_days')),
-                            ])
-                            ->columns(4),
+                                // ── Quick Action Toggles ──────────────────────────────────────
+                                Section::make(__('Quick Action Toggles'))
+                                    ->icon(Heroicon::OutlinedBolt)
+                                    ->description(__('Enable or disable each quick-action button shown on the order detail page.'))
+                                    ->schema([
+                                        Toggle::make('qa_customer_section')
+                                            ->label(__('Show Customer Quick Actions Section'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
 
-                        \Filament\Schemas\Components\Section::make(__('settings.shipping_domestic'))
+                                        Toggle::make('qa_payment_notify')
+                                            ->label('💰 '.__('Customer: Report Payment Transfer'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_shipping_address_btn')
+                                            ->label('📍 '.__('Customer: Set Shipping Address Button'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_similar_order')
+                                            ->label('📝 '.__('Customer: Similar Order'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_customer_merge')
+                                            ->label('🔀 '.__('Customer: Request Order Merge'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_customer_cancel')
+                                            ->label('❌ '.__('Customer: Cancel Order'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_team_section')
+                                            ->label(__('Show Staff Quick Actions Section'))
+                                            ->onColor('success')
+                                            ->columnSpanFull(),
+
+                                        Toggle::make('qa_transfer_order')
+                                            ->label('🔄 '.__('Staff: Transfer Order Ownership'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_payment_tracking')
+                                            ->label('💰 '.__('Staff: Payment Tracking'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_shipping_tracking')
+                                            ->label('📦 '.__('Staff: Update Shipping Tracking'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_team_merge')
+                                            ->label('🔗 '.__('Staff: Merge Orders'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_mark_paid')
+                                            ->label(__('Staff: Mark as Paid'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_mark_shipped')
+                                            ->label(__('Staff: Mark as Shipped'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_request_info')
+                                            ->label(__('Staff: Request More Info'))
+                                            ->onColor('success'),
+
+                                        Toggle::make('qa_cancel_order')
+                                            ->label(__('Staff: Cancel Order'))
+                                            ->onColor('success'),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsible(),
+                            ]),
+                        Tab::make(__('Invoice'))
+                            ->icon(Heroicon::OutlinedDocumentText)
                             ->schema([
-                                TextInput::make('domestic_first_half_kg')
-                                    ->label(__('First 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                Section::make(__('Invoice'))
+                                    ->icon(Heroicon::OutlinedDocumentText)
+                                    ->description(__('Default filename pattern, comment text, and final invoice copy for generated invoices.'))
+                                    ->schema([
+                                        TextInput::make('invoice_filename_pattern')
+                                            ->label(__('Filename Pattern'))
+                                            ->helperText(__('Placeholders: {order_number}, {date}, {type}, {site_name}, {count}. Leave empty for default.'))
+                                            ->placeholder(__('settings.placeholder_invoice_filename'))
+                                            ->maxLength(120),
 
-                                TextInput::make('domestic_rest_half_kg')
-                                    ->label(__('Each Additional 0.5 kg (SAR)'))
-                                    ->numeric()->suffix('SAR')->minValue(0),
+                                        TextInput::make('invoice_number_pattern')
+                                            ->label(__('orders.invoice_number_pattern'))
+                                            ->helperText(__('orders.invoice_number_pattern_help'))
+                                            ->placeholder(__('settings.placeholder_invoice_count'))
+                                            ->maxLength(80),
 
-                                TextInput::make('domestic_delivery_days')
-                                    ->label(__('Est. Delivery'))
-                                    ->placeholder(__('settings.placeholder_delivery_days_short')),
-                            ])
-                            ->columns(3),
-                    ])
-                    ->collapsible(),
+                                        Toggle::make('invoice_show_type_label')
+                                            ->label(__('orders.invoice_show_type_label'))
+                                            ->helperText(__('orders.invoice_show_type_label_help')),
 
-                // ── Exchange Rates ────────────────────────────────────────────
-                Section::make(__('Exchange Rates'))
-                    ->icon(Heroicon::OutlinedCurrencyDollar)
-                    ->description(__('Rates are fetched from open.er-api.com (free, no key needed). Manual override per currency takes priority over the auto-calculated rate.'))
-                    ->schema([
-                        SchemaActions::make([
-                            Action::make('fetchRatesNow')
-                                ->label(__('Fetch Rates Now'))
-                                ->icon(Heroicon::OutlinedArrowPath)
-                                ->color('info')
-                                ->requiresConfirmation()
-                                ->modalHeading(__('Fetch Exchange Rates'))
-                                ->modalDescription(__('This will call open.er-api.com and update the stored rates. Manual overrides will be preserved.'))
-                                ->modalSubmitActionLabel(__('Fetch'))
-                                ->action(function (): void {
-                                    $exitCode = Artisan::call('rates:fetch');
+                                        KeyValue::make('invoice_type_labels')
+                                            ->label(__('orders.invoice_type_labels'))
+                                            ->keyLabel(__('orders.invoice_type'))
+                                            ->valueLabel(__('Label'))
+                                            ->helperText(__('orders.invoice_type_labels_help'))
+                                            ->addActionLabel(__('Add')),
 
-                                    if ($exitCode === 0) {
-                                        Notification::make()
-                                            ->title(__('Rates updated successfully'))
-                                            ->success()
-                                            ->send();
-                                        $this->mount();
-                                    } else {
-                                        Notification::make()
-                                            ->title(__('Fetch failed — check API connection or logs'))
-                                            ->danger()
-                                            ->send();
-                                    }
-                                }),
-                        ]),
+                                        Toggle::make('invoice_show_company_details')
+                                            ->label(__('orders.invoice_show_company_details'))
+                                            ->helperText(__('orders.invoice_show_company_details_help')),
 
-                        Placeholder::make('exchange_rates_fetch_status')
-                            ->label(__('Last Fetch'))
-                            ->content(fn () => $this->buildFetchStatusString()),
+                                        Repeater::make('invoice_company_details')
+                                            ->label(__('orders.invoice_company_details'))
+                                            ->schema([
+                                                TextInput::make('label')
+                                                    ->label(__('Label'))
+                                                    ->placeholder(__('orders.invoice_company_address'))
+                                                    ->maxLength(100),
+                                                TextInput::make('value')
+                                                    ->label(__('Value'))
+                                                    ->maxLength(500),
+                                                Toggle::make('visible')
+                                                    ->label(__('Show'))
+                                                    ->default(true),
+                                            ])
+                                            ->columns(3)
+                                            ->defaultItems(0)
+                                            ->addActionLabel(__('Add')),
 
-                        Toggle::make('exchange_rates_auto_fetch')
-                            ->label(__('Auto-Fetch Daily'))
-                            ->onColor('success')
-                            ->helperText(__('Fetch rates automatically each day via Laravel scheduler (php artisan schedule:run).')),
+                                        Toggle::make('invoice_show_due_date')
+                                            ->label(__('orders.invoice_show_due_date'))
+                                            ->helperText(__('orders.invoice_show_due_date_help')),
 
-                        TextInput::make('exchange_rates_markup_percent')
-                            ->label(__('Markup %'))
-                            ->numeric()
-                            ->suffix('%')
-                            ->minValue(0)
-                            ->maxValue(50)
-                            ->helperText(__('Added on top of the market rate. Default: 3%')),
+                                        TextInput::make('invoice_due_date_days')
+                                            ->label(__('orders.invoice_due_date_days'))
+                                            ->numeric()
+                                            ->default(7)
+                                            ->minValue(1)
+                                            ->maxValue(365),
 
-                        Repeater::make('currencies')
-                            ->label(__('Currencies'))
-                            ->schema([
-                                TextInput::make('code')
-                                    ->label(__('Code'))
-                                    ->required()
-                                    ->maxLength(10)
-                                    ->placeholder(__('settings.placeholder_currency'))
-                                    ->helperText(__('ISO 4217 code (e.g. USD, EUR)')),
+                                        TextInput::make('invoice_due_date_label')
+                                            ->label(__('orders.invoice_due_date_label'))
+                                            ->placeholder(__('orders.invoice_due_date'))
+                                            ->maxLength(80),
 
-                                TextInput::make('label')
-                                    ->label(__('Label'))
-                                    ->maxLength(100)
-                                    ->placeholder(__('Optional display name')),
+                                        Textarea::make('invoice_comment_default')
+                                            ->label(__('Default Comment Message'))
+                                            ->helperText(__('Default text when posting invoice as comment. Placeholders: {amount}, {order_number}, {date}, {currency}'))
+                                            ->rows(3)
+                                            ->placeholder(__('orders.invoice_attached'))
+                                            ->maxLength(500),
 
-                                TextInput::make('manual_rate')
-                                    ->label(__('Manual Rate (SAR)'))
-                                    ->numeric()
-                                    ->placeholder(__('Auto'))
-                                    ->helperText(fn ($get): string => $this->rateInfoForCode($get('code') ?? '')),
+                                        Textarea::make('invoice_first_payment_comment_template')
+                                            ->label(__('orders.invoice_first_payment_comment_template'))
+                                            ->helperText(__('orders.invoice_first_payment_comment_template_help'))
+                                            ->rows(8)
+                                            ->placeholder(__('orders.invoice_first_payment_comment_default'))
+                                            ->columnSpanFull(),
 
-                                Toggle::make('auto_fetch')
-                                    ->label(__('Auto-fetch'))
-                                    ->default(true)
-                                    ->helperText(__('Include in daily rate fetch')),
+                                        TextInput::make('invoice_greeting')
+                                            ->label(__('orders.invoice_greeting'))
+                                            ->placeholder(__('orders.invoice_greeting_placeholder'))
+                                            ->maxLength(120),
 
-                                TextInput::make('markup_percent')
-                                    ->label(__('Markup %'))
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->maxValue(50)
-                                    ->placeholder(__('Use global')),
-                            ])
-                            ->columns(5)
-                            ->reorderable()
-                            ->itemLabel(fn (array $state): string => ($state['code'] ?? '') ?: __('New currency'))
-                            ->addActionLabel(__('Add currency'))
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(3)
-                    ->collapsible(),
+                                        TextInput::make('invoice_confirmation')
+                                            ->label(__('orders.invoice_confirmation'))
+                                            ->placeholder(__('orders.invoice_confirmation_placeholder'))
+                                            ->maxLength(200),
 
-                // ── Commission Rules ──────────────────────────────────────────
-                Section::make(__('Commission Rules'))
-                    ->icon(Heroicon::OutlinedReceiptPercent)
-                    ->description(__('Controls how service commission is calculated on orders. Used by the order form and the public calculator.'))
-                    ->schema([
-                        TextInput::make('commission_threshold_sar')
-                            ->label(__('Threshold (SAR)'))
-                            ->numeric()
-                            ->suffix('SAR')
-                            ->minValue(0)
-                            ->helperText(__('Order value above this threshold → percentage commission. Below → flat fee.')),
+                                        Textarea::make('invoice_payment_instructions')
+                                            ->label(__('orders.invoice_payment_instructions'))
+                                            ->placeholder(__('orders.invoice_payment_instructions_placeholder'))
+                                            ->rows(3)
+                                            ->maxLength(500),
 
-                        TextInput::make('commission_rate_above')
-                            ->label(__('% Above Threshold'))
-                            ->numeric()
-                            ->suffix('%')
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->helperText(__('Commission percentage when order ≥ threshold. Default: 8%')),
+                                        TextInput::make('invoice_footer_text')
+                                            ->label(__('orders.invoice_footer_text'))
+                                            ->placeholder(__('orders.invoice_footer_text_placeholder'))
+                                            ->maxLength(200),
 
-                        TextInput::make('commission_flat_below')
-                            ->label(__('Flat Fee Below Threshold (SAR)'))
-                            ->numeric()
-                            ->suffix('SAR')
-                            ->minValue(0)
-                            ->helperText(__('Fixed commission when order < threshold. Default: 50 SAR')),
-                    ])
-                    ->columns(3),
+                                        Toggle::make('invoice_show_order_items')
+                                            ->label(__('orders.invoice_show_order_items'))
+                                            ->helperText(__('orders.invoice_show_order_items_help')),
 
-                // ── Quick Action Toggles ──────────────────────────────────────
-                Section::make(__('Quick Action Toggles'))
-                    ->icon(Heroicon::OutlinedBolt)
-                    ->description(__('Enable or disable each quick-action button shown on the order detail page.'))
-                    ->schema([
-                        Toggle::make('qa_customer_section')
-                            ->label(__('Show Customer Quick Actions Section'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
-
-                        Toggle::make('qa_payment_notify')
-                            ->label('💰 '.__('Customer: Report Payment Transfer'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_shipping_address_btn')
-                            ->label('📍 '.__('Customer: Set Shipping Address Button'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_similar_order')
-                            ->label('📝 '.__('Customer: Similar Order'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_customer_merge')
-                            ->label('🔀 '.__('Customer: Request Order Merge'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_customer_cancel')
-                            ->label('❌ '.__('Customer: Cancel Order'))
-                            ->onColor('danger'),
-
-                        Toggle::make('qa_team_section')
-                            ->label(__('Show Staff Quick Actions Section'))
-                            ->onColor('success')
-                            ->columnSpanFull(),
-
-                        Toggle::make('qa_transfer_order')
-                            ->label('🔄 '.__('Staff: Transfer Order Ownership'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_payment_tracking')
-                            ->label('💰 '.__('Staff: Payment Tracking'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_shipping_tracking')
-                            ->label('📦 '.__('Staff: Update Shipping Tracking'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_team_merge')
-                            ->label('🔗 '.__('Staff: Merge Orders'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_mark_paid')
-                            ->label(__('Staff: Mark as Paid'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_mark_shipped')
-                            ->label(__('Staff: Mark as Shipped'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_request_info')
-                            ->label(__('Staff: Request More Info'))
-                            ->onColor('success'),
-
-                        Toggle::make('qa_cancel_order')
-                            ->label(__('Staff: Cancel Order'))
-                            ->onColor('danger'),
-                    ])
-                    ->columns(2)
-                    ->collapsible(),
-
-                // ── Invoice ───────────────────────────────────────────────────
-                Section::make(__('Invoice'))
-                    ->icon(Heroicon::OutlinedDocumentText)
-                    ->description(__('Default filename pattern, comment text, and final invoice copy for generated invoices.'))
-                    ->schema([
-                        TextInput::make('invoice_filename_pattern')
-                            ->label(__('Filename Pattern'))
-                            ->helperText(__('Placeholders: {order_number}, {date}, {type}, {site_name}, {count}. Leave empty for default.'))
-                            ->placeholder(__('settings.placeholder_invoice_filename'))
-                            ->maxLength(120),
-
-                        TextInput::make('invoice_number_pattern')
-                            ->label(__('orders.invoice_number_pattern'))
-                            ->helperText(__('orders.invoice_number_pattern_help'))
-                            ->placeholder(__('settings.placeholder_invoice_count'))
-                            ->maxLength(80),
-
-                        Toggle::make('invoice_show_type_label')
-                            ->label(__('orders.invoice_show_type_label'))
-                            ->helperText(__('orders.invoice_show_type_label_help')),
-
-                        KeyValue::make('invoice_type_labels')
-                            ->label(__('orders.invoice_type_labels'))
-                            ->keyLabel(__('orders.invoice_type'))
-                            ->valueLabel(__('Label'))
-                            ->helperText(__('orders.invoice_type_labels_help'))
-                            ->addActionLabel(__('Add')),
-
-                        Toggle::make('invoice_show_company_details')
-                            ->label(__('orders.invoice_show_company_details'))
-                            ->helperText(__('orders.invoice_show_company_details_help')),
-
-                        Repeater::make('invoice_company_details')
-                            ->label(__('orders.invoice_company_details'))
-                            ->schema([
-                                TextInput::make('label')
-                                    ->label(__('Label'))
-                                    ->placeholder(__('orders.invoice_company_address'))
-                                    ->maxLength(100),
-                                TextInput::make('value')
-                                    ->label(__('Value'))
-                                    ->maxLength(500),
-                                Toggle::make('visible')
-                                    ->label(__('Show'))
-                                    ->default(true),
-                            ])
-                            ->columns(3)
-                            ->defaultItems(0)
-                            ->addActionLabel(__('Add')),
-
-                        Toggle::make('invoice_show_due_date')
-                            ->label(__('orders.invoice_show_due_date'))
-                            ->helperText(__('orders.invoice_show_due_date_help')),
-
-                        TextInput::make('invoice_due_date_days')
-                            ->label(__('orders.invoice_due_date_days'))
-                            ->numeric()
-                            ->default(7)
-                            ->minValue(1)
-                            ->maxValue(365),
-
-                        TextInput::make('invoice_due_date_label')
-                            ->label(__('orders.invoice_due_date_label'))
-                            ->placeholder(__('orders.invoice_due_date'))
-                            ->maxLength(80),
-
-                        Textarea::make('invoice_comment_default')
-                            ->label(__('Default Comment Message'))
-                            ->helperText(__('Default text when posting invoice as comment. Placeholders: {amount}, {order_number}, {date}, {currency}'))
-                            ->rows(3)
-                            ->placeholder(__('orders.invoice_attached'))
-                            ->maxLength(500),
-
-                        Textarea::make('invoice_first_payment_comment_template')
-                            ->label(__('orders.invoice_first_payment_comment_template'))
-                            ->helperText(__('orders.invoice_first_payment_comment_template_help'))
-                            ->rows(8)
-                            ->placeholder(__('orders.invoice_first_payment_comment_default'))
-                            ->columnSpanFull(),
-
-                        TextInput::make('invoice_greeting')
-                            ->label(__('orders.invoice_greeting'))
-                            ->placeholder(__('orders.invoice_greeting_placeholder'))
-                            ->maxLength(120),
-
-                        TextInput::make('invoice_confirmation')
-                            ->label(__('orders.invoice_confirmation'))
-                            ->placeholder(__('orders.invoice_confirmation_placeholder'))
-                            ->maxLength(200),
-
-                        Textarea::make('invoice_payment_instructions')
-                            ->label(__('orders.invoice_payment_instructions'))
-                            ->placeholder(__('orders.invoice_payment_instructions_placeholder'))
-                            ->rows(3)
-                            ->maxLength(500),
-
-                        TextInput::make('invoice_footer_text')
-                            ->label(__('orders.invoice_footer_text'))
-                            ->placeholder(__('orders.invoice_footer_text_placeholder'))
-                            ->maxLength(200),
-
-                        Toggle::make('invoice_show_order_items')
-                            ->label(__('orders.invoice_show_order_items'))
-                            ->helperText(__('orders.invoice_show_order_items_help')),
-
-                        Repeater::make('invoice_custom_lines')
-                            ->label(__('orders.invoice_custom_lines'))
-                            ->helperText(__('orders.invoice_custom_lines_help'))
-                            ->schema([
-                                TextInput::make('label')
-                                    ->label(__('orders.invoice_line_label'))
-                                    ->required()
-                                    ->maxLength(200),
-                                TextInput::make('amount')
-                                    ->label(__('orders.amount'))
-                                    ->numeric()
-                                    ->default(0)
-                                    ->required(),
-                                Toggle::make('visible')
-                                    ->label(__('Show'))
-                                    ->default(true),
-                            ])
-                            ->columns(3)
-                            ->defaultItems(0)
-                            ->addActionLabel(__('orders.invoice_add_line')),
-                    ])
-                    ->columns(1)
-                    ->collapsible(),
+                                        Repeater::make('invoice_custom_lines')
+                                            ->label(__('orders.invoice_custom_lines'))
+                                            ->helperText(__('orders.invoice_custom_lines_help'))
+                                            ->schema([
+                                                TextInput::make('label')
+                                                    ->label(__('orders.invoice_line_label'))
+                                                    ->required()
+                                                    ->maxLength(200),
+                                                TextInput::make('amount')
+                                                    ->label(__('orders.amount'))
+                                                    ->numeric()
+                                                    ->default(0)
+                                                    ->required(),
+                                                Toggle::make('visible')
+                                                    ->label(__('Show'))
+                                                    ->default(true),
+                                            ])
+                                            ->columns(3)
+                                            ->defaultItems(0)
+                                            ->addActionLabel(__('orders.invoice_add_line')),
+                                    ])
+                                    ->columns(1)
+                                    ->collapsible(),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }

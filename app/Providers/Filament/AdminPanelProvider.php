@@ -77,6 +77,6 @@ class AdminPanelProvider extends PanelProvider
                     ->openUrlInNewTab(false),
             ])
             ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'))
-            ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn () => view('filament.homepage-link'));
+            ->renderHook(PanelsRenderHook::SIDEBAR_FOOTER, fn () => view('filament.homepage-link'));
     }
 }
