@@ -19,6 +19,12 @@ Route::get('auth/google/callback', [SocialAuthController::class, 'handleGoogleCa
 Route::get('auth/twitter', [SocialAuthController::class, 'redirectToTwitter'])->name('auth.twitter');
 Route::get('auth/twitter/callback', [SocialAuthController::class, 'handleTwitterCallback'])->name('auth.twitter.callback');
 
+Route::get('auth/facebook', [SocialAuthController::class, 'redirectToFacebook'])->name('auth.facebook');
+Route::get('auth/facebook/callback', [SocialAuthController::class, 'handleFacebookCallback'])->name('auth.facebook.callback');
+
+Route::get('auth/apple', [SocialAuthController::class, 'redirectToApple'])->name('auth.apple');
+Route::match(['get', 'post'], 'auth/apple/callback', [SocialAuthController::class, 'handleAppleCallback'])->name('auth.apple.callback');
+
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');

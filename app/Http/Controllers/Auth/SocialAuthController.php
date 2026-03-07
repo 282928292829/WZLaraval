@@ -121,4 +121,52 @@ class SocialAuthController extends Controller
 
         return $this->loginOrCreate('twitter_id', $su->getId(), $su->getEmail(), $su->getName(), $su->getAvatar());
     }
+
+    // ──────────────────────────────────────────────────────────
+    // Facebook
+    // ──────────────────────────────────────────────────────────
+
+    public function redirectToFacebook(): RedirectResponse
+    {
+        $this->requireEnabled('facebook_login_enabled');
+
+        return Socialite::driver('facebook')->redirect();
+    }
+
+    public function handleFacebookCallback(): RedirectResponse
+    {
+        $this->requireEnabled('facebook_login_enabled');
+
+        try {
+            $su = Socialite::driver('facebook')->user();
+        } catch (\Exception) {
+            return redirect()->route('login')->withErrors(['facebook' => __('auth.facebook_failed')]);
+        }
+
+        return $this->loginOrCreate('facebook_id', $su->getId(), $su->getEmail(), $su->getName(), $su->getAvatar());
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Apple
+    // ──────────────────────────────────────────────────────────
+
+    public function redirectToApple(): RedirectResponse
+    {
+        $this->requireEnabled('apple_login_enabled');
+
+        return Socialite::driver('apple')->redirect();
+    }
+
+    public function handleAppleCallback(): RedirectResponse
+    {
+        $this->requireEnabled('apple_login_enabled');
+
+        try {
+            $su = Socialite::driver('apple')->user();
+        } catch (\Exception) {
+            return redirect()->route('login')->withErrors(['apple' => __('auth.apple_failed')]);
+        }
+
+        return $this->loginOrCreate('apple_id', $su->getId(), $su->getEmail(), $su->getName(), $su->getAvatar());
+    }
 }

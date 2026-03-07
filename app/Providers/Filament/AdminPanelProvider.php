@@ -52,7 +52,7 @@ class AdminPanelProvider extends PanelProvider
                 GeneralSettingsPage::class,
                 TranslationsPage::class,
             ])
-            ->homeUrl(fn () => route('filament.admin.resources.orders.index'))
+            ->homeUrl(fn () => route('orders.index'))
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([
                 EncryptCookies::class,
@@ -77,6 +77,7 @@ class AdminPanelProvider extends PanelProvider
                     ->openUrlInNewTab(false),
             ])
             ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'))
+            ->renderHook(PanelsRenderHook::SIDEBAR_LOGO_AFTER, fn () => view('filament.homepage-button'))
             ->renderHook(PanelsRenderHook::SIDEBAR_FOOTER, fn () => view('filament.homepage-link'));
     }
 }
