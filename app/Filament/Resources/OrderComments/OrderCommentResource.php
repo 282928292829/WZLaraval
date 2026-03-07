@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OrderComments;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\OrderComments\Pages\ListOrderComments;
 use App\Filament\Resources\OrderComments\Schemas\OrderCommentForm;
 use App\Filament\Resources\OrderComments\Tables\OrderCommentsTable;
@@ -37,9 +38,9 @@ class OrderCommentResource extends Resource
         return __('Order Comments');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Orders');
+        return AdminNavigationGroup::Orders;
     }
 
     public static function canAccess(): bool

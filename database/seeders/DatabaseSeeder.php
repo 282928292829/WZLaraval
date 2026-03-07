@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             CurrencySeeder::class,
             ShippingCompanySeeder::class,
             PageSeeder::class,
+            TestimonialSeeder::class,
         ]);
     }
 }
