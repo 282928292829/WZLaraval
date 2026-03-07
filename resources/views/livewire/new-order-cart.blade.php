@@ -3,12 +3,16 @@
 @php
     $isRtl = app()->getLocale() === 'ar';
     $cartSummary = $cartSummary ?? ['subtotal' => 0, 'commission' => 0, 'total' => 0, 'filledCount' => 0];
+    $isGuest = auth()->guest();
+    $initialItemsCount = count($items);
 @endphp
 
 <div
     x-data="cartPageNotify()"
+    x-init="initCartDraft()"
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
     @cart-emptied.window="cartOpen = false"
+    @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)"
     class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)]"
 >
     {{-- Toast Container --}}
@@ -349,6 +353,34 @@
 function cartPageNotify() {
     return {
         cartOpen: false,
+
+        initCartDraft() {
+            @if ($isGuest && $initialItemsCount === 0)
+            try {
+                const raw = localStorage.getItem('wz_order_form_draft');
+                const notes = localStorage.getItem('wz_order_form_notes') || '';
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (Array.isArray(data) && data.length > 0) {
+                        this.$wire.loadGuestDraftFromStorage(data, notes);
+                    }
+                }
+            } catch (_) {}
+            @endif
+        },
+
+        saveCartDraftToStorage(items, notes) {
+            try {
+                if (Array.isArray(items) && items.length > 0) {
+                    localStorage.setItem('wz_order_form_draft', JSON.stringify(items));
+                    localStorage.setItem('wz_order_form_notes', notes || '');
+                } else {
+                    localStorage.removeItem('wz_order_form_draft');
+                    localStorage.removeItem('wz_order_form_notes');
+                }
+            } catch (_) {}
+        },
+
         showNotify(type, msg, duration) {
             const c = this.$refs.toasts;
             if (!c) return;

@@ -73,7 +73,7 @@
                                     <span class="font-semibold text-gray-900 text-sm flex-1">{{ $beneficiaryName }}</span>
                                     <button
                                         @click="copy(@js($beneficiaryName), $el)"
-                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex-shrink-0"
+                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-150 ease-out flex-shrink-0"
                                     >{{ __('payment.copy') }}</button>
                                 </div>
                             </div>
@@ -84,7 +84,7 @@
                                     <span class="font-mono font-bold text-gray-900 text-sm flex-1 ltr:text-left rtl:text-right" dir="ltr">{{ $bank['account'] }}</span>
                                     <button
                                         @click="copy('{{ $bank['account'] }}', $el)"
-                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex-shrink-0"
+                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-150 ease-out flex-shrink-0"
                                     >{{ __('payment.copy') }}</button>
                                 </div>
                             </div>
@@ -95,7 +95,7 @@
                                     <span class="font-mono font-bold text-gray-900 text-sm flex-1 ltr:text-left rtl:text-right break-all" dir="ltr">{{ $bank['iban'] }}</span>
                                     <button
                                         @click="copy('{{ $bank['iban'] }}', $el)"
-                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex-shrink-0"
+                                        class="px-3 py-1 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-150 ease-out flex-shrink-0"
                                     >{{ __('payment.copy') }}</button>
                                 </div>
                             </div>
@@ -114,7 +114,8 @@
         <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
             <h3 class="text-lg font-bold text-gray-900 mb-3">{{ __('payment.intl_options_title') }}</h3>
             <p class="text-gray-700 text-sm mb-2">💳 {{ __('payment.intl_credit_card') }}</p>
-            <p class="text-gray-700 text-sm mb-3">💰 {{ __('payment.intl_paypal') }}</p>
+            <p class="text-gray-700 text-sm mb-2">💰 {{ __('payment.intl_paypal') }}</p>
+            <p class="text-gray-700 text-sm mb-3">🏦 {{ __('payment.intl_bank_transfer') }}</p>
             <p class="text-gray-500 text-xs leading-relaxed">{{ __('payment.intl_note') }}</p>
         </div>
 
@@ -163,18 +164,28 @@
     function copyHelper() {
         return {
             copy(text, btn) {
-                const showCopied = () => {
-                    const orig = btn.textContent;
-                    btn.textContent = '✓ {{ __("payment.copied") }}';
-                    btn.classList.add('bg-green-600');
-                    btn.classList.remove('bg-primary-600');
-                    setTimeout(() => {
-                        btn.textContent = orig;
-                        btn.classList.remove('bg-green-600');
-                        btn.classList.add('bg-primary-600');
-                    }, 2000);
-                };
+                const orig = btn.textContent;
+                const copiedText = '✓ {{ __("payment.copied") }}';
+                // Instant feedback — update button first, before any async work
+                btn.textContent = copiedText;
+                btn.classList.remove('bg-primary-600');
+                btn.classList.add('bg-green-600');
+                btn.style.setProperty('background-color', 'rgb(22, 163, 74)', 'important');
 
+                const revert = () => {
+                    btn.textContent = orig;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-primary-600');
+                    btn.style.removeProperty('background-color');
+                };
+                setTimeout(revert, 500);
+                const showCopied = () => {
+                    btn.textContent = copiedText;
+                    btn.classList.remove('bg-primary-600');
+                    btn.classList.add('bg-green-600');
+                    btn.style.setProperty('background-color', 'rgb(22, 163, 74)', 'important');
+                    setTimeout(revert, 500);
+                };
                 const fallbackCopy = () => {
                     try {
                         const el = document.createElement('textarea');
@@ -189,12 +200,13 @@
                         document.body.removeChild(el);
                         showCopied();
                     } catch (e) {
+                        revert();
                         prompt('{{ __("payment.copy_text") }}', text);
                     }
                 };
 
                 if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+                    navigator.clipboard.writeText(text).catch(() => { revert(); fallbackCopy(); });
                 } else {
                     fallbackCopy();
                 }

@@ -8,10 +8,10 @@ beforeEach(function (): void {
     Artisan::call('db:seed', ['--class' => 'RoleAndPermissionSeeder']);
 });
 
-test('admin can access orders in Filament', function (): void {
+test('admin can access admin panel home (orders list)', function (): void {
     $admin = User::where('email', 'admin@wasetzon.test')->first();
 
-    $response = $this->actingAs($admin)->get(route('filament.admin.resources.orders.index'));
+    $response = $this->actingAs($admin)->get(route('orders.index'));
 
     $response->assertOk();
 });

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ShippingCompanies;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\ShippingCompanies\Pages\CreateShippingCompany;
 use App\Filament\Resources\ShippingCompanies\Pages\EditShippingCompany;
 use App\Filament\Resources\ShippingCompanies\Pages\ListShippingCompanies;
@@ -46,9 +47,9 @@ class ShippingCompanyResource extends Resource
         return __('Shipping Companies');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Order Setup');
+        return AdminNavigationGroup::OrderSetup;
     }
 
     public static function form(Schema $schema): Schema

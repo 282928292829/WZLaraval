@@ -90,4 +90,42 @@ class ImageConversionService
 
         return $base.'.jpg';
     }
+
+    /**
+     * Compress an existing image file in place. Only works for image MIME types.
+     * Converts to JPEG at given quality. Returns new size in bytes, or null on failure.
+     */
+    public function compressFile(string $path, string $disk = 'public', int $quality = 55): ?int
+    {
+        $fullPath = Storage::disk($disk)->path($path);
+        if (! file_exists($fullPath)) {
+            return null;
+        }
+
+        try {
+            $imagick = new Imagick($fullPath);
+            $mime = strtolower($imagick->getImageMimeType() ?? '');
+            if (! str_starts_with($mime, 'image/')) {
+                $imagick->destroy();
+
+                return null;
+            }
+
+            $imagick->setImageFormat('jpeg');
+            $imagick->setImageCompressionQuality($quality);
+            $imagick->setImageCompression(Imagick::COMPRESSION_JPEG);
+            $imagick->stripImage();
+
+            $blob = $imagick->getImageBlob();
+            $imagick->destroy();
+
+            Storage::disk($disk)->put($path, $blob);
+
+            return strlen($blob);
+        } catch (ImagickException $e) {
+            report($e);
+
+            return null;
+        }
+    }
 }

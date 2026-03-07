@@ -56,6 +56,10 @@ class InboxController extends Controller
             return route('orders.show', $activity->subject_id);
         }
 
+        if ($activity->subject_type === 'App\\Models\\ContactSubmission' && $activity->subject_id) {
+            return route('contact-submissions.show', $activity->subject_id);
+        }
+
         return null;
     }
 }

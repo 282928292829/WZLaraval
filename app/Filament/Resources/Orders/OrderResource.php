@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
@@ -37,9 +38,9 @@ class OrderResource extends Resource
         return __('Orders');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Orders');
+        return AdminNavigationGroup::Orders;
     }
 
     public static function canAccess(): bool

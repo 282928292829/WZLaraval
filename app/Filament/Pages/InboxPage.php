@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -13,9 +14,9 @@ class InboxPage extends Page
 
     protected static ?int $navigationSort = 2;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Orders');
+        return AdminNavigationGroup::Orders;
     }
 
     public static function getNavigationLabel(): string

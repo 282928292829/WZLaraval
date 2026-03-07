@@ -78,7 +78,7 @@
                 <span class="text-sm text-primary-200">{{ __('orders.bulk_change_status') }}:</span>
                 <select x-model="bulkStatus"
                         class="text-sm bg-primary-700 text-white border border-primary-500 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-white focus:outline-none">
-                    <option value="">— {{ __('orders.all_statuses') }} —</option>
+                    <option value="">{{ __('common.dash') }} {{ __('orders.all_statuses') }} {{ __('common.dash') }}</option>
                     @foreach ($statuses as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
@@ -365,7 +365,7 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-3">
-                                            <p class="font-medium text-gray-800 truncate max-w-[160px]">{{ $order->user?->name ?? '—' }}</p>
+                                            <p class="font-medium text-gray-800 truncate max-w-[160px]">{{ $order->user?->name ?? __('common.dash') }}</p>
                                             <p class="text-xs text-gray-400 truncate max-w-[160px]">{{ $order->user?->email ?? '' }}</p>
                                         </td>
                                         <td class="px-3 py-3 text-gray-500 whitespace-nowrap">
@@ -414,7 +414,7 @@
                                             @elseif ($lastCommentBy === 'customer')
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">{{ __('staff.last_comment_customer') }}</span>
                                             @else
-                                                <span class="text-xs text-gray-400">—</span>
+                                                <span class="text-xs text-gray-400">{{ __('common.dash') }}</span>
                                             @endif
                                         </td>
                                         <td class="ps-3 pe-4 py-3">
@@ -474,7 +474,7 @@
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
-                                    <span class="font-medium truncate max-w-[140px]">{{ $order->user?->name ?? '—' }}</span>
+                                    <span class="font-medium truncate max-w-[140px]">{{ $order->user?->name ?? __('common.dash') }}</span>
                                     <span class="text-gray-300">·</span>
                                     <span>{{ $order->created_at->format('Y/m/d') }}</span>
                                     @php

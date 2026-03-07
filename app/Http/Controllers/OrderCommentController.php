@@ -20,15 +20,10 @@ class OrderCommentController extends Controller
 {
     public function store(StoreOrderCommentRequest $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         $user = auth()->user();
-
-        $isOwner = $order->user_id === $user->id;
         $isStaff = $user->isStaffOrAbove();
-
-        if (! $isOwner && ! $isStaff) {
-            abort(403);
-        }
-
         $isInternal = $isStaff && $request->boolean('is_internal');
 
         $validated = $request->validated();
@@ -81,21 +76,10 @@ class OrderCommentController extends Controller
 
     public function update(UpdateOrderCommentRequest $request, Order $order, int $commentId)
     {
-        $user = auth()->user();
         $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
+        $this->authorize('update', $comment);
 
-        if ($comment->is_system) {
-            abort(403, __('orders.cannot_edit_system_comment'));
-        }
-
-        $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->isStaffOrAbove();
-        $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
-
-        if (! $canEdit) {
-            abort(403);
-        }
-
+        $user = auth()->user();
         $validated = $request->validated();
 
         $comment->edits()->create([
@@ -137,21 +121,10 @@ class OrderCommentController extends Controller
 
     public function attachFiles(AttachCommentFilesRequest $request, Order $order, int $commentId)
     {
-        $user = auth()->user();
         $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
+        $this->authorize('update', $comment);
 
-        if ($comment->is_system) {
-            abort(403, __('orders.cannot_edit_system_comment'));
-        }
-
-        $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->isStaffOrAbove();
-        $canEdit = $isOwner || ($isStaff && $user->can('reply-to-comments'));
-
-        if (! $canEdit) {
-            abort(403);
-        }
-
+        $user = auth()->user();
         $maxFiles = (int) \App\Models\Setting::get('comment_max_files', 10);
         $existingCount = $comment->files()->count();
         $newCount = count($request->file('files', []));
@@ -208,16 +181,10 @@ class OrderCommentController extends Controller
 
     public function destroy(Request $request, Order $order, int $commentId)
     {
-        $user = auth()->user();
         $comment = OrderComment::where('order_id', $order->id)->findOrFail($commentId);
+        $this->authorize('delete', $comment);
 
-        $isOwner = $comment->user_id === $user->id;
-        $isStaff = $user->isStaffOrAbove();
-
-        if (! $isOwner && ! ($isStaff && $user->can('delete-any-comment'))) {
-            abort(403);
-        }
-
+        $user = auth()->user();
         $comment->update(['deleted_by' => $user->id]);
         $comment->delete();
 
@@ -231,6 +198,11 @@ class OrderCommentController extends Controller
         $comment = OrderComment::where('order_id', $order->id)->with('order.user')->findOrFail($commentId);
 
         if (! Setting::get('email_enabled', false)) {
+            return redirect()->route('orders.show', $order)
+                ->with('error', __('orders.notification_email_disabled'));
+        }
+
+        if (! Setting::get('email_comment_notification', false)) {
             return redirect()->route('orders.show', $order)
                 ->with('error', __('orders.notification_email_disabled'));
         }
@@ -293,11 +265,9 @@ class OrderCommentController extends Controller
 
     public function addTimelineAsComment(Request $request, Order $order, int $timelineId)
     {
-        $user = auth()->user();
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
+        $this->authorize('view-all-orders');
 
+        $user = auth()->user();
         $entry = $order->timeline()->findOrFail($timelineId);
 
         $body = $this->formatTimelineEntryAsCommentText($entry);
@@ -313,13 +283,11 @@ class OrderCommentController extends Controller
 
     public function markRead(Request $request, Order $order): \Illuminate\Http\JsonResponse
     {
+        $this->authorize('view', $order);
+
         $user = auth()->user();
         $order->load('comments');
-        $isOwner = $order->user_id === $user->id;
         $isStaff = $user->isStaffOrAbove();
-        if (! $isOwner && ! $isStaff) {
-            return response()->json(['success' => false], 403);
-        }
 
         $commentIds = $request->input('comment_ids', []);
         if (! is_array($commentIds)) {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Orders\CommentTemplateResource\Pages\CreateCommentTemplate;
 use App\Filament\Resources\Orders\CommentTemplateResource\Pages\EditCommentTemplate;
 use App\Filament\Resources\Orders\CommentTemplateResource\Pages\ListCommentTemplates;
@@ -37,9 +38,9 @@ class CommentTemplateResource extends Resource
         return __('Comment Templates');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Order Setup');
+        return AdminNavigationGroup::OrderSetup;
     }
 
     public static function canAccess(): bool

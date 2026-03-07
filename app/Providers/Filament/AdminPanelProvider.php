@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\TranslationsPage;
 use App\Http\Middleware\SetLocale;
@@ -32,16 +33,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->navigationGroups([
-                0 => __('Orders'),
-                1 => __('Order Setup'),
-                2 => __('Content'),
-                3 => __('Settings'),
-                4 => __('Users'),
-            ])
+            ->navigationGroups(AdminNavigationGroup::class)
             ->favicon(fn () => Setting::faviconUrl('admin'))
-            ->brandName(fn () => LogoHelper::getLogoText())
-            ->brandLogo(fn () => LogoHelper::getLogoUrl())
+            ->brandName(fn () => LogoHelper::getAdminLogoText())
+            ->brandLogo(fn () => LogoHelper::getAdminLogoUrl())
             ->font(fn () => app()->getLocale() === 'ar' ? 'IBM Plex Sans Arabic' : 'Inter')
             ->colors([
                 'primary' => Color::hex(Setting::get('primary_color', '#f97316')),
@@ -76,8 +71,6 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar'))
                     ->openUrlInNewTab(false),
             ])
-            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'))
-            ->renderHook(PanelsRenderHook::SIDEBAR_LOGO_AFTER, fn () => view('filament.homepage-button'))
-            ->renderHook(PanelsRenderHook::SIDEBAR_FOOTER, fn () => view('filament.homepage-link'));
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'));
     }
 }

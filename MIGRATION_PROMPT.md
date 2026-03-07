@@ -34,7 +34,7 @@ Read `MIGRATION_SCHEMA.md` in the wasetzonlaraval project. It documents:
 
 - Path: `wasetzonlaraval/` (Laravel 12, Filament, Livewire)
 - Existing migration commands exist in `app/Console/Commands/Migration/` but we are starting fresh — you may reference them for schema understanding but the new migration should be built cleanly from `MIGRATION_SCHEMA.md`.
-- Target tables: orders, order_items, order_comments, order_timeline, order_files, users, user_addresses, ad_campaigns, comment_templates, posts, post_categories, post_comments, pages.
+- Target tables: orders, order_items, order_comments, order_timeline, order_files, users, user_addresses, ad_campaigns, comment_templates, posts, post_categories, post_comments, pages, page_comments.
 - Orders use `order_number` (from wp post_name) and `wp_post_id` for mapping; route key is order_number.
 - Order number format: unique orders = plain number (e.g. 66610); duplicates = order_id-2, -3 (e.g. 42548-2).
 
@@ -74,7 +74,7 @@ Remove `app/Console/Commands/Migration/` and any `migrate:all` orchestrator. Bui
 
 1. Read `MIGRATION_SCHEMA.md` thoroughly.
 2. Ensure config/migration.php and database.php legacy connection are correct for old-wordpress.
-3. Build migration commands in the correct dependency order (ad-campaigns → comment-templates → users → addresses → orders → order-comments → timeline → fix-merges → order-files → posts → post-comments → pages → assign-superadmins → validate).
+3. Build migration commands in the correct dependency order (ad-campaigns → comment-templates → users → addresses → orders → order-comments → timeline → fix-merges → order-files → posts → post-comments → pages → page-comments → assign-superadmins → validate).
 4. Each command must read from `DB::connection('legacy')` and write to the default connection. Use `config('migration.legacy_uploads_path')` for file paths.
 5. Handle edge cases per User Decisions above. Missing order authors → fallback to admin.
 6. Update MIGRATION.md to remove any reference to app/public; state old-wordpress is the sole source.

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use App\Models\Setting;
 use App\Services\SettingsPersistService;
 use BackedEnum;
@@ -36,9 +37,9 @@ class EmailSettingsPage extends Page
 
     protected static ?string $title = null;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Settings');
+        return AdminNavigationGroup::Settings;
     }
 
     public static function getNavigationLabel(): string
@@ -67,6 +68,7 @@ class EmailSettingsPage extends Page
         'email_enabled', 'email_from_name', 'email_from_address',
         'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_encryption',
         'email_registration', 'email_welcome', 'email_password_reset', 'email_comment_notification',
+        'email_order_confirmation', 'email_status_change',
         'email_registration_subject_ar', 'email_registration_subject_en',
         'email_registration_body_ar', 'email_registration_body_en',
         'email_welcome_subject_ar', 'email_welcome_subject_en',
@@ -115,6 +117,8 @@ class EmailSettingsPage extends Page
             'email_welcome' => '0',
             'email_password_reset' => '1',
             'email_comment_notification' => '0',
+            'email_order_confirmation' => '1',
+            'email_status_change' => '1',
             'email_registration_subject_ar' => '',
             'email_registration_subject_en' => '',
             'email_registration_body_ar' => '',
@@ -318,6 +322,12 @@ class EmailSettingsPage extends Page
 
                                         Toggle::make('email_comment_notification')
                                             ->label(__('Comment Notifications (opt-in)')),
+
+                                        Toggle::make('email_order_confirmation')
+                                            ->label(__('Order Confirmation')),
+
+                                        Toggle::make('email_status_change')
+                                            ->label(__('Status Change')),
                                     ])
                                     ->columns(2)
                                     ->collapsible(),
@@ -394,6 +404,7 @@ class EmailSettingsPage extends Page
         $booleanKeys = [
             'email_enabled', 'email_registration', 'email_welcome',
             'email_password_reset', 'email_comment_notification',
+            'email_order_confirmation', 'email_status_change',
         ];
 
         $integerKeys = ['smtp_port'];

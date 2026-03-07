@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use App\Models\Setting;
 use App\Services\SettingsPersistService;
 use BackedEnum;
@@ -31,9 +32,9 @@ class IntegrationsSettingsPage extends Page
 
     protected static ?string $title = null;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Settings');
+        return AdminNavigationGroup::Settings;
     }
 
     public static function getNavigationLabel(): string

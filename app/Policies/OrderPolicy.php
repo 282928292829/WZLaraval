@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\User;
 
 class OrderPolicy
@@ -73,5 +74,31 @@ class OrderPolicy
     public function forceDelete(User $user, Order $order): bool
     {
         return false;
+    }
+
+    /**
+     * Determine whether the user can perform customer-only actions (payment notify, cancel, customer merge request).
+     * Only the order owner may perform these.
+     */
+    public function performCustomerAction(User $user, Order $order): bool
+    {
+        return $order->user_id === $user->id;
+    }
+
+    /**
+     * Determine whether the user can add files to order items after submission.
+     * Staff can always add; customers only when customer_can_add_files_after_submit is enabled.
+     */
+    public function addItemFiles(User $user, Order $order): bool
+    {
+        if ($user->isStaffOrAbove()) {
+            return true;
+        }
+
+        if ($order->user_id !== $user->id) {
+            return false;
+        }
+
+        return (bool) Setting::get('customer_can_add_files_after_submit', false);
     }
 }

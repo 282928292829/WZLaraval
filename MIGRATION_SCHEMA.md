@@ -152,6 +152,7 @@ All 20 WordPress sites share the same database structure. Core tables used for m
 - **Posts:** wp_posts post_type='post' + categories (wp_terms)
 - **Pages:** wp_posts post_type='page'; skip slugs: new-order, orders, new-order-2, singleorders2
 - **Post comments:** wp_comments where comment_post_ID in post IDs
+- **Page comments:** wp_comments where comment_post_ID in page IDs (post_type='page'); MigratePages writes migration_wp_page_id_map.json for migrate:page-comments
 
 ---
 
@@ -168,9 +169,10 @@ All 20 WordPress sites share the same database structure. Core tables used for m
 9. order-files (needs orders)
 10. posts
 11. post-comments (needs posts)
-12. pages
-13. assign-superadmins (needs users)
-14. validate
+12. pages (writes migration_wp_page_id_map.json)
+13. page-comments (needs pages; uses page ID map)
+14. assign-superadmins (needs users)
+15. validate
 
 ---
 

@@ -301,6 +301,7 @@ test('comment trigger does not post twice for same unreplied comment', function 
 test('notify_customer_email sends CommentNotification when public comment is posted', function (): void {
     Mail::fake();
     Setting::set('email_enabled', true, 'boolean', 'email');
+    Setting::set('email_comment_notification', true, 'boolean', 'email');
 
     OrderStatusAutomationRule::create([
         'trigger_type' => 'status',
@@ -329,6 +330,7 @@ test('notify_customer_email sends CommentNotification when public comment is pos
 test('notify_customer_email sends StatusChangeNotification when status changes without public comment', function (): void {
     Mail::fake();
     Setting::set('email_enabled', true, 'boolean', 'email');
+    Setting::set('email_status_change', true, 'boolean', 'email');
 
     OrderStatusAutomationRule::create([
         'trigger_type' => 'status',
@@ -406,4 +408,60 @@ test('notify_customer_email does not send when email_enabled is false', function
         ->assertSuccessful();
 
     Mail::assertNotQueued(CommentNotification::class);
+});
+
+test('notify_customer_email does not send CommentNotification when email_comment_notification is false', function (): void {
+    Mail::fake();
+    Setting::set('email_enabled', true, 'boolean', 'email');
+    Setting::set('email_comment_notification', false, 'boolean', 'email');
+
+    OrderStatusAutomationRule::create([
+        'trigger_type' => 'status',
+        'status' => 'needs_payment',
+        'days' => 1,
+        'hours' => 0,
+        'action_type' => 'comment',
+        'comment_template' => 'Reminder',
+        'comment_is_internal' => false,
+        'notify_customer_email' => true,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->create([
+        'status' => 'needs_payment',
+        'status_changed_at' => now()->subDays(2),
+    ]);
+
+    $this->artisan('orders:status-automation')
+        ->assertSuccessful();
+
+    Mail::assertNotQueued(CommentNotification::class);
+});
+
+test('notify_customer_email does not send StatusChangeNotification when email_status_change is false', function (): void {
+    Mail::fake();
+    Setting::set('email_enabled', true, 'boolean', 'email');
+    Setting::set('email_status_change', false, 'boolean', 'email');
+
+    OrderStatusAutomationRule::create([
+        'trigger_type' => 'status',
+        'status' => 'needs_payment',
+        'days' => 1,
+        'hours' => 0,
+        'action_type' => 'change_status',
+        'action_status' => 'on_hold',
+        'comment_template' => 'Unused',
+        'notify_customer_email' => true,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->create([
+        'status' => 'needs_payment',
+        'status_changed_at' => now()->subDays(2),
+    ]);
+
+    $this->artisan('orders:status-automation')
+        ->assertSuccessful();
+
+    Mail::assertNotQueued(StatusChangeNotification::class);
 });

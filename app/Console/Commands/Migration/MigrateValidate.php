@@ -35,6 +35,7 @@ class MigrateValidate extends Command
         $this->checkPosts();
         $this->checkPostComments();
         $this->checkPages();
+        $this->checkPageComments();
         $this->checkForeignKeyIntegrity();
 
         $this->renderResultsTable();
@@ -285,6 +286,49 @@ class MigrateValidate extends Command
 
         if ($brokenThreads > 0) {
             $this->issues[] = "post_comments: {$brokenThreads} reply comments whose parent belongs to a different post";
+        }
+    }
+
+    private function checkPageComments(): void
+    {
+        if (! DB::getSchemaBuilder()->hasTable('page_comments')) {
+            $this->results[] = [
+                'entity' => 'page_comments',
+                'legacy' => '-',
+                'laravel' => '-',
+                'status' => '~',
+                'note' => 'Table not found (run migrations)',
+            ];
+
+            return;
+        }
+
+        $legacy = DB::connection('legacy')
+            ->table('comments as c')
+            ->join('posts as p', 'p.ID', '=', 'c.comment_post_ID')
+            ->where('p.post_type', 'page')
+            ->where('c.comment_approved', '1')
+            ->count();
+
+        $laravel = DB::table('page_comments')->count();
+        $ok = $laravel >= $legacy;
+
+        $this->results[] = [
+            'entity' => 'page_comments',
+            'legacy' => $legacy,
+            'laravel' => $laravel,
+            'status' => $ok ? '✓' : '?',
+            'note' => $ok ? 'OK' : "Expected {$legacy}, got {$laravel}",
+        ];
+
+        $brokenThreads = DB::table('page_comments as c')
+            ->join('page_comments as parent', 'parent.id', '=', 'c.parent_id')
+            ->where('c.parent_id', '>', 0)
+            ->whereColumn('c.page_id', '!=', 'parent.page_id')
+            ->count();
+
+        if ($brokenThreads > 0) {
+            $this->issues[] = "page_comments: {$brokenThreads} reply comments whose parent belongs to a different page";
         }
     }
 

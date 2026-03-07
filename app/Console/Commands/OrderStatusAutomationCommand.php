@@ -249,6 +249,9 @@ class OrderStatusAutomationCommand extends Command
 
         try {
             if ($createdComment !== null && ! $createdComment->is_internal) {
+                if (! Setting::get('email_comment_notification', false)) {
+                    return;
+                }
                 Mail::to($order->user->email, $order->user->name)
                     ->locale($order->user->locale ?? 'ar')
                     ->queue(new CommentNotification($createdComment));
@@ -261,6 +264,9 @@ class OrderStatusAutomationCommand extends Command
                     'sent_at' => now(),
                 ]);
             } elseif ($createdComment === null || $createdComment->is_internal) {
+                if (! Setting::get('email_status_change', true)) {
+                    return;
+                }
                 Mail::to($order->user->email, $order->user->name)
                     ->locale($order->user->locale ?? 'ar')
                     ->queue(new StatusChangeNotification($order));

@@ -75,7 +75,7 @@
                             </button>
                         </div>
                     @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-400">{{ __('common.dash') }}</span>
                     @endif
                     <div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-400 sm:hidden">
                         @if ($item->color)<span>{{ $item->color }}</span>@endif
@@ -88,19 +88,19 @@
                 <td class="px-2 py-3 align-middle text-center">
                     <span class="text-xs font-semibold text-gray-800">{{ $item->qty }}</span>
                 </td>
-                <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">{{ $item->color ?: '—' }}</td>
-                <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">{{ $item->size ?: '—' }}</td>
+                <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">{{ $item->color ?: __('common.dash') }}</td>
+                <td class="px-4 py-3 align-middle text-gray-600 hidden sm:table-cell">{{ $item->size ?: __('common.dash') }}</td>
                 <td class="px-2 py-3 align-middle text-xs text-gray-600 hidden sm:table-cell tabular-nums" dir="ltr">
-                    @if ($item->currency && $item->unit_price){{ number_format($item->unit_price, 2) }} {{ $item->currency }}@else—@endif
+                    @if ($item->currency && $item->unit_price){{ number_format($item->unit_price, 2) }} {{ $item->currency }}@else{{ __('common.dash') }}@endif
                 </td>
                 @if ($isStaff)
                     <td class="px-2 py-3 align-middle text-xs hidden sm:table-cell tabular-nums" dir="ltr">
                         @if ($item->final_price)<span class="font-medium text-primary-600">{{ number_format($item->final_price, 2) }} SAR</span>
-                        @else<span class="text-gray-300">—</span>@endif
+                        @else<span class="text-gray-300">{{ __('common.dash') }}</span>@endif
                     </td>
                 @endif
                 <td class="px-4 py-3 align-middle text-xs text-gray-400 italic hidden md:table-cell max-w-[160px]">
-                    <div class="truncate" title="{{ $item->notes }}">{{ $item->notes ?: '—' }}</div>
+                    <div class="truncate" title="{{ $item->notes }}">{{ $item->notes ?: __('common.dash') }}</div>
                 </td>
                 <td class="px-4 py-3 align-middle">
                     @if ($itemAllFiles->isNotEmpty())
@@ -133,7 +133,7 @@
                             @endforeach
                         </div>
                     @else
-                        <span class="text-xs text-gray-300">—</span>
+                        <span class="text-xs text-gray-300">{{ __('common.dash') }}</span>
                     @endif
                 </td>
                 <td class="px-4 py-3 align-middle">
@@ -166,7 +166,7 @@
                             @endif
                         </div>
                     @else
-                        <span class="text-xs text-gray-400">—</span>
+                        <span class="text-xs text-gray-400">{{ __('common.dash') }}</span>
                     @endif
                 </td>
             </tr>

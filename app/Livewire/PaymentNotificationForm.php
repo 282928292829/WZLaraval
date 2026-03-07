@@ -56,6 +56,40 @@ class PaymentNotificationForm extends Component
         return $rules;
     }
 
+    protected function validationAttributes(): array
+    {
+        return [
+            'guest_name' => __('payment_notify.guest_name'),
+            'guest_phone' => __('payment_notify.guest_phone'),
+            'amount' => __('payment_notify.amount_label'),
+            'payment_method' => __('payment_notify.method_label'),
+            'order_number' => __('payment_notify.order_number_label'),
+            'notes' => __('payment_notify.notes_label'),
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'guest_name.required' => __('payment_notify.validation_guest_name_required'),
+            'guest_phone.required' => __('payment_notify.validation_guest_phone_required'),
+        ];
+    }
+
+    public function updatedGuestName(): void
+    {
+        if ($this->guest_name !== '') {
+            $this->resetValidation('guest_name');
+        }
+    }
+
+    public function updatedGuestPhone(): void
+    {
+        if ($this->guest_phone !== '') {
+            $this->resetValidation('guest_phone');
+        }
+    }
+
     public function submit(): void
     {
         $this->amount = (string) to_english_digits($this->amount);

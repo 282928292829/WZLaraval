@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use App\Models\Setting;
 use App\Services\SettingsPersistService;
 use App\Support\FontHelper;
@@ -18,6 +19,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -39,9 +41,9 @@ class AppearanceSettingsPage extends Page
 
     protected static ?string $title = null;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Settings');
+        return AdminNavigationGroup::Settings;
     }
 
     public static function getNavigationLabel(): string
@@ -72,6 +74,9 @@ class AppearanceSettingsPage extends Page
         'logo_image', 'logo_image_ar', 'logo_image_en',
         'logo_text', 'logo_text_ar', 'logo_text_en',
         'logo_alt', 'logo_alt_ar', 'logo_alt_en',
+        'admin_logo_use_per_language',
+        'admin_logo_image', 'admin_logo_image_ar', 'admin_logo_image_en',
+        'admin_logo_text', 'admin_logo_text_ar', 'admin_logo_text_en',
         'font_source', 'font_google_url', 'font_uploaded_path', 'font_upload_family_name',
     ];
 
@@ -110,6 +115,13 @@ class AppearanceSettingsPage extends Page
             'logo_alt' => '',
             'logo_alt_ar' => '',
             'logo_alt_en' => '',
+            'admin_logo_use_per_language' => false,
+            'admin_logo_image' => '',
+            'admin_logo_image_ar' => '',
+            'admin_logo_image_en' => '',
+            'admin_logo_text' => '',
+            'admin_logo_text_ar' => '',
+            'admin_logo_text_en' => '',
             'font_source' => '',
             'font_google_url' => '',
             'font_uploaded_path' => '',
@@ -167,6 +179,7 @@ class AppearanceSettingsPage extends Page
                                         Toggle::make('logo_use_per_language')
                                             ->label(__('Use per-language logo image'))
                                             ->helperText(__('When ON, you can upload a different logo image for Arabic and English.'))
+                                            ->live()
                                             ->columnSpanFull()
                                             ->onColor('success'),
 
@@ -245,6 +258,65 @@ class AppearanceSettingsPage extends Page
                                     ])
                                     ->columns(3)
                                     ->collapsible(false),
+
+                                Section::make(__('Admin Panel Logo'))
+                                    ->description(__('admin_logo.section_description'))
+                                    ->schema([
+                                        Toggle::make('admin_logo_use_per_language')
+                                            ->label(__('admin_logo.use_per_language'))
+                                            ->helperText(__('admin_logo.use_per_language_help'))
+                                            ->live()
+                                            ->columnSpanFull()
+                                            ->onColor('success'),
+
+                                        FileUpload::make('admin_logo_image')
+                                            ->label(__('admin_logo.image_all'))
+                                            ->helperText(__('admin_logo.image_help'))
+                                            ->image()
+                                            ->directory('logos')
+                                            ->maxSize(512)
+                                            ->nullable()
+                                            ->visible(fn ($get) => ! $get('admin_logo_use_per_language')),
+
+                                        TextInput::make('admin_logo_text')
+                                            ->label(__('admin_logo.text_all'))
+                                            ->placeholder(config('app.name'))
+                                            ->helperText(__('admin_logo.text_help'))
+                                            ->visible(fn ($get) => ! $get('admin_logo_use_per_language')),
+
+                                        Grid::make(2)
+                                            ->visible(fn ($get) => (bool) $get('admin_logo_use_per_language'))
+                                            ->schema([
+                                                FileUpload::make('admin_logo_image_ar')
+                                                    ->label(__('Logo Image').' — '.__('Arabic'))
+                                                    ->helperText(__('admin_logo.image_help'))
+                                                    ->image()
+                                                    ->directory('logos')
+                                                    ->maxSize(512)
+                                                    ->nullable(),
+
+                                                FileUpload::make('admin_logo_image_en')
+                                                    ->label(__('Logo Image').' — '.__('English'))
+                                                    ->helperText(__('admin_logo.image_help'))
+                                                    ->image()
+                                                    ->directory('logos')
+                                                    ->maxSize(512)
+                                                    ->nullable(),
+
+                                                TextInput::make('admin_logo_text_ar')
+                                                    ->label(__('Logo Text').' — '.__('Arabic'))
+                                                    ->placeholder(config('app.name'))
+                                                    ->helperText(__('admin_logo.text_help')),
+
+                                                TextInput::make('admin_logo_text_en')
+                                                    ->label(__('Logo Text').' — '.__('English'))
+                                                    ->placeholder(config('app.name'))
+                                                    ->helperText(__('admin_logo.text_help')),
+                                            ]),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->collapsed(false),
                             ]),
                         Tab::make(__('font.section_title'))
                             ->icon(Heroicon::OutlinedLanguage)
@@ -398,10 +470,17 @@ class AppearanceSettingsPage extends Page
             'logo_alt' => 'appearance',
             'logo_alt_ar' => 'appearance',
             'logo_alt_en' => 'appearance',
+            'admin_logo_use_per_language' => 'appearance',
+            'admin_logo_image' => 'appearance',
+            'admin_logo_image_ar' => 'appearance',
+            'admin_logo_image_en' => 'appearance',
+            'admin_logo_text' => 'appearance',
+            'admin_logo_text_ar' => 'appearance',
+            'admin_logo_text_en' => 'appearance',
         ];
 
-        $booleanKeys = ['logo_use_per_language', 'logo_text_use_per_language'];
-        $fileUploadKeys = ['logo_image', 'logo_image_ar', 'logo_image_en'];
+        $booleanKeys = ['logo_use_per_language', 'logo_text_use_per_language', 'admin_logo_use_per_language'];
+        $fileUploadKeys = ['logo_image', 'logo_image_ar', 'logo_image_en', 'admin_logo_image', 'admin_logo_image_ar', 'admin_logo_image_en'];
         $skipKeys = ['font_source', 'font_google_url', 'font_uploaded_path', 'font_upload_family_name'];
 
         $service = app(SettingsPersistService::class);

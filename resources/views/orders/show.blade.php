@@ -41,6 +41,17 @@
 @push('scripts')
 <script>window.orderLightboxImages = @json($lightboxImages);</script>
 <script>window.orderShowToastMessages = @json($orderShowToastMessages);</script>
+@if(session('order_created'))
+{{-- Clear new-order draft when arriving from order creation (success screen disabled) --}}
+<script>
+try {
+    localStorage.removeItem('wz_order_form_draft');
+    localStorage.removeItem('wz_order_form_notes');
+    localStorage.removeItem('wz_opus46_draft');
+    localStorage.removeItem('wz_opus46_notes');
+} catch (e) {}
+</script>
+@endif
 @endpush
 
 @php
@@ -170,27 +181,41 @@
         </div>
     @endif
 
-    {{-- Comments discovery banner: first 2 visits only (same as WP: top of order, link to comments at bottom) --}}
-    @if($showCommentsDiscovery ?? true)
+    {{-- Comments discovery banner: first order only, first 2 visits, link to comments at bottom --}}
+    @if($showCommentsDiscovery ?? false)
     <div id="comments-discovery-banner"
          class="rounded-xl mb-4 flex items-center justify-between gap-3 flex-wrap bg-gradient-to-br from-primary-500 to-primary-400 text-white py-3 px-4 shadow-[0_2px_8px_rgba(249,115,22,0.2)]"
-         x-data="{ hidden: sessionStorage.getItem('commentsDiscoveryBannerDismissed') === '1' }"
+         x-data="{
+             hidden: false,
+             dontShowAgain: false,
+             dismissUrl: @js(route('orders.comments-discovery.dismiss')),
+             dismiss() {
+                 this.hidden = true;
+                 if (this.dontShowAgain) {
+                     fetch(this.dismissUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'Accept': 'application/json' }, credentials: 'same-origin' });
+                 }
+             }
+         }"
          x-show="!hidden"
          x-transition>
         <div class="flex flex-1 items-center gap-2 min-w-0">
             <span class="text-lg shrink-0">💬</span>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
                 <div class="font-semibold mb-0.5">{{ __('orders.comments_discovery_title') }}</div>
                 <div class="text-sm opacity-95">
                     {{ __('orders.comments_discovery_description') }}
                     <a href="#comments" class="text-white underline font-semibold cursor-pointer hover:opacity-90">{{ __('orders.comments_discovery_link') }}</a>
                 </div>
+                <label class="mt-2 flex items-center gap-2 cursor-pointer text-sm opacity-95 hover:opacity-100">
+                    <input type="checkbox" x-model="dontShowAgain" class="rounded border-white/60 bg-white/20 text-primary-600 focus:ring-primary-300">
+                    <span>{{ __('orders.comments_discovery_dont_show_again') }}</span>
+                </label>
             </div>
         </div>
         <button type="button"
                 class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-lg transition-colors hover:bg-white/20"
                 title="{{ __('common.dismiss') }}"
-                @click="sessionStorage.setItem('commentsDiscoveryBannerDismissed', '1'); hidden = true">
+                @click="dismiss()">
             ✕
         </button>
     </div>
@@ -338,7 +363,7 @@
             $editableStatuses       = ['pending', 'needs_payment', 'on_hold'];
             $canChangeAddress       = in_array($order->status, $editableStatuses) && ($isOwner || $isStaff);
             $orderUserAddresses     = $canChangeAddress
-                                      ? $order->user->addresses()->orderByDesc('is_default')->get()
+                                      ? $order->user->addresses->sortByDesc('is_default')->values()
                                       : collect();
             $snap                   = $order->shipping_address_snapshot;
             $showAddressBlock       = $isStaff || $showAddressToCustomer || $canChangeAddress;
@@ -684,9 +709,9 @@
                                     @if ($entry->type === 'status_change')
                                         <p class="text-sm text-gray-700">
                                             {{ __('orders.status_changed_from') }}
-                                            <span class="font-medium">{{ $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : '—' }}</span>
+                                            <span class="font-medium">{{ $entry->status_from ? __(ucfirst(str_replace('_', ' ', $entry->status_from))) : __('common.dash') }}</span>
                                             {{ __('orders.to') }}
-                                            <span class="font-medium text-primary-600">{{ $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : '—' }}</span>
+                                            <span class="font-medium text-primary-600">{{ $entry->status_to ? __(ucfirst(str_replace('_', ' ', $entry->status_to))) : __('common.dash') }}</span>
                                         </p>
                                     @elseif ($entry->body)
                                         <p class="text-sm text-gray-700">{{ $entry->body }}</p>
@@ -1557,7 +1582,7 @@
                                         @click.outside="open = false">
                                         @foreach ($staffReadsDeduped as $read)
                                             <div class="mb-2 pb-2 border-b border-slate-200 last:mb-0 last:pb-0 last:border-b-0">
-                                                <strong>{{ optional($read->user)->name ?? 'user#'.$read->user_id }}</strong>
+                                                <strong>{{ optional($read->user)->name ?? __('orders.deleted_user_id', ['id' => $read->user_id]) }}</strong>
                                                 @if (optional($read->user)->email)
                                                     <br><span class="text-slate-500 text-[0.9em]">{{ $read->user->email }}</span>
                                                 @endif

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -33,9 +34,9 @@ class TranslationsPage extends Page implements HasTable
         return config('app.available_locales', ['ar', 'en']);
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Settings');
+        return AdminNavigationGroup::Settings;
     }
 
     public static function getNavigationLabel(): string
@@ -324,7 +325,18 @@ class TranslationsPage extends Page implements HasTable
                 continue;
             }
             unset($data[$key]);
-            File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+
+            try {
+                File::put($path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            } catch (\Throwable $e) {
+                Notification::make()
+                    ->title(__('translations.error_write_failed'))
+                    ->body($e->getMessage())
+                    ->danger()
+                    ->send();
+
+                return;
+            }
         }
 
         $this->flushCachedTableRecords();

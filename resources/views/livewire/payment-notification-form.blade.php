@@ -24,7 +24,7 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.guest_name') }} <span class="text-red-500">*</span></label>
                     <input
                         type="text"
-                        wire:model="guest_name"
+                        wire:model.live.debounce.300ms="guest_name"
                         placeholder="{{ __('payment_notify.guest_name') }}"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
@@ -34,7 +34,7 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.guest_phone') }} <span class="text-red-500">*</span></label>
                     <input
                         type="text"
-                        wire:model="guest_phone"
+                        wire:model.live.debounce.300ms="guest_phone"
                         placeholder="{{ __('payment_notify.phone_placeholder') }}"
                         dir="ltr"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -124,12 +124,37 @@
             </div>
 
             @if($maxStandaloneFiles > 0)
-            {{-- Attachments --}}
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.attachments_label') }} ({{ __('payment_notify.optional') }})</label>
-                <input type="file" wire:model="receipts" multiple
+            {{-- Attachments (bilingual label + custom "no file chosen" placeholder) --}}
+            <div
+                x-data="{
+                    noFile: @js(__('payment_notify.no_file_chosen')),
+                    filesChosen: @js(__('payment_notify.files_chosen')),
+                    display: @js(__('payment_notify.no_file_chosen'))
+                }"
+                @change.window="
+                    const el = $refs.fileInput;
+                    if (el && el.files) {
+                        display = el.files.length ? filesChosen.replace(':count', el.files.length) : noFile;
+                    }
+                "
+            >
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ __('payment_notify.attachments_label_optional') }}</label>
+                <div
+                    dir="ltr"
+                    class="border border-gray-300 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition flex items-center justify-between gap-2 min-h-[42px]"
+                    @click="$refs.fileInput.click()"
+                >
+                    <span class="text-sm text-gray-500" x-text="display"></span>
+                    <span class="text-xs font-medium text-primary-600 shrink-0" dir="auto">{{ __('payment.choose_files') }}</span>
+                </div>
+                <input
+                    type="file"
+                    x-ref="fileInput"
+                    wire:model="receipts"
+                    multiple
                     accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.heic"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 file:me-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-700 file:text-xs file:font-medium"
+                    class="sr-only"
+                    @change="display = $event.target.files.length ? filesChosen.replace(':count', $event.target.files.length) : noFile"
                 />
                 @error('receipts') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 @error('receipts.*') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror

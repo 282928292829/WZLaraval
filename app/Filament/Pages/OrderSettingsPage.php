@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use App\Models\Currency;
 use App\Models\Setting;
 use App\Services\SettingsPersistService;
@@ -39,9 +40,9 @@ class OrderSettingsPage extends Page
 
     protected static ?string $title = null;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Order Setup');
+        return AdminNavigationGroup::OrderSetup;
     }
 
     public static function getNavigationLabel(): string

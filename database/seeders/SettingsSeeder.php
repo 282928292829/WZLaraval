@@ -10,8 +10,63 @@ class SettingsSeeder extends Seeder
     public function run(): void
     {
         // ── Contact / Footer ──────────────────────────────────────────────────
-        Setting::set('whatsapp', '966500000000', 'string', 'contact');
-        Setting::set('contact_email', '', 'string', 'contact');
+        Setting::set('whatsapp', '966556063500', 'string', 'contact');
+        Setting::set('contact_email', 'info@wasetzon.com', 'string', 'contact');
+
+        // ── Payment (bank accounts for payment-methods page) ────────────────────
+        // Source: wasetzon.com/payment-methods/
+        Setting::set('payment_company_name', 'مؤسسة جسور الاستيراد للتجارة', 'string', 'payment');
+        Setting::set('payment_banks', [
+            [
+                'name' => 'Al Rajhi Bank',
+                'logo' => '/images/banks/rajhi.svg',
+                'account' => '624608010055610',
+                'iban' => 'SA4180000624608010055610',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'SNB AlAhli',
+                'logo' => '/images/banks/snb.svg',
+                'account' => '26561106000110',
+                'iban' => 'SA9710000026561106000110',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'Bank Albilad',
+                'logo' => '/images/banks/albilad.svg',
+                'account' => '436117332070002',
+                'iban' => 'SA9315000436117332070002',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'Alinma Bank',
+                'logo' => '/images/banks/alinma.svg',
+                'account' => '68222222010000',
+                'iban' => 'SA8905000068222222010000',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'SAB (Saudi Awwal Bank)',
+                'logo' => '/images/banks/sab.svg',
+                'account' => '611065905001',
+                'iban' => 'SA8345000000611065905001',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'SAIB (Saudi Investment Bank)',
+                'logo' => '/images/banks/saib.svg',
+                'account' => '0128605051001',
+                'iban' => 'SA4465000000128605051001',
+                'beneficiary' => '',
+            ],
+            [
+                'name' => 'Riyad Bank',
+                'logo' => '/images/banks/riyad.svg',
+                'account' => '3374435439940',
+                'iban' => 'SA6120000003374435439940',
+                'beneficiary' => '',
+            ],
+        ], 'json', 'payment');
         Setting::set('commercial_registration', '', 'string', 'contact');
         Setting::set('show_partners', '1', 'boolean', 'certification');
 
@@ -96,5 +151,28 @@ class SettingsSeeder extends Seeder
                 'enabled' => true,
             ],
         ], 'json', 'orders');
+
+        // ── Order form dev helpers ────────────────────────────────────────────
+        Setting::set('order_form_show_add_test_items', true, 'boolean', 'orders');
+
+        // ── Image cleanup (super admin only) ──────────────────────────────────
+        Setting::set('image_cleanup_statuses', ['cancelled'], 'json', 'image_cleanup');
+        Setting::set('image_cleanup_retention_days_customer_product', 14, 'integer', 'image_cleanup');
+        Setting::set('image_cleanup_retention_days_staff_product', 90, 'integer', 'image_cleanup');
+        Setting::set('image_cleanup_retention_days_customer_comment', 14, 'integer', 'image_cleanup');
+        Setting::set('image_cleanup_retention_days_staff_comment', 90, 'integer', 'image_cleanup');
+        Setting::set('image_cleanup_action', 'delete', 'string', 'image_cleanup'); // delete | compress
+        Setting::set('image_cleanup_compression_quality', 55, 'integer', 'image_cleanup'); // 55 = Aggressive
+        Setting::set('image_cleanup_customer_product', true, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_staff_product', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_customer_comment', true, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_staff_comment', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_receipt', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_invoice', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_other', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_schedule_enabled', false, 'boolean', 'image_cleanup');
+        Setting::set('image_cleanup_schedule_frequency', 'daily', 'string', 'image_cleanup'); // daily | weekly
+        Setting::set('image_cleanup_schedule_hour', 2, 'integer', 'image_cleanup'); // 0-23
+        Setting::set('image_cleanup_schedule_day', 0, 'integer', 'image_cleanup'); // 0=Sunday for weekly
     }
 }

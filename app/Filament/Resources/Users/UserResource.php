@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\User;
@@ -35,9 +36,9 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Users');
+        return AdminNavigationGroup::Users;
     }
 
     public static function getNavigationLabel(): string

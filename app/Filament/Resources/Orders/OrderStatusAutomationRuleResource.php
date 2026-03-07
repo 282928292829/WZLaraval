@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Orders\OrderStatusAutomationRuleResource\Pages\CreateOrderStatusAutomationRule;
 use App\Filament\Resources\Orders\OrderStatusAutomationRuleResource\Pages\EditOrderStatusAutomationRule;
 use App\Filament\Resources\Orders\OrderStatusAutomationRuleResource\Pages\ListOrderStatusAutomationRules;
@@ -46,9 +47,9 @@ class OrderStatusAutomationRuleResource extends Resource
         return __('automation.plural_label');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Order Setup');
+        return AdminNavigationGroup::OrderSetup;
     }
 
     public static function canAccess(): bool

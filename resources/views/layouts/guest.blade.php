@@ -10,6 +10,8 @@
 
         <title>{{ $title ?? __('app.name') }}</title>
 
+        <link rel="manifest" href="/manifest.json">
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
         <link rel="icon" href="{{ \App\Models\Setting::faviconUrl('site') }}">
 
         @php
@@ -46,8 +48,9 @@
             </div>
         @endif
 
-        <div class="flex flex-col items-center px-4 pt-8 pb-12 flex-1">
-            <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-7">
+        {{-- No-scroll forms: compact on mobile so sign-in/sign-up fit without scrolling (LARAVEL_PLAN) --}}
+        <div class="flex flex-col items-center px-3 sm:px-4 pt-4 sm:pt-8 pb-8 sm:pb-12 flex-1 min-h-0">
+            <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 sm:px-6 sm:py-7">
                 {{ $slot }}
             </div>
         </div>
@@ -73,5 +76,15 @@
         @stack('scripts')
 
         <x-dev-toolbar />
+
+        {{-- PWA service worker registration --}}
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                        .catch(() => {});
+                });
+            }
+        </script>
     </body>
 </html>

@@ -34,9 +34,9 @@ class PostResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?\App\Enums\AdminNavigationGroup
     {
-        return __('Content');
+        return \App\Enums\AdminNavigationGroup::Content;
     }
 
     public static function getNavigationLabel(): string

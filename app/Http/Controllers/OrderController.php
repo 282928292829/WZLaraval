@@ -41,7 +41,7 @@ class OrderController extends Controller
     {
         $user = auth()->user();
         $order->loadMissing([
-            'user',
+            'user' => fn ($q) => $q->with(['addresses' => fn ($a) => $a->orderByDesc('is_default')]),
             'mergedInto',
             'items' => fn ($q) => $q->orderBy('sort_order'),
             'files' => fn ($q) => $q->orderBy('created_at'),
@@ -105,10 +105,14 @@ class OrderController extends Controller
                 ->first();
         }
 
-        // Comments discovery banner: show only on first 2 visits to this order (per user, cookie)
+        // Comments discovery banner: first order only, first 2 visits, unless dismissed forever
+        $isFirstOrder = Order::where('user_id', $order->user_id)
+            ->orderBy('created_at')
+            ->value('id') === $order->id;
+        $dismissedForever = $request->cookie('comments_discovery_dismissed_forever') === '1';
         $cookieName = 'order_discovery_visits_'.$order->id;
         $visits = (int) $request->cookie($cookieName, 0);
-        $showCommentsDiscovery = $visits < 2;
+        $showCommentsDiscovery = $isFirstOrder && ! $dismissedForever && $visits < 2;
         if ($showCommentsDiscovery) {
             cookie()->queue($cookieName, (string) ($visits + 1), 60 * 24 * 365); // 1 year
         }
@@ -125,6 +129,18 @@ class OrderController extends Controller
         return view('orders.show', compact(
             'order', 'isOwner', 'isStaff', 'orderEditEnabled', 'canEditItems', 'clickEditRemaining', 'recentOrders', 'customerRecentOrders', 'orderCreationLog', 'showCommentsDiscovery', 'invoiceDefaults', 'commissionSettings', 'trackingCarriers'
         ));
+    }
+
+    /**
+     * Set "don't show again" cookie for comments discovery banner.
+     */
+    public function dismissCommentsDiscovery(Request $request)
+    {
+        cookie()->queue('comments_discovery_dismissed_forever', '1', 60 * 24 * 365); // 1 year
+
+        return $request->wantsJson()
+            ? response()->json(['ok' => true])
+            : redirect()->back();
     }
 
     /**
@@ -824,14 +840,9 @@ class OrderController extends Controller
 
     public function updateShippingAddress(UpdateShippingAddressRequest $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         $user = auth()->user();
-
-        $isOwner = $order->user_id === $user->id;
-        $isStaff = $user->isStaffOrAbove();
-
-        if (! $isOwner && ! $isStaff) {
-            abort(403);
-        }
 
         // Only allow change while order is in an editable state
         $editableStatuses = ['pending', 'needs_payment', 'on_hold'];
@@ -876,10 +887,7 @@ class OrderController extends Controller
     public function allOrders(Request $request)
     {
         $user = auth()->user();
-
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
+        $this->authorize('view-all-orders');
 
         if ($request->get('export') === 'csv' && $user->can('export-csv')) {
             return $this->exportCsv($request);
@@ -1128,12 +1136,9 @@ class OrderController extends Controller
      */
     public function sendEmail(Request $request, Order $order): \Illuminate\Http\JsonResponse
     {
+        $this->authorize('view-all-orders');
+
         $staff = auth()->user();
-
-        if (! $staff->isStaffOrAbove()) {
-            abort(403);
-        }
-
         $order->load(['user', 'items']);
 
         if (! $order->user || ! $order->user->email) {
@@ -1147,6 +1152,13 @@ class OrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('Email sending is disabled. Enable it in Settings.'),
+            ], 422);
+        }
+
+        if (! Setting::get('email_order_confirmation', true)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Order confirmation emails are disabled. Enable them in Email Settings.'),
             ], 422);
         }
 
@@ -1195,12 +1207,9 @@ class OrderController extends Controller
     /** Customer: report a bank transfer / payment notification → creates a comment */
     public function paymentNotify(PaymentNotifyRequest $request, Order $order)
     {
+        $this->authorize('performCustomerAction', $order);
+
         $user = auth()->user();
-
-        if ($order->user_id !== $user->id) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $bankLabel = match ($validated['transfer_bank']) {
@@ -1260,11 +1269,9 @@ class OrderController extends Controller
     /** Customer: cancel own order (only when pending or needs_payment) */
     public function cancelOrder(Request $request, Order $order)
     {
-        $user = auth()->user();
+        $this->authorize('performCustomerAction', $order);
 
-        if ($order->user_id !== $user->id) {
-            abort(403);
-        }
+        $user = auth()->user();
 
         if (! $order->isCancellable()) {
             return redirect()->route('orders.show', $order)
@@ -1293,12 +1300,9 @@ class OrderController extends Controller
     /** Customer: request merge with another of their own orders → posts a comment */
     public function customerMerge(CustomerMergeRequestRequest $request, Order $order)
     {
+        $this->authorize('performCustomerAction', $order);
+
         $user = auth()->user();
-
-        if ($order->user_id !== $user->id) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $targetOrder = Order::where('user_id', $user->id)
@@ -1328,13 +1332,10 @@ class OrderController extends Controller
     /** Staff: transfer order ownership to another customer by email */
     public function transferOrder(TransferOrderRequest $request, Order $order)
     {
+        $this->authorize('view-all-orders');
+
         $user = auth()->user();
         $order->load('user');
-
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $targetUser = \App\Models\User::where('email', $validated['transfer_email'])->first();
@@ -1396,12 +1397,9 @@ class OrderController extends Controller
     /** Staff: update tracking number and shipping company */
     public function updateShippingTracking(UpdateTrackingRequest $request, Order $order)
     {
+        $this->authorize('view-all-orders');
+
         $user = auth()->user();
-
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $order->update($validated);
@@ -1421,12 +1419,9 @@ class OrderController extends Controller
     /** Staff: record payment details (amount, date, method, receipt) */
     public function updatePayment(UpdatePaymentRequest $request, Order $order)
     {
+        $this->authorize('view-all-orders');
+
         $user = auth()->user();
-
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $data = collect($validated)->except('payment_receipts')->toArray();
@@ -1472,12 +1467,9 @@ class OrderController extends Controller
     /** Staff: update internal notes about this order/customer */
     public function updateStaffNotes(UpdateStaffNotesRequest $request, Order $order)
     {
+        $this->authorize('view-all-orders');
+
         $user = auth()->user();
-
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
-
         $validated = $request->validated();
 
         $order->update(['staff_notes' => $validated['staff_notes'] ?? null]);
@@ -1489,24 +1481,11 @@ class OrderController extends Controller
     /** Staff or customer (if allowed): add files to an order item */
     public function storeItemFiles(StoreOrderItemFilesRequest $request, Order $order, int $itemId)
     {
+        $this->authorize('addItemFiles', $order);
+
         $user = auth()->user();
-        $this->authorize('view', $order);
-
         $item = OrderItem::where('order_id', $order->id)->findOrFail($itemId);
-
-        $isStaff = $user->isStaffOrAbove();
-        $isOwner = $order->user_id === $user->id;
-        $customerCanAdd = (bool) Setting::get('customer_can_add_files_after_submit', false);
-
         $wantsJson = $request->expectsJson() || $request->ajax();
-
-        if (! $isStaff && ! ($isOwner && $customerCanAdd)) {
-            $msg = __('orders.item_files_upload_failed');
-
-            return $wantsJson
-                ? response()->json(['success' => false, 'message' => $msg], 403)
-                : redirect()->route('orders.show', $order)->with('error', $msg);
-        }
 
         $maxPerItem = max(1, (int) Setting::get('max_files_per_item_after_submit', 5));
         $currentCount = ($item->image_path ? 1 : 0) + $order->files()->where('order_item_id', $itemId)->count();
@@ -1554,11 +1533,9 @@ class OrderController extends Controller
     /** Staff: delete product image (from order_items.image_path or order_files) */
     public function deleteProductImage(Request $request, Order $order)
     {
-        $user = auth()->user();
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
+        $this->authorize('view-all-orders');
 
+        $user = auth()->user();
         $itemId = $request->input('item_id');
         $fileId = $request->input('file_id');
 
@@ -1588,13 +1565,9 @@ class OrderController extends Controller
     /** Staff: export single order to Excel (links, specs, image URLs) */
     public function exportExcel(Order $order)
     {
-        $user = auth()->user();
-        if (! $user->isStaffOrAbove()) {
-            abort(403);
-        }
+        $this->authorize('view', $order);
 
         $order->load(['items' => fn ($q) => $q->orderBy('sort_order'), 'files']);
-        $this->authorize('view', $order);
 
         $filename = 'order-'.$order->order_number.'-'.now()->format('Y-m-d').'.xlsx';
 

@@ -2,9 +2,9 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlogController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CommentsController;
+use App\Http\Controllers\CommentTemplateExportController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DevController;
 use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
@@ -61,15 +61,20 @@ Route::post('/blog/{post}/comments', [BlogController::class, 'storeComment'])
     ->middleware('throttle:5,15')
     ->name('blog.comments.store');
 
-// Public static pages
-Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
+// Public static pages — flat URLs (matches WordPress: /payment-methods, /faq, etc.)
+Route::get('/pages/{slug}', fn (string $slug) => redirect('/'.$slug, 301))->name('pages.redirect');
+Route::post('/{page:slug}/comments', [PageController::class, 'storeComment'])
+    ->middleware('throttle:5,15')
+    ->name('pages.comments.store');
 
 // Contact form (public, throttled)
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:5,15')
     ->name('contact.store');
 
-Route::get('/new-order', NewOrder::class)->name('new-order');
+Route::get('/new-order', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order');
 
 // Design prototypes for order form table — compare at /new-order-design-1, -2, -3
 Route::get('/new-order-design-1', [\App\Http\Controllers\OrderDesignController::class, 'design1']);
@@ -77,6 +82,7 @@ Route::get('/new-order-design-2', [\App\Http\Controllers\OrderDesignController::
 Route::get('/new-order-design-3', [\App\Http\Controllers\OrderDesignController::class, 'design3']);
 
 Route::middleware('auth')->group(function () {
+    Route::post('/orders/dismiss-comments-discovery', [OrderController::class, 'dismissCommentsDiscovery'])->name('orders.comments-discovery.dismiss');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/all', [OrderController::class, 'allOrders'])->name('orders.all');
     Route::get('/orders/list-{variant}', [OrderController::class, 'indexVariant'])
@@ -86,7 +92,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/orders/{order}/success', [OrderController::class, 'success'])->name('orders.success');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{order}/comments', [OrderCommentController::class, 'store'])->name('orders.comments.store');
+    Route::post('/orders/{order}/comments', [OrderCommentController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('orders.comments.store');
     Route::patch('/orders/{order}/comments/{commentId}', [OrderCommentController::class, 'update'])->name('orders.comments.update');
     Route::post('/orders/{order}/comments/{commentId}/attach-files', [OrderCommentController::class, 'attachFiles'])->name('orders.comments.attach-files');
     Route::delete('/orders/{order}/comments/{commentId}', [OrderCommentController::class, 'destroy'])->name('orders.comments.destroy');
@@ -148,26 +156,8 @@ Route::middleware('auth')->group(function () {
 });
 
 // Admin: comment templates CSV export (requires manage-comment-templates permission)
-Route::middleware(['auth'])->get('/admin/export-comment-templates-csv', function () {
-    if (! auth()->user()?->can('manage-comment-templates')) {
-        abort(403);
-    }
-
-    $templates = \App\Models\CommentTemplate::query()->orderBy('sort_order')->orderBy('usage_count', 'desc')->get();
-    $filename = 'comment-templates-'.now()->format('Y-m-d').'.csv';
-
-    return response()->streamDownload(function () use ($templates) {
-        $handle = fopen('php://output', 'w');
-        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-        fputcsv($handle, [__('Title'), __('Content'), __('Order'), __('Uses')]);
-
-        foreach ($templates as $t) {
-            fputcsv($handle, [$t->title, $t->content, $t->sort_order, $t->usage_count]);
-        }
-
-        fclose($handle);
-    }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
-})->name('admin.comment-templates.export-csv');
+Route::middleware(['auth'])->get('/admin/export-comment-templates-csv', CommentTemplateExportController::class)
+    ->name('admin.comment-templates.export-csv');
 
 // Dev-only quick login — never registered in production
 if (app()->environment('local')) {
@@ -193,10 +183,13 @@ Route::get('/homepagetest666', fn () => view('homepage-tests.666'));
 Route::get('/homepagetest777', fn () => view('homepage-tests.777'));
 Route::get('/homepagetest888', fn () => view('homepage-tests.888'));
 
-// Homepage design demos
+// Homepage design demos — temporary test pages, may be removed
 Route::get('/test-homepage-demo1', fn () => view('homepage-tests.demo1'));
 Route::get('/test-homepage-demo2', fn () => view('homepage-tests.demo2'));
 Route::get('/test-homepage-demo3', fn () => view('homepage-tests.demo3'));
 Route::get('/test-homepage-demo4', fn () => view('homepage-tests.demo4'));
 
 require __DIR__.'/auth.php';
+
+// Page fallback — flat URLs, must be last so auth routes (login, register, etc.) match first
+Route::get('/{slug}', [PageController::class, 'show'])->name('pages.show');

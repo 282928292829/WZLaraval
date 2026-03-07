@@ -53,3 +53,12 @@ test('admin can export comment templates as csv', function (): void {
     $response->assertOk();
     $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
 });
+
+test('customer cannot export comment templates', function (): void {
+    $user = User::factory()->create();
+    $user->assignRole('customer');
+
+    $response = $this->actingAs($user)->get(route('admin.comment-templates.export-csv'));
+
+    $response->assertForbidden();
+});

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Orders\AdCampaignResource\Pages\CreateAdCampaign;
 use App\Filament\Resources\Orders\AdCampaignResource\Pages\EditAdCampaign;
 use App\Filament\Resources\Orders\AdCampaignResource\Pages\ListAdCampaigns;
@@ -38,9 +39,9 @@ class AdCampaignResource extends Resource
         return __('Ad Campaigns');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Order Setup');
+        return AdminNavigationGroup::OrderSetup;
     }
 
     public static function canAccess(): bool

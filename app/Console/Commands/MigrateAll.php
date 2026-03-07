@@ -23,8 +23,9 @@ use Illuminate\Support\Facades\DB;
  *  10. posts             (no dependencies; creates post_categories)
  *  11. post-comments     (depends on posts + users)
  *  12. pages             (no dependencies)
- *  13. assign-superadmins (depends on users)
- *  14. validate          (integrity report)
+ *  13. page-comments     (depends on pages + users)
+ *  14. assign-superadmins (depends on users)
+ *  15. validate          (integrity report)
  *
  * Usage:
  *   php artisan migrate:all               # incremental (safe to re-run)
@@ -81,6 +82,7 @@ class MigrateAll extends Command
             'posts' => fn () => $this->runStep('migrate:posts'),
             'post-comments' => fn () => $this->runStep('migrate:post-comments'),
             'pages' => fn () => $this->runStep('migrate:pages'),
+            'page-comments' => fn () => $this->runStep('migrate:page-comments'),
             'assign-superadmins' => fn () => $this->runStep('migrate:assign-superadmins'),
         ];
 
@@ -168,6 +170,7 @@ class MigrateAll extends Command
             'post_comments',
             'posts',
             'post_categories',
+            'page_comments',
             'pages',
         ];
 

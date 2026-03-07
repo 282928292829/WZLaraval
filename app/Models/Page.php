@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Page extends Model
@@ -38,6 +39,11 @@ class Page extends Model
     protected $attributes = [
         'menu_order' => 0,
     ];
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(PageComment::class);
+    }
 
     /** Header menu order matching new WordPress (wasetzon-modern): how-to-order, calculator, shipping-calculator, payment-methods, membership, faq, testimonials */
     public function scopeHeaderMenuOrder($query)

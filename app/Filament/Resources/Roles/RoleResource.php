@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Roles;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Roles\Pages\CreateRole;
 use App\Filament\Resources\Roles\Pages\EditRole;
 use App\Filament\Resources\Roles\Pages\ListRoles;
@@ -32,9 +33,9 @@ class RoleResource extends Resource
         return __('Roles');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Users');
+        return AdminNavigationGroup::Users;
     }
 
     public static function canAccess(): bool

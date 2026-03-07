@@ -51,6 +51,46 @@ class LogoHelper
     }
 
     /**
+     * Get the admin panel logo image URL.
+     * Fallback chain: admin image → site image → null.
+     */
+    public static function getAdminLogoUrl(?string $locale = null): ?string
+    {
+        $locale = $locale ?? app()->getLocale();
+        $usePerLanguage = (bool) Setting::get('admin_logo_use_per_language', false);
+
+        if ($usePerLanguage) {
+            $path = $locale === 'ar' ? Setting::get('admin_logo_image_ar', '') : Setting::get('admin_logo_image_en', '');
+        } else {
+            $path = Setting::get('admin_logo_image', '');
+        }
+
+        if (filled($path)) {
+            return Storage::disk('public')->url($path);
+        }
+
+        return self::getLogoUrl($locale);
+    }
+
+    /**
+     * Get the admin panel logo text (or brand name for alt).
+     * Fallback chain: admin text → site text → app name.
+     */
+    public static function getAdminLogoText(?string $locale = null): string
+    {
+        $locale = $locale ?? app()->getLocale();
+        $usePerLanguage = (bool) Setting::get('admin_logo_use_per_language', false);
+
+        if ($usePerLanguage) {
+            $text = $locale === 'ar' ? Setting::get('admin_logo_text_ar', '') : Setting::get('admin_logo_text_en', '');
+        } else {
+            $text = Setting::get('admin_logo_text', '');
+        }
+
+        return $text !== '' ? $text : self::getLogoText($locale);
+    }
+
+    /**
      * Get the logo alt text for the current locale (SEO and accessibility).
      * Falls back to logo text when alt is empty.
      */

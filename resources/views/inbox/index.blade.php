@@ -113,7 +113,8 @@
                     @php
                         $colors = $typeColors[$activity->type] ?? ['bg' => 'bg-gray-50', 'ic' => 'text-gray-400'];
                         $isUnread = is_null($activity->read_at);
-                        $hasLink  = $activity->subject_type === 'App\\Models\\Order' && $activity->subject_id;
+                        $hasLink  = ($activity->subject_type === 'App\\Models\\Order' && $activity->subject_id)
+                            || ($activity->subject_type === 'App\\Models\\ContactSubmission' && $activity->subject_id);
                     @endphp
 
                     <li class="relative {{ $isUnread ? 'bg-primary-50/30' : '' }} hover:bg-gray-50 transition-colors">
@@ -146,6 +147,13 @@
                                                 {{ $activity->causer->name }}
                                                 @if ($activity->causer->email)
                                                     <span class="text-gray-400">· {{ $activity->causer->email }}</span>
+                                                @endif
+                                            </p>
+                                        @elseif ($activity->type === 'contact_form' && !empty($activity->data['name']))
+                                            <p class="text-xs text-gray-500 mt-0.5">
+                                                {{ $activity->data['name'] }}
+                                                @if (!empty($activity->data['email']))
+                                                    <span class="text-gray-400">· {{ $activity->data['email'] }}</span>
                                                 @endif
                                             </p>
                                         @else

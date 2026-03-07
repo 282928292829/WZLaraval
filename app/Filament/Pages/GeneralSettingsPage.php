@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AdminNavigationGroup;
 use App\Models\Setting;
 use App\Services\SettingsPersistService;
 use BackedEnum;
@@ -36,9 +37,9 @@ class GeneralSettingsPage extends Page
 
     protected static ?string $title = null;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Settings');
+        return AdminNavigationGroup::Settings;
     }
 
     public static function getNavigationLabel(): string
@@ -68,7 +69,7 @@ class GeneralSettingsPage extends Page
         'site_timezone', 'times_use_user_timezone',
         'seo_default_og_image', 'seo_default_meta_description',
         'seo_twitter_handle', 'seo_google_verification', 'seo_bing_verification',
-        'blog_comments_enabled',
+        'blog_comments_enabled', 'page_comments_enabled',
         'hero_title', 'hero_subtitle', 'hero_input_placeholder', 'hero_button_text',
         'hero_input_required', 'hero_show_whatsapp', 'hero_whatsapp_button_text',
         'hero_whatsapp_number', 'hero_show_name_change_notice',
@@ -110,6 +111,7 @@ class GeneralSettingsPage extends Page
             'seo_google_verification' => '',
             'seo_bing_verification' => '',
             'blog_comments_enabled' => true,
+            'page_comments_enabled' => true,
             'hero_title' => '',
             'hero_subtitle' => '',
             'hero_input_placeholder' => '',
@@ -260,6 +262,10 @@ class GeneralSettingsPage extends Page
                                             ->label(__('Allow Blog Comments'))
                                             ->default(true)
                                             ->helperText(__('When OFF, the comment form and list are hidden on all blog posts.')),
+                                        Toggle::make('page_comments_enabled')
+                                            ->label(__('Allow Page Comments'))
+                                            ->default(true)
+                                            ->helperText(__('When OFF, the comment form and list are hidden on all static pages.')),
                                     ]),
 
                                 Section::make(__('Hero Section'))
@@ -471,6 +477,7 @@ class GeneralSettingsPage extends Page
             'seo_google_verification' => 'seo',
             'seo_bing_verification' => 'seo',
             'blog_comments_enabled' => 'blog',
+            'page_comments_enabled' => 'blog',
             'hero_title' => 'hero',
             'hero_subtitle' => 'hero',
             'hero_input_placeholder' => 'hero',
@@ -492,6 +499,8 @@ class GeneralSettingsPage extends Page
 
         $booleanKeys = [
             'blog_comments_enabled',
+            'page_comments_enabled',
+            'page_comments_enabled',
             'hero_input_required',
             'hero_show_whatsapp',
             'hero_show_name_change_notice',

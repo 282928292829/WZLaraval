@@ -404,6 +404,70 @@ class NewOrder extends Component
         $this->dispatch('notify', type: 'success', message: __('order_form.cleared'));
     }
 
+    /**
+     * Cart layout (Option 2): Load guest draft from localStorage. Called from frontend when draft exists and items are empty.
+     */
+    public function loadGuestDraftFromStorage(array $items, string $notes = ''): void
+    {
+        if (Auth::check()) {
+            return;
+        }
+        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+            return;
+        }
+        if (count($this->items) > 0) {
+            return;
+        }
+        $valid = [];
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $valid[] = [
+                'url' => (string) ($item['url'] ?? ''),
+                'qty' => trim((string) ($item['qty'] ?? '1')) !== '' ? (string) max(1, (int) ($item['qty'] ?? 1)) : '1',
+                'color' => (string) ($item['color'] ?? ''),
+                'size' => (string) ($item['size'] ?? ''),
+                'price' => (string) ($item['price'] ?? ''),
+                'currency' => (string) ($item['currency'] ?? $this->defaultCurrency) ?: $this->defaultCurrency,
+                'notes' => (string) ($item['notes'] ?? ''),
+            ];
+        }
+        if (count($valid) > 0) {
+            $this->items = $valid;
+            $this->itemFiles = array_fill(0, count($valid), []);
+            $this->orderNotes = mb_substr($notes, 0, 5000);
+        }
+    }
+
+    /**
+     * Cart layout: Dispatch event so frontend can save draft to localStorage (guests only).
+     *
+     * @param  mixed  $value  For array properties: the value of the updated element
+     * @param  mixed  $key  For array properties: the key of the updated element (null when whole array replaced)
+     */
+    public function updatedItems(mixed $value = null, mixed $key = null): void
+    {
+        if (Auth::check()) {
+            return;
+        }
+        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+            return;
+        }
+        $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
+    }
+
+    public function updatedOrderNotes(): void
+    {
+        if (Auth::check()) {
+            return;
+        }
+        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+            return;
+        }
+        $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
+    }
+
     public function removeItemFile(int $itemIndex, int $fileIndex): void
     {
         $files = $this->itemFiles[$itemIndex] ?? null;
@@ -723,6 +787,7 @@ class NewOrder extends Component
             if ($showSuccessPage) {
                 $this->redirectRoute('orders.success', $createdOrder);
             } else {
+                session()->flash('order_created', true);
                 session()->flash('success', __('order.created_successfully', [
                     'number' => $createdOrder->order_number,
                 ]));
@@ -882,10 +947,10 @@ class NewOrder extends Component
             'site_name' => $siteName,
             'whatsapp' => $whatsappDisplay,
             'company_name' => $companyName,
-            'payment_url' => $baseUrl.'/pages/payment-methods',
-            'terms_url' => $baseUrl.'/pages/terms-and-conditions',
-            'faq_url' => $baseUrl.'/pages/faq',
-            'shipping_url' => $baseUrl.'/pages/shipping-calculator',
+            'payment_url' => $baseUrl.'/payment-methods',
+            'terms_url' => $baseUrl.'/terms-and-conditions',
+            'faq_url' => $baseUrl.'/faq',
+            'shipping_url' => $baseUrl.'/shipping-calculator',
         ];
 
         if ($hasPrices) {
@@ -1215,6 +1280,63 @@ class NewOrder extends Component
         ];
     }
 
+    /**
+     * Get order form fields from settings: filter enabled, sort by sort_order, add locale label.
+     * Fallback to default fields with translation keys when config is empty.
+     *
+     * @return array<int, array{key: string, label: string, optional: bool, enabled: bool, sort_order: int}>
+     */
+    protected function getOrderFormFields(): array
+    {
+        $raw = Setting::get('order_form_fields', []);
+        if (! is_array($raw) || empty($raw)) {
+            $defaultKeys = ['url', 'qty', 'size', 'color', 'price', 'currency', 'notes', 'file'];
+            $defaultOptional = ['notes' => true, 'file' => true];
+            $defaultLabels = [
+                'url' => __('order_form.th_url'),
+                'qty' => __('order_form.th_qty'),
+                'size' => __('order_form.th_size'),
+                'color' => __('order_form.th_color'),
+                'price' => __('order_form.th_price_per_unit'),
+                'currency' => __('order_form.th_currency'),
+                'notes' => __('order_form.th_notes'),
+                'file' => __('order_form.th_files'),
+            ];
+            $order = 0;
+
+            return collect($defaultKeys)->map(function (string $key) use ($defaultLabels, $defaultOptional, &$order) {
+                return [
+                    'key' => $key,
+                    'label' => $defaultLabels[$key] ?? $key,
+                    'optional' => $defaultOptional[$key] ?? false,
+                    'enabled' => true,
+                    'sort_order' => ++$order,
+                ];
+            })->values()->all();
+        }
+
+        $locale = app()->getLocale();
+        $isAr = $locale === 'ar';
+
+        return collect($raw)
+            ->filter(fn (array $f) => ($f['enabled'] ?? true) === true)
+            ->sortBy('sort_order')
+            ->values()
+            ->map(function (array $f) use ($isAr) {
+                $label = $isAr ? ($f['label_ar'] ?? $f['label_en'] ?? '') : ($f['label_en'] ?? $f['label_ar'] ?? '');
+                $key = $f['key'] ?? '';
+
+                return [
+                    'key' => $key,
+                    'label' => $label ?: __('order_form.th_'.str_replace('-', '_', $key)),
+                    'optional' => (bool) ($f['optional'] ?? false),
+                    'enabled' => true,
+                    'sort_order' => (int) ($f['sort_order'] ?? 99),
+                ];
+            })
+            ->all();
+    }
+
     public function render()
     {
         $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
@@ -1226,6 +1348,7 @@ class NewOrder extends Component
         };
         $view = view($viewName)
             ->with('orderNewLayout', $layout)
+            ->with('orderFormFields', $this->getOrderFormFields())
             ->with('showAddTestItems', (bool) Setting::get('order_form_show_add_test_items', false))
             ->with('showResetAll', (bool) Setting::get('order_form_show_reset_all', true))
             ->with('commissionSettings', CommissionCalculator::getSettings())

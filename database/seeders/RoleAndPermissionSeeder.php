@@ -11,6 +11,12 @@ use Spatie\Permission\Models\Role;
 class RoleAndPermissionSeeder extends Seeder
 {
     /**
+     * When true, skip creating test users regardless of environment.
+     * Used by tests to verify production behavior.
+     */
+    public static bool $skipTestUsers = false;
+
+    /**
      * Permissions grouped by the role level they are first granted at.
      * Higher roles inherit all lower-level permissions.
      */
@@ -69,6 +75,7 @@ class RoleAndPermissionSeeder extends Seeder
             'manage-admins',           // view / manage admin accounts
             'demote-admins',           // demote an admin to staff or below
             'manage-roles',            // edit roles and assign permissions (configurable access)
+            'manage-image-cleanup',    // configure and run order file cleanup (delete/compress)
         ],
     ];
 
@@ -117,20 +124,29 @@ class RoleAndPermissionSeeder extends Seeder
         // Superadmin: all permissions
         $superadmin->syncPermissions($allPermissions);
 
-        // ── Seed one test user per role ───────────────────────────────────
-        $this->seedTestUsers($guest, $customer, $staff, $admin, $superadmin);
+        // ── Seed one test user per role (local/testing only) ─────────────────
+        // SECURITY: Never create users with default passwords in production.
+        // Test users (admin@wasetzon.test, etc.) are for local dev and Pest/PHPUnit only.
+        $shouldSeedTestUsers = ! static::$skipTestUsers && app()->environment('local', 'testing');
+        if ($shouldSeedTestUsers) {
+            $this->seedTestUsers($guest, $customer, $staff, $admin, $superadmin);
+        } elseif ($this->command) {
+            $this->command->warn('Skipping test user creation (production/staging). Create admin users manually.');
+        }
 
-        $this->command->info('✓ Roles and permissions seeded.');
-        $this->command->table(
-            ['Role', 'Permissions'],
-            [
-                ['guest',      '0 (browse only)'],
-                ['customer',   count($this->permissions['customer'])],
-                ['staff',      count($this->permissions['customer']) + count($this->permissions['staff'])],
-                ['admin',      count($this->permissions['customer']) + count($this->permissions['staff']) + count($this->permissions['admin'])],
-                ['superadmin', $allPermissions->count()],
-            ]
-        );
+        if ($this->command) {
+            $this->command->info('✓ Roles and permissions seeded.');
+            $this->command->table(
+                ['Role', 'Permissions'],
+                [
+                    ['guest',      '0 (browse only)'],
+                    ['customer',   count($this->permissions['customer'])],
+                    ['staff',      count($this->permissions['customer']) + count($this->permissions['staff'])],
+                    ['admin',      count($this->permissions['customer']) + count($this->permissions['staff']) + count($this->permissions['admin'])],
+                    ['superadmin', $allPermissions->count()],
+                ]
+            );
+        }
     }
 
     private function seedTestUsers(

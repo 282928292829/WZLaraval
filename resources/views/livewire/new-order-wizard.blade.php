@@ -172,8 +172,8 @@
                                 <div class="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-primary-50/50 border border-primary-100">
                                     <div class="min-w-0 flex-1">
                                         <span class="font-medium text-sm text-slate-800" x-text="'{{ __('order_form.product_num') }} ' + (idx + 1)"></span>
-                                        <span class="text-slate-500 text-sm ms-1" dir="ltr" x-text="getItemSite(item) || ((item.url || '').substring(0, 40) + ((item.url || '').length > 40 ? '...' : '')) || '—'"></span>
-                                        <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || 1) + ' × ' + (item.price || '—') + ' ' + (item.currency || '')"></div>
+                                        <span class="text-slate-500 text-sm ms-1" dir="ltr" x-text="getItemSite(item) || ((item.url || '').substring(0, 40) + ((item.url || '').length > 40 ? '...' : '')) || '{{ __('common.dash') }}'"></span>
+                                        <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || 1) + ' × ' + (item.price || '{{ __('common.dash') }}') + ' ' + (item.currency || '')"></div>
                                     </div>
                                 </div>
                             </template>

@@ -2,6 +2,15 @@
     @php
         $orderUrl = route('orders.show', $order);
     @endphp
+    {{-- Clear new-order draft after successful submission (covers guest→login→submit flow) --}}
+    <script>
+        try {
+            localStorage.removeItem('wz_order_form_draft');
+            localStorage.removeItem('wz_order_form_notes');
+            localStorage.removeItem('wz_opus46_draft');
+            localStorage.removeItem('wz_opus46_notes');
+        } catch (e) {}
+    </script>
     <div class="min-h-dvh min-h-screen flex items-start justify-center bg-gradient-to-br from-orange-50 to-orange-100 p-4 pt-12">
         <div class="text-center max-w-[420px] w-full md:max-w-[560px]">
             {{-- Checkmark --}}

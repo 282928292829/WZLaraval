@@ -121,7 +121,7 @@
         @endif
 
         @if ($orderNewLayout === '3')
-        {{-- Option 3: Cards everywhere — cards on both mobile and desktop --}}
+        {{-- Option 3: Cards everywhere — full cards on mobile and desktop, collapsible/minimize on both --}}
         <section class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
             <div id="items-container-wrapper" class="flex flex-col gap-2.5 lg:flex-1 lg:min-h-0 lg:min-w-0 lg:overflow-auto">
                 <div id="items-container" class="flex flex-col gap-2.5">
@@ -453,6 +453,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
         submitting: false,
         openCurrencyRow: null,
         orderNewLayout: orderNewLayout || '1',
+        activeCardIndex: 0,
         init() {
             this.checkTipsHidden();
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
@@ -524,6 +525,9 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
             }
 
             this.items.push(this.emptyItem(lastCur));
+            if (this.orderNewLayout === '3' && window.innerWidth >= 1024) {
+                this.activeCardIndex = this.items.length - 1;
+            }
             this.saveDraft();
             this.$nextTick(() => {
                 setTimeout(() => {
@@ -582,14 +586,37 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
             }
             this.calcTotals();
             this.saveDraft();
+            if (this.orderNewLayout === '3' && this.items.length > 0) {
+                this.activeCardIndex = this.items.length - 1;
+            }
             this.showNotify('success', '{{ __('order.dev_5_items_added') }}');
         },
 
         removeItem(idx) {
+            if (this.orderNewLayout === '3' && this.items.length > 1) {
+                if (idx <= this.activeCardIndex) {
+                    this.activeCardIndex = Math.max(0, this.activeCardIndex - 1);
+                }
+                if (this.activeCardIndex >= this.items.length - 1) {
+                    this.activeCardIndex = Math.max(0, this.items.length - 2);
+                }
+            } else if (this.orderNewLayout === '3') {
+                this.activeCardIndex = 0;
+            }
             this.$wire.removeItem(idx);
             this.items.splice(idx, 1);
             this.calcTotals();
             this.saveDraft();
+        },
+
+        prevCard() {
+            if (this.items.length <= 1) return;
+            this.activeCardIndex = (this.activeCardIndex - 1 + this.items.length) % this.items.length;
+        },
+
+        nextCard() {
+            if (this.items.length <= 1) return;
+            this.activeCardIndex = (this.activeCardIndex + 1) % this.items.length;
         },
 
         toggleItem(idx) {
@@ -710,6 +737,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
             if (!confirm('{{ __('order_form.reset_confirm') }}')) return;
             this.items = [];
             this.orderNotes = '';
+            this.activeCardIndex = 0;
             this.clearDraft();
             const count = window.innerWidth >= 1024 ? 5 : 1;
             for (let i = 0; i < count; i++) this.items.push(this.emptyItem());

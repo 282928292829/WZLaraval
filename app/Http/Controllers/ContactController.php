@@ -39,4 +39,9 @@ class ContactController extends Controller
 
         return redirect()->back()->with('status', 'contact-sent');
     }
+
+    public function show(ContactSubmission $contactSubmission): View
+    {
+        return view('contact-submissions.show', compact('contactSubmission'));
+    }
 }

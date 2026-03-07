@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Content;
 
+use App\Enums\AdminNavigationGroup;
 use App\Filament\Resources\Content\PageResource\Pages\CreatePage;
 use App\Filament\Resources\Content\PageResource\Pages\EditPage;
 use App\Filament\Resources\Content\PageResource\Pages\ListPages;
@@ -33,9 +34,9 @@ class PageResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): ?AdminNavigationGroup
     {
-        return __('Content');
+        return AdminNavigationGroup::Content;
     }
 
     public static function getNavigationLabel(): string
@@ -106,7 +107,7 @@ class PageResource extends Resource
                 Toggle::make('allow_comments')
                     ->label(__('Allow Comments'))
                     ->default(false)
-                    ->helperText(__('When ON, comments are shown on this page. (Requires page comments feature.)')),
+                    ->helperText(__('When ON, comments are shown on this page.')),
             ])->columns(2)->collapsible(),
 
             Section::make(__('SEO'))->schema([
@@ -142,7 +143,7 @@ class PageResource extends Resource
                 TextInput::make('canonical_url')
                     ->label(__('Canonical URL'))
                     ->url()
-                    ->placeholder('https://example.com/pages/slug')
+                    ->placeholder('https://example.com/slug')
                     ->nullable()
                     ->maxLength(500)
                     ->helperText(new \Illuminate\Support\HtmlString('<span class="text-gray-400 text-xs">'.__('seo.canonical_help').'</span>')),

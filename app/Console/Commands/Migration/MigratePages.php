@@ -12,12 +12,16 @@ use Illuminate\Support\Facades\DB;
  * Target:  pages  (default connection)
  *
  * Skip slugs: new-order, orders, new-order-2, singleorders2 (replaced by Laravel routes).
+ *
+ * Writes migration_wp_page_id_map.json for migrate:page-comments.
  */
 class MigratePages extends Command
 {
     protected $signature = 'migrate:pages';
 
     protected $description = 'Migrate static pages from legacy WordPress database into pages table';
+
+    public const MAP_PATH = 'migration_wp_page_id_map.json';
 
     private const SKIP_SLUGS = [
         'new-order',
@@ -29,6 +33,8 @@ class MigratePages extends Command
     private int $inserted = 0;
 
     private int $skipped = 0;
+
+    private array $pageIdMap = [];
 
     public function handle(): int
     {
@@ -73,7 +79,9 @@ class MigratePages extends Command
                 ->pluck('meta_value', 'meta_key')
                 ->toArray();
 
-            DB::table('pages')->insert([
+            $allowComments = ($page->comment_status ?? 'closed') === 'open';
+
+            $newId = DB::table('pages')->insertGetId([
                 'title_ar' => $page->post_title,
                 'title_en' => $page->post_title,
                 'slug' => $slug,
@@ -87,14 +95,20 @@ class MigratePages extends Command
                 'show_in_header' => false,
                 'show_in_footer' => false,
                 'menu_order' => (int) $page->menu_order,
+                'allow_comments' => $allowComments,
                 'created_at' => $page->post_date,
                 'updated_at' => $page->post_modified ?? $page->post_date,
             ]);
 
+            $this->pageIdMap[(int) $page->ID] = $newId;
             $this->inserted++;
         }
 
         $bar->finish();
+
+        $mapPath = storage_path(self::MAP_PATH);
+        file_put_contents($mapPath, json_encode($this->pageIdMap));
+        $this->line("Page ID map written to: {$mapPath}");
         $this->newLine(2);
 
         $this->info("Inserted : {$this->inserted}");
