@@ -20,7 +20,7 @@ class OrdersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->recordUrl(fn (Order $record): string => route('orders.show', $record->id))
+            ->recordUrl(fn (Order $record): string => route('orders.show', $record))
             ->modifyQueryUsing(fn ($query) => $query->with('user')->withCount('items'))
             ->columns([
                 TextColumn::make('order_number')
@@ -83,7 +83,7 @@ class OrdersTable
                 Action::make('open')
                     ->label(__('orders.action_open'))
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Order $record): string => route('orders.show', $record->id))
+                    ->url(fn (Order $record): string => route('orders.show', $record))
                     ->openUrlInNewTab(),
             ])
             ->toolbarActions([

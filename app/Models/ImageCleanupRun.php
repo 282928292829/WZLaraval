@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class ImageCleanupRun extends Model
 {
     protected $fillable = [
+        'rule_type',
+        'image_cleanup_rule_id',
         'started_at',
         'finished_at',
         'dry_run',
@@ -17,6 +19,11 @@ class ImageCleanupRun extends Model
         'details',
         'triggered_by',
     ];
+
+    public function rule(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ImageCleanupRule::class, 'image_cleanup_rule_id');
+    }
 
     protected function casts(): array
     {

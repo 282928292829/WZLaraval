@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ImageCleanupRule;
 use App\Models\ImageCleanupRun;
 use App\Models\Order;
 use App\Models\OrderFile;
@@ -23,13 +24,23 @@ class ImageCleanupService
     ) {}
 
     /**
-     * Run cleanup: find eligible orders and process files (delete or compress).
+     * Run cleanup for a rule type (delete or compress). Uses rules from image_cleanup_rules table.
      * Uses lock to prevent concurrent runs.
      *
      * @return array{orders_processed: int, files_deleted: int, files_compressed: int, bytes_freed: int, details: array}
      */
-    public function run(bool $dryRun = false, string $triggeredBy = 'manual'): array
+    public function run(string $ruleType, bool $dryRun = false, string $triggeredBy = 'manual', ?int $ruleId = null): array
     {
+        if (! in_array($ruleType, [ImageCleanupRule::TYPE_DELETE, ImageCleanupRule::TYPE_COMPRESS], true)) {
+            return [
+                'orders_processed' => 0,
+                'files_deleted' => 0,
+                'files_compressed' => 0,
+                'bytes_freed' => 0,
+                'details' => [['error' => __('image_cleanup.invalid_rule_type')]],
+            ];
+        }
+
         if (! $this->acquireLock()) {
             return [
                 'orders_processed' => 0,
@@ -41,13 +52,15 @@ class ImageCleanupService
         }
 
         $run = ImageCleanupRun::create([
+            'rule_type' => $ruleType,
+            'image_cleanup_rule_id' => $ruleId,
             'started_at' => now(),
             'dry_run' => $dryRun,
             'triggered_by' => $triggeredBy,
         ]);
 
         try {
-            $result = $this->execute($dryRun);
+            $result = $this->executeByRules($ruleType, $dryRun);
             $run->update([
                 'finished_at' => now(),
                 'orders_processed' => $result['orders_processed'],
@@ -66,10 +79,25 @@ class ImageCleanupService
     /**
      * @return array{orders_processed: int, files_deleted: int, files_compressed: int, bytes_freed: int, details: array}
      */
-    protected function execute(bool $dryRun): array
+    protected function executeByRules(string $ruleType, bool $dryRun): array
     {
-        $statuses = Setting::get('image_cleanup_statuses', []);
-        if (empty($statuses) || ! is_array($statuses)) {
+        $rules = ImageCleanupRule::where('rule_type', $ruleType)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($rules->isEmpty()) {
+            return [
+                'orders_processed' => 0,
+                'files_deleted' => 0,
+                'files_compressed' => 0,
+                'bytes_freed' => 0,
+                'details' => [['info' => __('image_cleanup.no_rules_configured')]],
+            ];
+        }
+
+        $allStatuses = $rules->pluck('statuses')->flatten()->unique()->filter()->values()->all();
+        if (empty($allStatuses)) {
             return [
                 'orders_processed' => 0,
                 'files_deleted' => 0,
@@ -79,9 +107,6 @@ class ImageCleanupService
             ];
         }
 
-        $action = Setting::get('image_cleanup_action', 'delete');
-        $quality = (int) Setting::get('image_cleanup_compression_quality', 55);
-
         $ordersProcessed = 0;
         $filesDeleted = 0;
         $filesCompressed = 0;
@@ -89,13 +114,12 @@ class ImageCleanupService
         $details = [];
 
         $query = Order::withTrashed()
-            ->whereIn('status', $statuses)
+            ->whereIn('status', $allStatuses)
             ->with(['files' => fn ($q) => $q->with('user')]);
 
         $query->chunk(self::CHUNK_SIZE, function ($orders) use (
-
-            $action,
-            $quality,
+            $rules,
+            $ruleType,
             $dryRun,
             &$ordersProcessed,
             &$filesDeleted,
@@ -104,20 +128,7 @@ class ImageCleanupService
             &$details
         ) {
             foreach ($orders as $order) {
-                if (! $order->status_changed_at) {
-                    continue;
-                }
-
-                $cutoff = $this->getCutoffForOrder($order);
-                if ($cutoff === null) {
-                    continue;
-                }
-
-                if ($order->status_changed_at > $cutoff) {
-                    continue;
-                }
-
-                $orderResult = $this->processOrder($order, $action, $quality, $dryRun);
+                $orderResult = $this->processOrderWithRules($order, $rules, $ruleType, $dryRun);
                 if ($orderResult['processed']) {
                     $ordersProcessed++;
                     $filesDeleted += $orderResult['deleted'];
@@ -140,41 +151,10 @@ class ImageCleanupService
     }
 
     /**
-     * Get cutoff date for an order based on file type and uploader.
-     * Returns the earliest cutoff among enabled types that apply to this order's files.
-     */
-    protected function getCutoffForOrder(Order $order): ?\Carbon\Carbon
-    {
-        $cutoffs = [];
-
-        if (Setting::get('image_cleanup_customer_product', false)) {
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_customer_product', 14));
-        }
-        if (Setting::get('image_cleanup_staff_product', false)) {
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_staff_product', 90));
-        }
-        if (Setting::get('image_cleanup_customer_comment', false)) {
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_customer_comment', 14));
-        }
-        if (Setting::get('image_cleanup_staff_comment', false)) {
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_staff_comment', 90));
-        }
-        if (Setting::get('image_cleanup_receipt', false) || Setting::get('image_cleanup_invoice', false) || Setting::get('image_cleanup_other', false)) {
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_customer_product', 14));
-            $cutoffs[] = now()->subDays((int) Setting::get('image_cleanup_retention_days_staff_product', 90));
-        }
-
-        if (empty($cutoffs)) {
-            return null;
-        }
-
-        return collect($cutoffs)->max();
-    }
-
-    /**
+     * @param  \Illuminate\Support\Collection<int, ImageCleanupRule>  $rules
      * @return array{processed: bool, deleted: int, compressed: int, bytes_freed: int, log: array}
      */
-    protected function processOrder(Order $order, string $action, int $quality, bool $dryRun): array
+    protected function processOrderWithRules(Order $order, $rules, string $ruleType, bool $dryRun): array
     {
         $deleted = 0;
         $compressed = 0;
@@ -182,20 +162,22 @@ class ImageCleanupService
         $log = [];
 
         foreach ($order->files as $file) {
-            if (! $this->shouldProcessFile($order, $file)) {
+            $matchingRule = $this->findMatchingRule($order, $file, $rules);
+            if ($matchingRule === null) {
                 continue;
             }
 
             $originalSize = $file->size ?? 0;
 
-            if ($action === 'delete') {
+            if ($ruleType === ImageCleanupRule::TYPE_DELETE) {
                 if (! $dryRun) {
                     $this->deleteFile($file, $order);
                 }
                 $deleted++;
                 $bytesFreed += $originalSize;
                 $log[] = ['file_id' => $file->id, 'path' => $file->path, 'action' => 'delete'];
-            } elseif ($action === 'compress' && $file->isImage()) {
+            } elseif ($ruleType === ImageCleanupRule::TYPE_COMPRESS && $file->isImage()) {
+                $quality = $matchingRule->compression_quality ?? 55;
                 if (! $dryRun) {
                     $newSize = $this->compressFile($file, $quality);
                     if ($newSize !== null) {
@@ -219,86 +201,30 @@ class ImageCleanupService
         ];
     }
 
-    protected function shouldProcessFile(Order $order, OrderFile $file): bool
+    /**
+     * Find the first rule that matches this file for the order.
+     *
+     * @param  \Illuminate\Support\Collection<int, ImageCleanupRule>  $rules
+     */
+    protected function findMatchingRule(Order $order, OrderFile $file, $rules): ?ImageCleanupRule
     {
-        $statusChangedAt = $order->status_changed_at;
-        if (! $statusChangedAt) {
-            return false;
-        }
-
-        $user = $file->user;
-        if (! $user) {
-            return false;
-        }
-        $isStaff = $user->isStaffOrAbove();
-
-        if ($file->type === 'product_image') {
-            if ($isStaff && Setting::get('image_cleanup_staff_product', false)) {
-                $retentionDays = (int) Setting::get('image_cleanup_retention_days_staff_product', 90);
-
-                return $statusChangedAt->lte(now()->subDays($retentionDays));
+        foreach ($rules as $rule) {
+            if (! in_array($order->status, $rule->statuses ?? [], true)) {
+                continue;
             }
-            if (! $isStaff && Setting::get('image_cleanup_customer_product', false)) {
-                $retentionDays = (int) Setting::get('image_cleanup_retention_days_customer_product', 14);
-
-                return $statusChangedAt->lte(now()->subDays($retentionDays));
+            if ($rule->shouldProcessFile($order, $file)) {
+                return $rule;
             }
         }
 
-        if ($file->type === 'comment') {
-            if ($isStaff && Setting::get('image_cleanup_staff_comment', false)) {
-                $retentionDays = (int) Setting::get('image_cleanup_retention_days_staff_comment', 90);
-
-                return $statusChangedAt->lte(now()->subDays($retentionDays));
-            }
-            if (! $isStaff && Setting::get('image_cleanup_customer_comment', false)) {
-                $retentionDays = (int) Setting::get('image_cleanup_retention_days_customer_comment', 14);
-
-                return $statusChangedAt->lte(now()->subDays($retentionDays));
-            }
-        }
-
-        if ($file->type === 'receipt' && Setting::get('image_cleanup_receipt', false)) {
-            $retentionDays = $isStaff
-                ? (int) Setting::get('image_cleanup_retention_days_staff_product', 90)
-                : (int) Setting::get('image_cleanup_retention_days_customer_product', 14);
-
-            return $statusChangedAt->lte(now()->subDays($retentionDays));
-        }
-
-        if ($file->type === 'invoice' && Setting::get('image_cleanup_invoice', false)) {
-            $retentionDays = $isStaff
-                ? (int) Setting::get('image_cleanup_retention_days_staff_product', 90)
-                : (int) Setting::get('image_cleanup_retention_days_customer_product', 14);
-
-            return $statusChangedAt->lte(now()->subDays($retentionDays));
-        }
-
-        if ($file->type === 'other' && Setting::get('image_cleanup_other', false)) {
-            $retentionDays = $isStaff
-                ? (int) Setting::get('image_cleanup_retention_days_staff_product', 90)
-                : (int) Setting::get('image_cleanup_retention_days_customer_product', 14);
-
-            return $statusChangedAt->lte(now()->subDays($retentionDays));
-        }
-
-        return false;
+        return null;
     }
 
     protected function deleteFile(OrderFile $file, Order $order): void
     {
         $path = $file->path;
-        $wasPrimary = false;
 
-        if ($file->type === 'product_image' && $file->order_item_id) {
-            $item = OrderItem::where('order_id', $order->id)
-                ->where('image_path', $path)
-                ->first();
-            if ($item) {
-                $wasPrimary = true;
-                $item->update(['image_path' => $this->ensurePlaceholderExists()]);
-            }
-        } elseif ($file->type === 'product_image') {
+        if ($file->type === 'product_image') {
             OrderItem::where('order_id', $order->id)
                 ->where('image_path', $path)
                 ->update(['image_path' => $this->ensurePlaceholderExists()]);

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             ShippingCompanySeeder::class,
             PageSeeder::class,
             TestimonialSeeder::class,
+            ImageCleanupRuleSeeder::class,
         ]);
     }
 }

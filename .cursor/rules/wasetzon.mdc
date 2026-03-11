@@ -16,11 +16,20 @@ alwaysApply: true
 - Features reference: `/Users/abdul/Desktop/Wasetzon/Wordpress/pwa3/app/public/`
 - Full plan: `LARAVEL_PLAN.md` — read this at the start of every session
 
+## Current Task
+
+Update each session for handoff.
+
+- **Last completed:** Duplicate order flow (`?duplicate_from={id}`), product_url pre-fill, success screen
+- **Next:** Duplicate button on order show page (`/orders/{id}`) — visible to customers and staff, links to `/new-order?duplicate_from={id}`
+- **Other open items:** (add as needed)
+
 ## Stack
 Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie Permission, MySQL 8, Redis
 
 ## AI Behavior
 - Read `LARAVEL_PLAN.md` before making any changes in a new session
+- Before editing new-order layout code (Table/Cart/Cards/Wizard), read `docs/ORDER_LAYOUTS.md`
 - Before building any feature, audit the corresponding source in the new WordPress site to capture all behavior and edge cases
 - When blocked or uncertain, ask the owner — never guess or hallucinate a solution
 - Do not create new base folders or change dependencies without approval
@@ -34,6 +43,26 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 - If a translation key is missing from `lang/ar.json` or `lang/en.json`, add it to both files before committing
 - **Never ship a string that doesn't pass through `__()`** — treat hardcoded English strings as bugs
 
+## Arabic & Technical Terms (ALWAYS ENFORCE)
+
+### Arabic language standard
+- Use **Modern Standard Arabic (الفصحى)** for all Arabic content
+- Do not use dialects (Egyptian, Levantine, etc.)
+- If dialect is ever needed, prefer **Saudi dialect (اللهجة السعودية)** because most customers are from Saudi Arabia
+- For audits and general work, all Arabic should be in standard Arabic only
+
+### Technical terms — keep in English
+- Only **acronyms and technical identifiers** stay in English. Everything else is translated.
+- **Examples to keep in English:** CSS, HTML, API, URL, PDF, JSON, SEO, SMS (and similar acronyms)
+- **Translate to Arabic:** all other labels, buttons, headings, instructions, marketing text — including login, button, settings, cart, order, shipping, etc.
+- When a technical term appears in an Arabic sentence, keep the term in English and write the rest in Arabic (e.g. "تحميل PDF" not "تحميل بي دي إف")
+
+### Examples
+- ✅ "إعدادات الحساب" (Account settings)
+- ✅ "تحميل PDF"
+- ✅ "تسجيل الدخول" (Login — if using Arabic) or "Login" (if keeping in English)
+- ❌ Translating "CSS" to "الورقات النمطية" or "API" to "واجهة برمجة التطبيقات"
+
 ## Key Architectural Decisions
 - **URLs:** `/orders/{id}` — nginx 301 redirects legacy `/order/(.*)` → `/orders/$1`
 - **Translations:** `lang/ar.json` + `lang/en.json` only — no `translations` DB table
@@ -42,6 +71,6 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 - **File storage:** Laravel `Storage` facade, local disk, driver set in `.env`
 - **Mobile-first:** all customer-facing pages; Filament admin is desktop-first
 - **No-scroll forms:** sign-in, sign-up, and each new-order item row must fit on screen without scrolling on mobile — compact layout, submit action always visible without scrolling
-- **New-order layout:** Option 1 (responsive) is site default, admin sets via Filament settings
+- **New-order layout:** Table (table on desktop, cards on mobile) is site default; Cart, Cards, Wizard also available; admin sets via Filament settings
 - **Templates:** all rewritten from scratch — no WordPress copy/paste
 - **Default menus:** header/footer menus, submenus, login/signup buttons seeded from new WordPress site at Phase 1

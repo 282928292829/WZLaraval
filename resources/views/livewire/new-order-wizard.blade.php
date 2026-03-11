@@ -147,7 +147,23 @@
             {{-- Step 2: Notes + Review + Submit --}}
             <section x-show="currentStep === 2" x-cloak class="flex flex-col gap-3 min-h-0">
                 <div class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 flex flex-col gap-4">
-                    {{-- General notes (above review) --}}
+                    {{-- Review list (items first) --}}
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-800 m-0 mb-2">{{ __('order_form.wizard_step_2_title') }}</h2>
+                        <div class="space-y-2 max-h-[30vh] overflow-y-auto">
+                            <template x-for="(item, idx) in items" :key="idx">
+                                <div class="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-primary-50/50 border border-primary-100">
+                                    <div class="min-w-0 flex-1">
+                                        <span class="font-medium text-sm text-slate-800" x-text="'{{ __('order_form.product_num') }} ' + (idx + 1)"></span>
+                                        <span class="text-slate-500 text-sm ms-1" dir="ltr" x-text="getItemSite(item) || ((item.url || '').substring(0, 40) + ((item.url || '').length > 40 ? '...' : '')) || '{{ __('common.dash') }}'"></span>
+                                        <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || 1) + ' × ' + (item.price || '{{ __('common.dash') }}') + ' ' + (item.currency || '')"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- General notes (below items) --}}
                     <div>
                         <div class="flex justify-between items-center mb-1.5">
                             <label class="block text-sm font-semibold text-slate-800">{{ __('order_form.general_notes') }} <span class="text-slate-400 font-normal">{{ __('order_form.optional') }}</span></label>
@@ -162,22 +178,6 @@
                                   placeholder="{{ __('order_form.general_notes_ph') }}"
                                   rows="2"
                                   class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
-                    </div>
-
-                    {{-- Review list --}}
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-800 m-0 mb-2">{{ __('order_form.wizard_step_2_title') }}</h2>
-                        <div class="space-y-2 max-h-[30vh] overflow-y-auto">
-                            <template x-for="(item, idx) in items" :key="idx">
-                                <div class="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-primary-50/50 border border-primary-100">
-                                    <div class="min-w-0 flex-1">
-                                        <span class="font-medium text-sm text-slate-800" x-text="'{{ __('order_form.product_num') }} ' + (idx + 1)"></span>
-                                        <span class="text-slate-500 text-sm ms-1" dir="ltr" x-text="getItemSite(item) || ((item.url || '').substring(0, 40) + ((item.url || '').length > 40 ? '...' : '')) || '{{ __('common.dash') }}'"></span>
-                                        <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || 1) + ' × ' + (item.price || '{{ __('common.dash') }}') + ' ' + (item.currency || '')"></div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
                     </div>
 
                     {{-- Total --}}

@@ -152,6 +152,9 @@ class SettingsSeeder extends Seeder
             ],
         ], 'json', 'orders');
 
+        // ── Order form layout (1=Table default, 2=Cart, 3=Cards, 4=Wizard) ──
+        Setting::set('order_new_layout', '1', 'string', 'orders');
+
         // ── Order form dev helpers ────────────────────────────────────────────
         Setting::set('order_form_show_add_test_items', true, 'boolean', 'orders');
 

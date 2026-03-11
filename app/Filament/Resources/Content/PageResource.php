@@ -204,7 +204,7 @@ class PageResource extends Resource
                     ->falseColor('gray'),
 
                 TextColumn::make('menu_order')
-                    ->label(__('Order'))
+                    ->label(__('Menu Order'))
                     ->sortable(),
 
                 TextColumn::make('updated_at')

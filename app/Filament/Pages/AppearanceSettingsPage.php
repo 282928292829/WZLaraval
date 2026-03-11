@@ -154,6 +154,71 @@ class AppearanceSettingsPage extends Page
         ])->render());
     }
 
+    /** Build layout reference HTML for the collapsible section. */
+    protected function buildLayoutReferenceHtml(): string
+    {
+        $layoutKeys = [
+            'app' => 'layouts_demo.app_layout',
+            'guest' => 'layouts_demo.guest_layout',
+            'order' => 'layouts_demo.order_layout',
+            'order-focused' => 'layouts_demo.order_focused_layout',
+            'bare' => 'layouts_demo.bare_layout',
+        ];
+
+        $html = '<ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">';
+        foreach ($layoutKeys as $key => $nameKey) {
+            $nameAr = __($nameKey, [], 'ar');
+            $nameEn = __($nameKey, [], 'en');
+            $desc = match ($key) {
+                'app' => __('appearance.layout_app_desc'),
+                'guest' => __('appearance.layout_guest_desc'),
+                'order' => __('appearance.layout_order_desc'),
+                'order-focused' => __('appearance.layout_order_focused_desc'),
+                'bare' => __('appearance.layout_bare_desc'),
+                default => '',
+            };
+            $url = url('/layout-demo/'.$key);
+            $html .= '<li class="flex flex-col gap-1">';
+            $html .= '<a href="'.e($url).'" target="_blank" rel="noopener noreferrer" class="block cursor-pointer rounded p-2 -m-2 transition hover:bg-gray-100 hover:underline dark:hover:bg-gray-800">';
+            $html .= '<span><strong><span lang="en">'.$nameEn.'</span> · <span lang="ar" dir="rtl">'.$nameAr.'</span></strong> — '.$desc.'</span>';
+            $html .= '<span class="mt-1 block text-xs text-primary-600 dark:text-primary-400">'.e($url).'</span>';
+            $html .= '</a>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+
+        return $html;
+    }
+
+    /** Build content reference HTML — Content group items with English · Arabic names and admin links. */
+    protected function buildContentReferenceHtml(): string
+    {
+        $items = [
+            ['name_key' => 'Blog Posts', 'url' => url('/admin/blog/posts')],
+            ['name_key' => 'Static Pages', 'url' => url('/admin/content/pages')],
+            ['name_key' => 'Categories', 'url' => url('/admin/blog/post-categories')],
+            ['name_key' => 'Testimonials', 'url' => url('/admin/testimonials')],
+            ['name_key' => 'Blog Comments', 'url' => url('/admin/blog/post-comments')],
+            ['name_key' => 'Page Comments', 'url' => url('/admin/content/pages')],
+        ];
+
+        $html = '<ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">';
+        foreach ($items as $item) {
+            $nameAr = __($item['name_key'], [], 'ar');
+            $nameEn = __($item['name_key'], [], 'en');
+            $url = $item['url'];
+            $html .= '<li class="flex flex-col gap-1">';
+            $html .= '<a href="'.e($url).'" target="_blank" rel="noopener noreferrer" class="block cursor-pointer rounded p-2 -m-2 transition hover:bg-gray-100 hover:underline dark:hover:bg-gray-800">';
+            $html .= '<span><strong><span lang="en">'.e($nameEn).'</span> · <span lang="ar" dir="rtl">'.e($nameAr).'</span></strong></span>';
+            $html .= '<span class="mt-1 block text-xs text-primary-600 dark:text-primary-400">'.e($url).'</span>';
+            $html .= '</a>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+
+        return $html;
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -404,6 +469,26 @@ class AppearanceSettingsPage extends Page
                                     ->columns(1)
                                     ->collapsible(),
                             ]),
+                    ]),
+                Section::make(__('appearance.layout_reference'))
+                    ->description(__('appearance.layout_reference_description'))
+                    ->icon(Heroicon::OutlinedRectangleGroup)
+                    ->collapsible()
+                    ->collapsed(false)
+                    ->schema([
+                        Placeholder::make('layout_reference_content')
+                            ->content(fn (): HtmlString => new HtmlString($this->buildLayoutReferenceHtml()))
+                            ->label(null),
+                    ]),
+                Section::make(__('appearance.content_reference'))
+                    ->description(__('appearance.content_reference_description'))
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->collapsible()
+                    ->collapsed(false)
+                    ->schema([
+                        Placeholder::make('content_reference_content')
+                            ->content(fn (): HtmlString => new HtmlString($this->buildContentReferenceHtml()))
+                            ->label(null),
                     ]),
             ])
             ->statePath('data');

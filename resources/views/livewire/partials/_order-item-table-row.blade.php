@@ -80,25 +80,7 @@
     </td>
     <td class="p-2 align-middle"><input type="text" x-model="item.price" @input="convertArabicNums($event)" @blur="calcTotals(); saveDraft()" inputmode="decimal" placeholder="{{ __('placeholder.amount') }}" class="order-form-input w-full px-2 py-2 border border-primary-100 rounded-lg text-sm h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 max-w-full truncate" style="overflow:hidden;text-overflow:ellipsis" :title="item.price || ''"></td>
     <td class="p-2 align-middle relative">
-        <div class="relative">
-            <button type="button" @click="openCurrencyRow = openCurrencyRow === idx ? null : idx" class="order-form-input w-full min-w-0 h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
-                    :title="currencyList[item.currency]?.label || ''">
-                <span class="truncate" x-text="currencyList[item.currency]?.label || item.currency || ''"></span>
-                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': openCurrencyRow === idx }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-            <div x-show="openCurrencyRow === idx" x-collapse x-cloak
-                 @click.outside="openCurrencyRow = null"
-                 class="absolute top-full mt-1 z-30 min-w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ app()->getLocale() === 'ar' ? 'right-0 left-auto' : 'left-0 right-auto' }}">
-                <template x-for="(cur, code) in currencyList" :key="code">
-                    <button type="button" @click="item.currency = code; onCurrencyChange(idx); calcTotals(); saveDraft(); openCurrencyRow = null"
-                            class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors"
-                            :class="{ 'bg-primary-50 text-primary-700 font-medium': item.currency === code }"
-                            :title="cur.symbol ? (cur.label + ' (' + cur.symbol + ')') : cur.label">
-                        <span x-text="cur.label || code"></span>
-                    </button>
-                </template>
-            </div>
-        </div>
+        @include('livewire.partials._currency-dropdown')
     </td>
     <td class="p-2 align-top min-w-0">
         <textarea x-model="item.notes" @blur="saveDraft()" :placeholder="idx === 0 ? '{{ __('order_form.notes_placeholder') }}' : ''" rows="1"
@@ -128,13 +110,16 @@
                 </div>
             </template>
             <template x-if="(item._files || []).length < maxImagesPerItem && totalFileCount() < maxImagesPerOrder">
-                <span class="inline-flex">
-                    <input type="file" :id="'order-file-desktop-' + idx" class="hidden" multiple
+                <span class="inline-flex min-h-[44px] min-w-[44px] cursor-pointer select-none"
+                      @if(auth()->guest())
+                      @click.prevent="$dispatch('open-login-modal-attach')"
+                      @else
+                      @click.prevent="$event.currentTarget.querySelector('input[type=file]')?.click()"
+                      @endif>
+                    <input type="file" class="hidden" multiple
                            accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}"
                            @change="handleFileSelect($event, idx)">
-                    <label :for="'order-file-desktop-' + idx"
-                           @click="if (!isLoggedIn) { $event.preventDefault(); $wire.openLoginModalForAttach(); }"
-                           class="border border-dashed border-primary-100 text-slate-500 bg-primary-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center hover:border-primary-500 hover:bg-primary-50 hover:text-primary-500 transition-colors">{{ __('order_form.attach') }}</label>
+                    <span class="border border-dashed border-primary-100 text-slate-500 bg-primary-50 py-2 px-3 rounded-md text-xs font-medium inline-flex items-center justify-center hover:border-primary-500 hover:bg-primary-50 hover:text-primary-500 transition-colors">{{ __('order_form.attach') }}</span>
                 </span>
             </template>
         </div>

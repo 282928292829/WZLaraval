@@ -76,11 +76,6 @@ Route::get('/new-order', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order');
 
-// Design prototypes for order form table — compare at /new-order-design-1, -2, -3
-Route::get('/new-order-design-1', [\App\Http\Controllers\OrderDesignController::class, 'design1']);
-Route::get('/new-order-design-2', [\App\Http\Controllers\OrderDesignController::class, 'design2']);
-Route::get('/new-order-design-3', [\App\Http\Controllers\OrderDesignController::class, 'design3']);
-
 Route::middleware('auth')->group(function () {
     Route::post('/orders/dismiss-comments-discovery', [OrderController::class, 'dismissCommentsDiscovery'])->name('orders.comments-discovery.dismiss');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
@@ -173,16 +168,14 @@ Route::get('/layout-demo/order', fn () => view('layouts.order', [
     'slot' => view('layouts-demo.order-content'),
     'title' => __('layouts_demo.order_layout'),
 ]));
+Route::get('/layout-demo/order-focused', fn () => view('layouts.order-focused', [
+    'slot' => view('layouts-demo.order-focused-content'),
+    'title' => __('layouts_demo.order_focused_layout'),
+]));
 Route::get('/layout-demo/bare', fn () => view('layouts.bare', [
     'slot' => view('layouts-demo.bare-content'),
     'title' => __('layouts_demo.bare_layout'),
 ]));
-// Homepage test variants
-Route::get('/homepagetest555', fn () => view('homepage-tests.555'));
-Route::get('/homepagetest666', fn () => view('homepage-tests.666'));
-Route::get('/homepagetest777', fn () => view('homepage-tests.777'));
-Route::get('/homepagetest888', fn () => view('homepage-tests.888'));
-
 // Homepage design demos — temporary test pages, may be removed
 Route::get('/test-homepage-demo1', fn () => view('homepage-tests.demo1'));
 Route::get('/test-homepage-demo2', fn () => view('homepage-tests.demo2'));
@@ -190,6 +183,9 @@ Route::get('/test-homepage-demo3', fn () => view('homepage-tests.demo3'));
 Route::get('/test-homepage-demo4', fn () => view('homepage-tests.demo4'));
 
 require __DIR__.'/auth.php';
+
+// Testimonials — dedicated route (no Page record required)
+Route::get('/testimonials', [\App\Http\Controllers\TestimonialsController::class, '__invoke'])->name('testimonials');
 
 // Page fallback — flat URLs, must be last so auth routes (login, register, etc.) match first
 Route::get('/{slug}', [PageController::class, 'show'])->name('pages.show');

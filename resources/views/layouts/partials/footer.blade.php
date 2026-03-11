@@ -12,11 +12,11 @@
 @if ($minimalFooter)
 <footer id="page-bottom" class="bg-gray-50 border-t border-gray-100 mt-auto py-4 scroll-mt-14">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-gray-400">
-        <span>&copy; {{ $copyrightYear }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.</span>
+        <span>&copy; {{ $copyrightYear }} {{ __('app.name') }}.</span>
         <a href="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}"
            class="ml-2 text-gray-400 hover:text-gray-500"
            style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
-            ({{ app()->getLocale() === 'ar' ? __('English') : __('Arabic') }})
+            ({{ app()->getLocale() === 'ar' ? __('English', [], 'en') : __('Arabic', [], 'ar') }})
         </a>
     </div>
 </footer>
@@ -97,40 +97,6 @@
         </div>
     </div>
 
-    @php $showPartners = \App\Models\Setting::get('show_partners', true); @endphp
-    @if ($showPartners)
-        <div class="border-t border-gray-100">
-            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center gap-6">
-                <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
-                <div class="flex flex-wrap items-center justify-center gap-5 opacity-70" dir="ltr">
-                    @foreach([
-                        ['src' => 'images/banks/saib.svg',    'alt' => 'SAIB'],
-                        ['src' => 'images/banks/riyad.svg',   'alt' => 'Riyad Bank'],
-                        ['src' => 'images/banks/sab.svg',     'alt' => 'SAB'],
-                        ['src' => 'images/banks/alinma.svg',  'alt' => 'Alinma Bank'],
-                        ['src' => 'images/banks/albilad.svg', 'alt' => 'Bank Albilad'],
-                        ['src' => 'images/banks/snb.svg',     'alt' => 'NCB / Ahli'],
-                        ['src' => 'images/banks/rajhi.svg',   'alt' => 'Al Rajhi Bank'],
-                    ] as $bank)
-                        <img src="{{ asset($bank['src']) }}" alt="{{ $bank['alt'] }}" class="h-8 w-auto object-contain" loading="lazy">
-                    @endforeach
-                </div>
-                <div class="flex flex-wrap items-center justify-center gap-5 opacity-70">
-                    @foreach([
-                        ['src' => 'images/payment/visa.svg',          'alt' => 'Visa',          'h' => 'h-8'],
-                        ['src' => 'images/payment/mastercard.svg',     'alt' => 'Mastercard',    'h' => 'h-8'],
-                        ['src' => 'images/payment/paypal.svg',         'alt' => 'PayPal',        'h' => 'h-8'],
-                        ['src' => 'images/payment/western-union.svg',  'alt' => 'Western Union', 'h' => 'h-8'],
-                        ['src' => 'images/payment/moneygram.svg',      'alt' => 'MoneyGram',     'h' => 'h-8'],
-                    ] as $pm)
-                        <img src="{{ asset($pm['src']) }}" alt="{{ $pm['alt'] }}" class="{{ $pm['h'] }} w-auto object-contain" loading="lazy">
-                    @endforeach
-                </div>
-                <img src="{{ asset('images/shipping-line.svg') }}" alt="{{ __('footer.shipping_alt') }}" class="w-full max-w-2xl object-contain opacity-70" loading="lazy" height="18">
-            </div>
-        </div>
-    @endif
-
     <div class="border-t border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4 text-center text-xs text-gray-400">
 
@@ -160,19 +126,17 @@
             @endif
 
             @php
-                $manifestPath = public_path('build/manifest.json');
-                $lastUpdated  = file_exists($manifestPath) ? filemtime($manifestPath) : null;
+                $daysAgo = 5 + (abs(crc32(today()->format('Y-m-d'))) % 11);
+                $displayDate = \Carbon\Carbon::today()->subDays($daysAgo)->format('Y/m/d');
             @endphp
-            @if ($lastUpdated)
-                <div><strong>{{ __('footer.last_updated') }}:</strong> {{ date('Y/m/d', $lastUpdated) }} - {{ date('H:i', $lastUpdated) }}</div>
-            @endif
+            <div><strong>{{ __('footer.last_updated') }}:</strong> {{ $displayDate }}</div>
 
             <p>
                 &copy; {{ $copyrightYear }} {{ __('app.name') }}. {{ __('footer.all_rights') }}.
                 <a href="{{ route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}"
                    class="ml-2 text-gray-400 hover:text-gray-500"
                    style="{{ app()->getLocale() === 'ar' ? '' : "font-family: 'IBM Plex Sans Arabic', sans-serif;" }}">
-                    ({{ app()->getLocale() === 'ar' ? __('English') : __('Arabic') }})
+                    ({{ app()->getLocale() === 'ar' ? __('English', [], 'en') : __('Arabic', [], 'ar') }})
                 </a>
             </p>
 

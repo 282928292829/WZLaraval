@@ -9,11 +9,15 @@
             {{-- Left: Logo --}}
             <a href="{{ url('/') }}"
                class="flex items-center shrink-0 z-10">
-                @php $logoUrl = \App\Support\LogoHelper::getLogoUrl(); @endphp
+                @php
+                    $logoUrl = \App\Support\LogoHelper::getLogoUrl();
+                    $primaryColor = trim((string) \App\Models\Setting::get('primary_color', '#f97316')) ?: '#f97316';
+                    $primaryColor = str_starts_with($primaryColor, '#') ? $primaryColor : '#' . $primaryColor;
+                @endphp
                 @if($logoUrl)
                     <img src="{{ $logoUrl }}" alt="{{ \App\Support\LogoHelper::getLogoAlt() }}" class="h-8 w-auto object-contain max-w-[140px]">
                 @else
-                    <span class="text-lg font-bold text-primary-600 tracking-tight">{{ \App\Support\LogoHelper::getLogoText() }}</span>
+                    <span class="text-lg font-bold tracking-tight" style="color: {{ $primaryColor }} !important">{{ \App\Support\LogoHelper::getLogoText() }}</span>
                 @endif
             </a>
 

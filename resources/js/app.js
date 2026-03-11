@@ -1,9 +1,12 @@
 import './bootstrap';
 
+import Alpine from 'alpinejs';
 import Collapse from '@alpinejs/collapse';
 
-// Livewire 3 bundles and initialises Alpine automatically.
-// We only need to register plugins BEFORE Alpine starts.
+window.Alpine = Alpine;
+Alpine.plugin(Collapse);
+
+// Livewire 3 may also bundle Alpine; we ensure it's available for Blade-only pages (e.g. testimonials).
 document.addEventListener('alpine:init', () => {
     window.Alpine.plugin(Collapse);
 
@@ -314,3 +317,6 @@ document.addEventListener('input', convertDigitsOnInput, true);
 
 // Apply conversion on blur (catches any missed conversions)
 document.addEventListener('blur', convertDigitsOnInput, true);
+
+// Start Alpine (required for Blade-only pages like testimonials; Livewire also bundles it)
+Alpine.start();

@@ -22,11 +22,7 @@
     </div>
     <div class="col-span-3 sm:col-span-2">
         <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_currency') }}</label>
-        <select x-model="item.currency" @change="onCurrencyChange(idx)" @blur="calcTotals(); saveDraft()" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10">
-            <template x-for="(cur, code) in currencyList" :key="code">
-                <option :value="code" x-text="cur.label || code" :selected="code === item.currency"></option>
-            </template>
-        </select>
+        @include('livewire.partials._currency-dropdown')
     </div>
     <div class="col-span-6">
         <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_notes') }}</label>
@@ -56,7 +52,7 @@
                            class="border border-dashed border-primary-100 text-slate-500 bg-primary-50 py-2 px-3 rounded-md text-xs font-medium cursor-pointer inline-flex items-center justify-center hover:border-primary-500 hover:text-primary-500 transition-colors">{{ __('order_form.attach') }}</label>
                 </span>
             </template>
-            <span class="text-[0.7rem] text-stone-400">{{ __('order_form.file_info_bulk', ['max' => $maxImagesPerItem]) }}</span>
         </div>
+        <p class="text-[0.65rem] text-slate-500 mt-1 leading-tight">{{ __('order_form.file_info_bulk', ['max' => $maxImagesPerItem, 'size' => $maxFileSizeMb ?? 2]) }}</p>
     </div>
 </div>

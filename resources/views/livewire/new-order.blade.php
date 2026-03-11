@@ -15,6 +15,7 @@
 {{-- ORDER FORM                                                   --}}
 {{-- ============================================================ --}}
 <div
+    data-guest="{{ auth()->guest() ? 'true' : 'false' }}"
     x-data="newOrderForm(
         @js($exchangeRates),
         @js($currencies),
@@ -69,6 +70,7 @@
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
+    @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
     class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)]"
 >
 
@@ -148,7 +150,7 @@
             </div>
         </section>
         @else
-        {{-- Option 1: Desktop table, mobile cards --}}
+        {{-- Table: desktop table, mobile cards --}}
         <section class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
 
             {{-- Desktop: HTML table (only scrollable area) — design-3 layout --}}
@@ -177,7 +179,10 @@
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_currency') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">
+                                <span class="block">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></span>
+                                <span class="block text-[0.65rem] font-normal text-slate-500 mt-0.5">{{ __('order_form.file_info_bulk', ['max' => $maxImagesPerItem ?? 3, 'size' => $maxFileSizeMb ?? 2]) }}</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="border-t border-primary-100">

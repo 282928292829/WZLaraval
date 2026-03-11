@@ -110,16 +110,26 @@
                         dir="ltr"
                     >
                 </div>
-                <div>
+                <div x-data="{ open: false }" class="relative inline-block w-auto min-w-[6rem] max-w-[14rem]">
                     <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_currency') }}</label>
-                    <select
-                        wire:model="currentItem.currency"
-                        class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
-                    >
+                    <button type="button"
+                            @click="open = !open"
+                            class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
+                        <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
+                        <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="open" x-collapse x-cloak
+                         @click.outside="open = false"
+                         class="absolute top-full mt-1 z-30 w-max min-w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
                         @foreach ($currencies ?? [] as $code => $data)
-                            <option value="{{ $code }}">{{ $code }} — {{ $data['label'] ?? $code }}</option>
+                            <button type="button"
+                                    data-code="{{ $code }}"
+                                    @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false"
+                                    class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">
+                                {{ $code }} — {{ $data['label'] ?? $code }}
+                            </button>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
             </div>
 
@@ -158,7 +168,7 @@
                 @if ($currentItemFile)
                     <p class="text-xs text-slate-500 mt-1">{{ __('order_form.file_attached') }}</p>
                 @endif
-                <p class="text-xs text-slate-400 mt-1">{{ __('order_form.file_info') }}</p>
+                <p class="text-[0.65rem] text-slate-500 mt-1">{{ __('order_form.file_info') }}</p>
             </div>
 
             {{-- Add to Cart button --}}

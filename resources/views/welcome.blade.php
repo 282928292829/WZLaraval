@@ -198,25 +198,70 @@
         </div>
     </section>
 
-    {{-- CTA --}}
+    {{-- Partners (banks, payment, shipping) — homepage content, above CTA --}}
+    @php $showPartners = \App\Models\Setting::get('show_partners', true); @endphp
+    @if ($showPartners)
+        <section class="py-12 sm:py-16 bg-white border-t border-gray-100">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-6">
+                <h4 class="text-sm font-semibold text-gray-500">{{ __('footer.partners') }}</h4>
+                <div class="flex flex-wrap items-center justify-center gap-5 opacity-70" dir="ltr">
+                    @foreach([
+                        ['src' => 'images/banks/saib.svg',    'alt' => 'SAIB'],
+                        ['src' => 'images/banks/riyad.svg',   'alt' => 'Riyad Bank'],
+                        ['src' => 'images/banks/sab.svg',     'alt' => 'SAB'],
+                        ['src' => 'images/banks/alinma.svg',  'alt' => 'Alinma Bank'],
+                        ['src' => 'images/banks/albilad.svg', 'alt' => 'Bank Albilad'],
+                        ['src' => 'images/banks/snb.svg',     'alt' => 'NCB / Ahli'],
+                        ['src' => 'images/banks/rajhi.svg',   'alt' => 'Al Rajhi Bank'],
+                    ] as $bank)
+                        <img src="{{ asset($bank['src']) }}" alt="{{ $bank['alt'] }}" class="h-8 w-auto object-contain" loading="lazy">
+                    @endforeach
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-5 opacity-70">
+                    @foreach([
+                        ['src' => 'images/payment/visa.svg',          'alt' => 'Visa',          'h' => 'h-8'],
+                        ['src' => 'images/payment/mastercard.svg',     'alt' => 'Mastercard',    'h' => 'h-8'],
+                        ['src' => 'images/payment/paypal.svg',         'alt' => 'PayPal',        'h' => 'h-8'],
+                        ['src' => 'images/payment/western-union.svg',  'alt' => 'Western Union', 'h' => 'h-8'],
+                        ['src' => 'images/payment/moneygram.svg',      'alt' => 'MoneyGram',     'h' => 'h-8'],
+                    ] as $pm)
+                        <img src="{{ asset($pm['src']) }}" alt="{{ $pm['alt'] }}" class="{{ $pm['h'] }} w-auto object-contain" loading="lazy">
+                    @endforeach
+                </div>
+                <img src="{{ asset('images/shipping-line.svg') }}" alt="{{ __('footer.shipping_alt') }}" class="w-full max-w-2xl object-contain opacity-70" loading="lazy" height="18">
+            </div>
+        </section>
+    @endif
+
+    {{-- CTA — New Order primary, Register secondary, WhatsApp subtle --}}
     <section class="py-16 sm:py-20 bg-orange-500">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
                 {{ __('Ready to start? Place your order now') }}
             </h2>
             <p class="text-orange-100 mb-8 text-base">
-                {{ __('Create a free account and place your first order in minutes.') }}
+                {{ __('Place your order in minutes.') }}
             </p>
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <a href="{{ route('register') }}"
-                   class="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-orange-600 hover:bg-orange-50 font-semibold px-8 py-3.5 text-base transition-all duration-150 shadow-md">
-                    {{ __('Register') }}
-                </a>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
                 <a href="{{ route('new-order') }}"
-                   class="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-white/40 text-white hover:bg-white/10 font-semibold px-8 py-3.5 text-base transition-all duration-150">
+                   class="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-orange-600 hover:bg-orange-50 font-semibold px-8 py-3.5 text-base transition-all duration-150 shadow-md">
                     {{ __('New Order') }}
                 </a>
+                <a href="{{ route('register') }}"
+                   class="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-white/40 text-white hover:bg-white/10 font-semibold px-8 py-3.5 text-base transition-all duration-150">
+                    {{ __('Register') }}
+                </a>
             </div>
+            @if ($heroShowWhatsapp && $heroWhatsappNum)
+                <p class="mt-5">
+                    <a href="https://wa.me/{{ $heroWhatsappNum }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="text-orange-200 hover:text-white text-sm transition-colors">
+                        {{ $heroWhatsappText ?: __('Or order via WhatsApp') }}
+                    </a>
+                </p>
+            @endif
         </div>
     </section>
 </x-app-layout>

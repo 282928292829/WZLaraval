@@ -22,7 +22,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Layout('layouts.order')]
+#[Layout('layouts.order-focused')]
 class NewOrder extends Component
 {
     use WithFileUploads;
@@ -349,28 +349,28 @@ class NewOrder extends Component
             'https://www.aliexpress.com/item/'.(string) random_int(1000000000, 9999999999).'.html',
         ];
         $sizes = [
-            __('order_form.test_size_s'),
-            __('order_form.test_size_m'),
-            __('order_form.test_size_l'),
-            __('order_form.test_size_xl'),
-            __('order_form.test_size_us8'),
-            __('order_form.test_size_us10'),
-            __('order_form.test_size_one'),
+            __('order_form.test_size_s', [], 'ar'),
+            __('order_form.test_size_m', [], 'ar'),
+            __('order_form.test_size_l', [], 'ar'),
+            __('order_form.test_size_xl', [], 'ar'),
+            __('order_form.test_size_us8', [], 'ar'),
+            __('order_form.test_size_us10', [], 'ar'),
+            __('order_form.test_size_one', [], 'ar'),
         ];
         $currencies = ['USD', 'EUR', 'GBP'];
         $colors = [
-            __('order_form.test_color_1'),
-            __('order_form.test_color_2'),
-            __('order_form.test_color_3'),
-            __('order_form.test_color_4'),
-            __('order_form.test_color_5'),
+            __('order_form.test_color_1', [], 'ar'),
+            __('order_form.test_color_2', [], 'ar'),
+            __('order_form.test_color_3', [], 'ar'),
+            __('order_form.test_color_4', [], 'ar'),
+            __('order_form.test_color_5', [], 'ar'),
         ];
         $notes = [
-            __('order_form.test_note_1'),
-            __('order_form.test_note_2'),
-            __('order_form.test_note_3'),
-            __('order_form.test_note_4'),
-            __('order_form.test_note_5'),
+            __('order_form.test_note_1', [], 'ar'),
+            __('order_form.test_note_2', [], 'ar'),
+            __('order_form.test_note_3', [], 'ar'),
+            __('order_form.test_note_4', [], 'ar'),
+            __('order_form.test_note_5', [], 'ar'),
         ];
 
         $toAdd = 5;
@@ -608,15 +608,8 @@ class NewOrder extends Component
         $this->validate($this->validationRules());
 
         $itemsWithOriginalIndex = [];
-        foreach ($this->items as $originalIndex => $item) {
-            $hasContent = trim($item['url'] ?? '') !== ''
-                || trim($item['color'] ?? '') !== ''
-                || trim($item['size'] ?? '') !== ''
-                || trim($item['notes'] ?? '') !== ''
-                || (is_numeric($item['price'] ?? null) && (float) $item['price'] > 0);
-            if ($hasContent) {
-                $itemsWithOriginalIndex[] = ['data' => $item, 'orig' => $originalIndex];
-            }
+        foreach ($this->items ?? [] as $originalIndex => $item) {
+            $itemsWithOriginalIndex[] = ['data' => $item, 'orig' => $originalIndex];
         }
 
         $limits = $this->checkFileLimits();
@@ -1201,7 +1194,7 @@ class NewOrder extends Component
 
         return [
             'orderNotes' => 'nullable|string|max:5000',
-            'items' => 'required|array|min:1',
+            'items' => 'nullable|array',
             'items.*.url' => 'nullable|string|max:2000',
             'items.*.qty' => 'nullable|string|max:2000',
             'items.*.color' => 'nullable|string|max:2000',
@@ -1353,7 +1346,8 @@ class NewOrder extends Component
             ->with('showResetAll', (bool) Setting::get('order_form_show_reset_all', true))
             ->with('commissionSettings', CommissionCalculator::getSettings())
             ->with('allowedMimeTypes', allowed_upload_mime_types())
-            ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024);
+            ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
+            ->with('maxFileSizeMb', $maxFileSizeMb);
         if ($layout === '2') {
             $view = $view->with('cartSummary', $this->getCartSummary());
         }

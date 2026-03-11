@@ -2,7 +2,15 @@
     <x-slot name="title">{{ __('layouts_demo.app_layout') }}</x-slot>
 
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ __('layouts_demo.app_layout') }}</h1>
-        <p class="text-gray-600">{{ __('layouts_demo.this_is_layout', ['name' => __('layouts_demo.app_layout')]) }}</p>
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+            <span lang="en">{{ __('layouts_demo.app_layout', [], 'en') }}</span>
+            <span class="text-gray-500 font-normal"> / </span>
+            <span lang="ar" dir="rtl">{{ __('layouts_demo.app_layout', [], 'ar') }}</span>
+        </h1>
+        <p class="text-gray-600">
+            <span lang="en">{{ __('layouts_demo.this_is_layout', ['name' => __('layouts_demo.app_layout', [], 'en')], 'en') }}</span>
+            <span class="text-gray-500"> / </span>
+            <span lang="ar" dir="rtl">{{ __('layouts_demo.this_is_layout', ['name' => __('layouts_demo.app_layout', [], 'ar')], 'ar') }}</span>
+        </p>
     </div>
 </x-app-layout>

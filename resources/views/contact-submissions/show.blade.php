@@ -13,7 +13,7 @@
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 bg-gray-50">
             <h1 class="text-lg font-bold text-gray-900">{{ __('contact.submission_title') }}</h1>
-            <p class="text-xs text-gray-500 mt-0.5">{{ $contactSubmission->created_at->translatedFormat('l، d F Y - H:i') }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ $contactSubmission->created_at->translatedFormat(__('contact.date_format')) }}</p>
         </div>
 
         <div class="p-5 space-y-4">

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\CleanupOrderFilesJob;
+use App\Models\ImageCleanupRule;
 use App\Models\Setting;
 use App\Services\ImageCleanupService;
 use Illuminate\Console\Command;
@@ -10,11 +11,12 @@ use Illuminate\Console\Command;
 class CleanupOrderFilesCommand extends Command
 {
     protected $signature = 'orders:cleanup-files
+                            {--type= : Rule type: delete or compress (required for manual runs)}
                             {--dry-run : Preview without deleting or compressing}
                             {--sync : Run synchronously instead of dispatching to queue}
-                            {--scheduled : Invoked by scheduler; checks settings before running}';
+                            {--scheduled : Invoked by scheduler; checks per-type schedule settings}';
 
-    protected $description = 'Clean up or compress order files based on configured triggers (status, retention, toggles)';
+    protected $description = 'Clean up or compress order files based on image cleanup rules';
 
     public function handle(ImageCleanupService $service): int
     {
@@ -23,22 +25,49 @@ class CleanupOrderFilesCommand extends Command
         $scheduled = $this->option('scheduled');
 
         if ($scheduled) {
-            if (! Setting::get('image_cleanup_schedule_enabled', false)) {
-                return self::SUCCESS;
-            }
-            $hour = (int) Setting::get('image_cleanup_schedule_hour', 2);
-            $day = (int) Setting::get('image_cleanup_schedule_day', 0);
-            $frequency = Setting::get('image_cleanup_schedule_frequency', 'daily');
+            return $this->runScheduled($service);
+        }
 
-            $now = now();
-            if ((int) $now->format('G') !== $hour) {
-                return self::SUCCESS;
+        $type = $this->option('type');
+        if (! $type || ! in_array($type, [ImageCleanupRule::TYPE_DELETE, ImageCleanupRule::TYPE_COMPRESS], true)) {
+            $this->error(__('image_cleanup.cli_type_required'));
+
+            return self::FAILURE;
+        }
+
+        if ($sync) {
+            $result = $service->run($type, $dryRun, 'manual');
+        } else {
+            CleanupOrderFilesJob::dispatch($type, $dryRun, 'manual');
+            $this->info(__('image_cleanup.job_dispatched'));
+
+            return self::SUCCESS;
+        }
+
+        return $this->handleResult($result);
+    }
+
+    private function runScheduled(ImageCleanupService $service): int
+    {
+        $now = now();
+        $hour = (int) $now->format('G');
+        $dayOfWeek = (int) $now->format('w');
+        $ran = false;
+
+        foreach ([ImageCleanupRule::TYPE_DELETE, ImageCleanupRule::TYPE_COMPRESS] as $ruleType) {
+            $prefix = "image_cleanup_{$ruleType}_schedule_";
+            if (! Setting::get($prefix.'enabled', false)) {
+                continue;
             }
-            if ($frequency === 'weekly' && (int) $now->format('w') !== $day) {
-                return self::SUCCESS;
+            if ((int) Setting::get($prefix.'hour', 2) !== $hour) {
+                continue;
+            }
+            $frequency = Setting::get($prefix.'frequency', 'daily');
+            if ($frequency === 'weekly' && (int) Setting::get($prefix.'day', 0) !== $dayOfWeek) {
+                continue;
             }
 
-            $result = $service->run(false, 'scheduled');
+            $result = $service->run($ruleType, false, 'scheduled');
             if (isset($result['details'][0]['error'])) {
                 $this->error($result['details'][0]['error']);
 
@@ -50,19 +79,14 @@ class CleanupOrderFilesCommand extends Command
                 'compressed' => $result['files_compressed'],
                 'bytes' => $this->formatBytes($result['bytes_freed']),
             ]));
-
-            return self::SUCCESS;
+            $ran = true;
         }
 
-        if ($sync) {
-            $result = $service->run($dryRun, 'manual');
-        } else {
-            CleanupOrderFilesJob::dispatch($dryRun, 'manual');
-            $this->info(__('image_cleanup.job_dispatched'));
+        return $ran ? self::SUCCESS : self::SUCCESS;
+    }
 
-            return self::SUCCESS;
-        }
-
+    private function handleResult(array $result): int
+    {
         if (isset($result['details'][0]['error'])) {
             $this->error($result['details'][0]['error']);
 

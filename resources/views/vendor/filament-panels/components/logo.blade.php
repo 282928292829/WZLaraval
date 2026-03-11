@@ -36,11 +36,15 @@
             }}
         />
     @else
+        @php
+            $primaryColor = trim((string) \App\Models\Setting::get('primary_color', '#f97316')) ?: '#f97316';
+            $primaryColor = str_starts_with($primaryColor, '#') ? $primaryColor : '#' . $primaryColor;
+        @endphp
         <div
             {{
                 $attributes->class([
                     $getLogoClasses($isDarkMode),
-                ])
+                ])->style(['color: ' . $primaryColor . ' !important'])
             }}
         >
             {{ $brandName }}

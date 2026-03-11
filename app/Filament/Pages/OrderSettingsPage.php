@@ -141,6 +141,12 @@ class OrderSettingsPage extends Page
             'markup_percent' => $c->markup_percent !== null ? (string) $c->markup_percent : '',
         ])->values()->toArray();
 
+        // Normalize repeater data to sequential arrays to avoid Filament Repeater
+        // getChildSchema/getStateSnapshot null bug (filamentphp/filament#18530)
+        $data['order_form_fields'] = $this->normalizeRepeaterItems($data['order_form_fields'] ?? []);
+        $data['invoice_company_details'] = $this->normalizeRepeaterItems($data['invoice_company_details'] ?? []);
+        $data['invoice_custom_lines'] = $this->normalizeRepeaterItems($data['invoice_custom_lines'] ?? []);
+
         $this->data = $data;
         $this->form->fill($this->data);
     }
@@ -239,6 +245,28 @@ class OrderSettingsPage extends Page
             'invoice_show_order_items' => false,
             'invoice_custom_lines' => [],
         ];
+    }
+
+    /**
+     * Normalize repeater data to sequential arrays.
+     * Filament may store UUID-keyed objects; converting to sequential helps avoid
+     * getChildSchema/getStateSnapshot null bug (filamentphp/filament#18530).
+     *
+     * @param  array<int|string, mixed>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeRepeaterItems(array $items): array
+    {
+        if (empty($items)) {
+            return [];
+        }
+        // If single-element array with associative child (Filament UUID structure)
+        if (count($items) === 1 && is_array($first = reset($items)) && array_is_list($first) === false) {
+            $items = array_values($first);
+        } elseif (array_is_list($items) === false) {
+            $items = array_values($items);
+        }
+        return array_values(array_filter($items, fn ($i) => is_array($i)));
     }
 
     /** Build a short status string for the exchange-rates fetch info placeholder */
@@ -466,8 +494,9 @@ class OrderSettingsPage extends Page
 
                                         Select::make('order_new_layout')
                                             ->label(__('New-Order Form Layout'))
+                                            ->default('1')
                                             ->options([
-                                                '1' => __('Option 1 — Responsive (default)'),
+                                                '1' => __('order_layout.table'),
                                                 '2' => __('Option 2 — Cart system'),
                                                 '3' => __('Option 3 — Cards everywhere'),
                                                 '4' => __('Option 4 — Wizard'),
@@ -584,8 +613,7 @@ class OrderSettingsPage extends Page
                                             ->addable(false)
                                             ->deletable(false)
                                             ->reorderable(false)
-                                            ->columns(4)
-                                            ->itemLabel(fn (array $state): ?string => $state['label_en'] ?? null),
+                                            ->columns(4),
                                     ])
                                     ->collapsible(),
                             ]),
@@ -739,7 +767,6 @@ class OrderSettingsPage extends Page
                                             ])
                                             ->columns(5)
                                             ->reorderable()
-                                            ->itemLabel(fn (array $state): string => ($state['code'] ?? '') ?: __('New currency'))
                                             ->addActionLabel(__('Add currency'))
                                             ->columnSpanFull(),
                                     ])
@@ -843,6 +870,7 @@ class OrderSettingsPage extends Page
                                         Toggle::make('qa_cancel_order')
                                             ->label(__('Staff: Cancel Order'))
                                             ->onColor('success'),
+
                                     ])
                                     ->columns(2)
                                     ->collapsible(),
@@ -995,7 +1023,6 @@ class OrderSettingsPage extends Page
     {
         return Form::make([EmbeddedSchema::make('form')])
             ->id('order-settings-form')
-            ->live()
             ->livewireSubmitHandler('save')
             ->footer([
                 SchemaActions::make($this->getFormActions())
@@ -1021,7 +1048,13 @@ class OrderSettingsPage extends Page
 
     public function save(): void
     {
-        $data = $this->form->getState();
+        try {
+            $data = $this->form->getState();
+        } catch (\Throwable $e) {
+            // Workaround for Filament Repeater getStateSnapshot() on null bug (#18530).
+            // Livewire has already applied updates to $this->data before save() runs.
+            $data = $this->data;
+        }
         if (empty($data) || ! is_array($data)) {
             $data = $this->data;
         }
@@ -1181,5 +1214,12 @@ class OrderSettingsPage extends Page
             ->title(__('Settings saved'))
             ->success()
             ->send();
+
+        // Workaround for Filament Repeater bug: getStateSnapshot() on null when re-rendering
+        // after save. Redirect forces full page reload and avoids the error.
+        // See: https://github.com/filamentphp/filament/issues/18530
+        $url = request()->header('Referer') ?? static::getUrl();
+
+        $this->redirect($url);
     }
 }
