@@ -34,14 +34,18 @@ class RoleBasedThrottle
 
         if ($this->limiter->tooManyAttempts($limiterKey, $maxAttempts)) {
             $retryAfter = $this->limiter->availableIn($limiterKey);
+            $retryMinutes = max(1, (int) ceil($retryAfter / 60));
+            $message = __('errors.429.paragraph', ['minutes' => $retryMinutes]);
 
-            return response()->json([
-                'message' => __('Too many requests. Please try again later.'),
-            ], 429)->withHeaders([
-                'Retry-After' => $retryAfter,
-                'X-RateLimit-Limit' => $maxAttempts,
-                'X-RateLimit-Remaining' => 0,
-            ]);
+            // GET: show 429 page (avoid redirect loop). POST/Livewire: redirect to orders with flash
+            if ($request->isMethod('GET')) {
+                return response()->view('errors.429', [
+                    'retryAfterMinutes' => $retryMinutes,
+                ], 429)
+                    ->withHeaders(['Retry-After' => $retryAfter]);
+            }
+
+            return redirect()->route('orders.index')->with('error', $message);
         }
 
         $this->limiter->hit($limiterKey, $decaySeconds);

@@ -9,7 +9,7 @@
     </button>
     <div x-show="openCurrencyRow === idx" x-collapse x-cloak
          @click.outside="openCurrencyRow = null"
-         class="absolute top-full mt-1 z-30 w-max min-w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ app()->getLocale() === 'ar' ? 'right-0 left-auto' : 'left-0 right-auto' }}">
+         class="absolute top-full mt-1 z-50 w-max min-w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ app()->getLocale() === 'ar' ? 'right-0 left-auto' : 'left-0 right-auto' }}">
         <template x-for="(cur, code) in currencyList" :key="code">
             <button type="button" @click="item.currency = code; onCurrencyChange(idx); calcTotals(); saveDraft(); openCurrencyRow = null"
                     class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap"

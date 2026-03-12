@@ -76,6 +76,27 @@ Route::get('/new-order', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order');
 
+// New order layouts — each URL always renders its own layout regardless of admin setting
+Route::get('/new-order-cards', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-cards');
+
+Route::get('/new-order-table', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-table');
+
+Route::get('/new-order-hybrid', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-hybrid');
+
+Route::get('/new-order-wizard', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-wizard');
+
+Route::get('/new-order-cart', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-cart');
+
 Route::middleware('auth')->group(function () {
     Route::post('/orders/dismiss-comments-discovery', [OrderController::class, 'dismissCommentsDiscovery'])->name('orders.comments-discovery.dismiss');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');

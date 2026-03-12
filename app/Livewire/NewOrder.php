@@ -45,6 +45,12 @@ class NewOrder extends Component
 
     public array $exchangeRates = [];
 
+    /**
+     * Resolved layout key for this request: 'cards'|'table'|'hybrid'|'wizard'|'cart'
+     * for new layouts, or '1'|'2'|'4' for legacy customer layouts.
+     */
+    public string $activeLayout = '';
+
     /** Set by ?duplicate_from={id} — triggers pre-fill in mount() */
     public ?int $duplicateFrom = null;
 
@@ -83,7 +89,7 @@ class NewOrder extends Component
 
     public string $modalSuccess = '';
 
-    public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = '')
+    public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = ''): void
     {
         $this->maxProducts = (int) Setting::get('max_products_per_order', 30);
         $this->maxImagesPerItem = max(1, (int) Setting::get('max_images_per_item', 3));
@@ -91,6 +97,8 @@ class NewOrder extends Component
         $this->defaultCurrency = (string) Setting::get('default_currency', 'USD');
         $this->currencies = order_form_currencies();
         $this->exchangeRates = $this->buildExchangeRates();
+
+        $this->activeLayout = $this->resolveLayout();
 
         // Edit mode: ?edit={id} — redirect to order page for inline edit (System 1)
         $editId = $edit ?? (int) request()->query('edit', 0);
@@ -101,21 +109,19 @@ class NewOrder extends Component
             }
         }
 
-        $layout = (string) Setting::get('order_new_layout', '1');
-
-        if ($layout === '2') {
+        if ($this->activeLayout === '2') {
             $this->currentItem = $this->emptyItem($this->defaultCurrency);
         }
 
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
-            if ($layout === '2' && ! empty($this->items)) {
+            if ($this->activeLayout === '2' && ! empty($this->items)) {
                 $last = $this->items[array_key_last($this->items)];
                 $this->currentItem = $this->emptyItem($last['currency'] ?? $this->defaultCurrency);
             }
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
-            if ($layout === '2') {
+            if ($this->activeLayout === '2') {
                 $this->currentItem['url'] = $product_url;
             } else {
                 $firstItem = $this->emptyItem($this->defaultCurrency);
@@ -123,6 +129,31 @@ class NewOrder extends Component
                 $this->items = [$firstItem];
             }
         }
+    }
+
+    /**
+     * Resolve the active layout key.
+     * New-layout direct routes (/new-order-cards, etc.) take priority over the admin setting.
+     * Falls back to the admin setting for /new-order.
+     *
+     * @return string One of: 'cards'|'table'|'hybrid'|'wizard'|'cart'|'1'|'2'|'4'
+     */
+    private function resolveLayout(): string
+    {
+        $pathMap = [
+            'new-order-cards' => 'cards',
+            'new-order-table' => 'table',
+            'new-order-hybrid' => 'hybrid',
+            'new-order-wizard' => 'wizard',
+            'new-order-cart' => 'cart',
+        ];
+
+        $path = trim(request()->path(), '/');
+        if (isset($pathMap[$path])) {
+            return $pathMap[$path];
+        }
+
+        return (string) Setting::get('order_new_layout', '1');
     }
 
     /**
@@ -412,7 +443,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+        if ($this->activeLayout !== '2') {
             return;
         }
         if (count($this->items) > 0) {
@@ -451,7 +482,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+        if ($this->activeLayout !== '2') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -462,7 +493,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ((string) Setting::get('order_new_layout', '1') !== '2') {
+        if ($this->activeLayout !== '2') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -1330,15 +1361,22 @@ class NewOrder extends Component
             ->all();
     }
 
-    public function render()
+    public function render(): \Illuminate\View\View
     {
         $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
-        $layout = (string) Setting::get('order_new_layout', '1');
+        $layout = $this->activeLayout ?: $this->resolveLayout();
+
         $viewName = match ($layout) {
+            'cards' => 'livewire.new-order-cards',
+            'table' => 'livewire.new-order-table',
+            'hybrid' => 'livewire.new-order-hybrid',
+            'wizard' => 'livewire.new-order-wizard-new',
+            'cart' => 'livewire.new-order-cart-new',
             '2' => 'livewire.new-order-cart',
             '4' => 'livewire.new-order-wizard',
             default => 'livewire.new-order',
         };
+
         $view = view($viewName)
             ->with('orderNewLayout', $layout)
             ->with('orderFormFields', $this->getOrderFormFields())
@@ -1348,6 +1386,7 @@ class NewOrder extends Component
             ->with('allowedMimeTypes', allowed_upload_mime_types())
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
             ->with('maxFileSizeMb', $maxFileSizeMb);
+
         if ($layout === '2') {
             $view = $view->with('cartSummary', $this->getCartSummary());
         }

@@ -61,6 +61,9 @@
         @endisset
 
         <main class="flex-1">
+            @if(session('error'))
+            <div x-data x-init="$nextTick(() => $dispatch('notify', {type: 'error', message: @js(session('error'))}))"></div>
+            @endif
             {!! $slot ?? '' !!}
         </main>
 

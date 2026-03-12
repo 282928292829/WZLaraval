@@ -11,8 +11,8 @@
 @endphp
 
 <div x-data="{ open: true }"
-     class="z-[9999] flex flex-col items-start gap-1"
-     style="position:fixed; bottom:8px; left:8px; max-width:calc(100vw - 16px);">
+     class="z-[9990] flex flex-col items-start gap-1"
+     style="position:fixed; bottom:calc(5rem + env(safe-area-inset-bottom, 0px)); left:8px; max-width:calc(100vw - 16px);">
 
     {{-- Toolbar --}}
     <div x-show="open"

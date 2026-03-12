@@ -77,6 +77,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
 
         emptyItem(cur) {
             return {
+                _id: Math.random().toString(36).slice(2),
                 url: '', qty: '1', color: '', size: '', price: '',
                 currency: cur || this.defaultCurrency, notes: '',
                 _expanded: true, _focused: false, _showOptional: false,
@@ -142,7 +143,7 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
                 const host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', '');
                 name = (host.split('.')[0] || host).replace(/^./, c => c.toUpperCase());
             } catch { name = url.substring(0, 6); }
-            name = (name.length > 6 ? name.substring(0, 6) : name) + '..';
+            name = name.length > 10 ? name.substring(0, 10) : name;
             return '(' + name + ')';
         },
 
@@ -245,107 +246,124 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
 
         handleFileSelect(e, idx) {
             const rawFiles = Array.from(e.target.files || []);
+            e.target.value = '';
             if (!rawFiles.length) return;
 
-            let files = this.items[idx]._files || [];
-            if (files.length >= this.maxImagesPerItem) {
-                this.showNotify('error', this.msgMaxPerItem);
-                e.target.value = '';
-                return;
-            }
-            if (this.totalFileCount() >= this.maxImagesPerOrder) {
-                this.showNotify('error', this.msgMaxOrder);
-                e.target.value = '';
+            if (!this.items[idx]._files) this.items[idx]._files = [];
+            const existing = this.items[idx]._files;
+
+            // Capacity checks
+            const canAddItem  = this.maxImagesPerItem - existing.length;
+            const canAddOrder = this.maxImagesPerOrder - this.totalFileCount();
+            const canAdd      = Math.min(canAddItem, canAddOrder);
+
+            if (canAdd <= 0) {
+                this.showNotify('error', existing.length >= this.maxImagesPerItem ? this.msgMaxPerItem : this.msgMaxOrder);
                 return;
             }
 
-            const allowed = this.allowedMimeTypes || [];
-            const maxSize = this.maxFileSizeBytes || (2 * 1024 * 1024);
-            const toAdd = [];
-            let skippedInvalid = 0;
-            let canAddItem = this.maxImagesPerItem - files.length;
-            let canAddOrder = this.maxImagesPerOrder - this.totalFileCount();
-
-            if (rawFiles.length > canAddItem || rawFiles.length > canAddOrder) {
-                this.showNotify('error', '{{ __('order_form.too_many_selected') }}'.replace(':max', this.maxImagesPerItem).replace(':avail', Math.min(canAddItem, canAddOrder)));
-                e.target.value = '';
-                return;
-            }
+            // Validate each file
+            const allowed  = this.allowedMimeTypes || [];
+            const maxBytes = this.maxFileSizeBytes || (2 * 1024 * 1024);
+            const valid    = [];
+            let   skipped  = 0;
 
             for (const file of rawFiles) {
-                if (!allowed.includes(file.type)) { skippedInvalid++; continue; }
-                if (file.size > maxSize) { skippedInvalid++; continue; }
-                toAdd.push(file);
+                if (valid.length >= canAdd) { skipped++; continue; }
+                if (allowed.length && !allowed.includes(file.type)) { skipped++; continue; }
+                if (file.size > maxBytes) { skipped++; continue; }
+                valid.push(file);
             }
 
-            if (skippedInvalid > 0) {
-                this.showNotify('error', skippedInvalid === 1 ? '{{ __('order_form.invalid_type') }}' : '{{ __('order_form.files_skipped_invalid') }}'.replace(':n', skippedInvalid));
+            if (skipped > 0) {
+                this.showNotify('error', '{{ __('order_form.files_skipped_invalid') }}'.replace(':n', skipped));
             }
+            if (!valid.length) return;
 
-            if (!toAdd.length) { e.target.value = ''; return; }
+            // Classify + upload
+            const classify = (file) => {
+                if (file.type === 'application/pdf') return 'pdf';
+                if (file.type.includes('excel') || file.type.includes('spreadsheetml') || file.type === 'text/csv') return 'xls';
+                if (file.type.includes('word') || file.type === 'application/msword') return 'doc';
+                return 'img';
+            };
 
-            if (!this.items[idx]._files) this.items[idx]._files = [];
-            const totalAdding = toAdd.length;
-            let completed = 0;
-            const uploadOne = (file, fileIdx) => {
-                let fileType = 'img';
-                if (file.type === 'application/pdf') fileType = 'pdf';
-                else if (file.type.includes('excel') || file.type.includes('spreadsheetml') || file.type === 'text/csv') fileType = 'xls';
-                else if (file.type.includes('word') || file.type === 'application/msword') fileType = 'doc';
+            let uploadedCount = 0;
+            const total = valid.length;
 
+            valid.forEach((file, i) => {
+                const fileType = classify(file);
                 const entry = { file, preview: null, fileType, fileName: file.name, uploadProgress: 0 };
-                this.items[idx]._files.push(entry);
+                const entryIdx = this.items[idx]._files.push(entry) - 1;
+                const wireKey  = 'itemFiles.' + idx + '.' + (existing.length - total + i);
+
+                // Generate image preview immediately
                 if (fileType === 'img') {
-                    const entryIdx = this.items[idx]._files.length - 1;
                     const reader = new FileReader();
-                    reader.onload = (ev) => { this.items[idx]._files[entryIdx].preview = ev.target.result; };
+                    reader.onload = (ev) => {
+                        if (this.items[idx]._files[entryIdx]) {
+                            this.items[idx]._files[entryIdx].preview = ev.target.result;
+                        }
+                    };
                     reader.readAsDataURL(file);
                 }
 
-                this.$wire.upload('itemFiles.' + idx + '.' + fileIdx, file,
+                this.$wire.upload(
+                    wireKey,
+                    file,
                     () => {
-                        entry.uploadProgress = null;
-                        completed++;
-                        if (completed === totalAdding) {
-                            this.showNotify('success', totalAdding > 1 ? '{{ __('order_form.files_attached') }}'.replace(':n', String(totalAdding)) : '{{ __('order_form.file_attached') }}');
+                        // Success
+                        if (this.items[idx]._files[entryIdx]) {
+                            this.items[idx]._files[entryIdx].uploadProgress = null;
+                        }
+                        uploadedCount++;
+                        if (uploadedCount === total) {
+                            this.showNotify('success',
+                                total > 1
+                                    ? '{{ __('order_form.files_attached') }}'.replace(':n', total)
+                                    : '{{ __('order_form.file_attached') }}'
+                            );
                         }
                     },
                     () => {
-                        entry.uploadProgress = null;
-                        this.items[idx]._files = this.items[idx]._files.filter(f => f !== entry);
+                        // Error
+                        if (this.items[idx]._files[entryIdx]) {
+                            this.items[idx]._files[entryIdx].uploadProgress = null;
+                        }
+                        this.items[idx]._files = this.items[idx]._files.filter((_, i) => i !== entryIdx);
                         this.showNotify('error', '{{ __('order_form.upload_failed') }}');
                     },
                     (event) => {
-                        entry.uploadProgress = event.detail.progress;
-                        if (event.detail.progress >= 100) entry.uploadProgress = null;
+                        // Progress
+                        const pct = event.detail.progress ?? 0;
+                        if (this.items[idx]._files[entryIdx]) {
+                            this.items[idx]._files[entryIdx].uploadProgress = pct >= 100 ? null : pct;
+                        }
                     }
                 );
-            };
-
-            let fileIdx = files.length;
-            toAdd.forEach((file) => { uploadOne(file, fileIdx); fileIdx++; });
-            e.target.value = '';
+            });
         },
 
-        removeFile(idx, fileIdx) {
-            const files = this.items[idx]._files || [];
+        removeFile(itemIdx, fileIdx) {
+            const files = this.items[itemIdx]?._files || [];
             if (fileIdx < 0 || fileIdx >= files.length) return;
-            this.items[idx]._files.splice(fileIdx, 1);
-            this.$wire.removeItemFile(idx, fileIdx);
+            this.items[itemIdx]._files.splice(fileIdx, 1);
+            this.$wire.removeItemFile(itemIdx, fileIdx);
         },
 
         closeZoom() {
-            if (this.zoomedImage && this.zoomedImage.startsWith('blob:')) {
+            if (this.zoomedImage?.startsWith?.('blob:')) {
                 try { URL.revokeObjectURL(this.zoomedImage); } catch (_) {}
             }
             this.zoomedImage = null;
         },
 
         openFileOrZoom(f) {
+            if (!f) return;
             if (f.fileType === 'img') {
                 const src = f.preview || (f.file ? URL.createObjectURL(f.file) : null);
                 if (src) this.$dispatch('zoom-image', src);
-            } else if ((f.fileType === 'pdf' || f.fileType === 'xls' || f.fileType === 'doc') && f.file) {
+            } else if (f.file) {
                 window.open(URL.createObjectURL(f.file), '_blank');
             }
         },
@@ -377,6 +395,14 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
                 if (until && Date.now() < parseInt(until)) this.tipsHidden = true;
                 else { localStorage.removeItem('wz_order_form_tips_until'); localStorage.removeItem('wz_opus46_tips_until'); }
             } catch {}
+        },
+
+        hideTips30Days() {
+            try {
+                localStorage.setItem('wz_order_form_tips_until', (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
+            } catch {}
+            this.tipsHidden = true;
+            this.showNotify('success', '{{ __('order_form.tips_hidden') }}');
         },
 
         showNotify(type, msg, duration) {
