@@ -46,8 +46,7 @@ class NewOrder extends Component
     public array $exchangeRates = [];
 
     /**
-     * Resolved layout key for this request: 'cards'|'table'|'hybrid'|'wizard'|'cart'
-     * for new layouts, or '1'|'2'|'4' for legacy customer layouts.
+     * Resolved layout key for this request: 'cards'|'table'|'hybrid'|'wizard'|'cart'.
      */
     public string $activeLayout = '';
 
@@ -109,19 +108,19 @@ class NewOrder extends Component
             }
         }
 
-        if ($this->activeLayout === '2') {
+        if ($this->activeLayout === 'cart') {
             $this->currentItem = $this->emptyItem($this->defaultCurrency);
         }
 
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
-            if ($this->activeLayout === '2' && ! empty($this->items)) {
+            if ($this->activeLayout === 'cart' && ! empty($this->items)) {
                 $last = $this->items[array_key_last($this->items)];
                 $this->currentItem = $this->emptyItem($last['currency'] ?? $this->defaultCurrency);
             }
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
-            if ($this->activeLayout === '2') {
+            if ($this->activeLayout === 'cart') {
                 $this->currentItem['url'] = $product_url;
             } else {
                 $firstItem = $this->emptyItem($this->defaultCurrency);
@@ -136,7 +135,7 @@ class NewOrder extends Component
      * New-layout direct routes (/new-order-cards, etc.) take priority over the admin setting.
      * Falls back to the admin setting for /new-order.
      *
-     * @return string One of: 'cards'|'table'|'hybrid'|'wizard'|'cart'|'1'|'2'|'4'
+     * @return string One of: 'cards'|'table'|'hybrid'|'wizard'|'cart'
      */
     private function resolveLayout(): string
     {
@@ -153,7 +152,7 @@ class NewOrder extends Component
             return $pathMap[$path];
         }
 
-        return (string) Setting::get('order_new_layout', '1');
+        return (string) Setting::get('order_new_layout', config('order.default_layout'));
     }
 
     /**
@@ -443,7 +442,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== '2') {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         if (count($this->items) > 0) {
@@ -482,7 +481,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== '2') {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -493,7 +492,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== '2') {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -686,7 +685,7 @@ class NewOrder extends Component
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
                 'status' => 'pending',
-                'layout_option' => Setting::get('order_new_layout', '1'),
+                'layout_option' => Setting::get('order_new_layout', config('order.default_layout')),
                 'notes' => trim($this->orderNotes) ?: null,
                 'shipping_address_id' => $defaultAddress?->id,
                 'shipping_address_snapshot' => $addressSnapshot,
@@ -1371,9 +1370,7 @@ class NewOrder extends Component
             'table' => 'livewire.new-order-table',
             'hybrid' => 'livewire.new-order-hybrid',
             'wizard' => 'livewire.new-order-wizard-new',
-            'cart' => 'livewire.new-order-cart-new',
-            '2' => 'livewire.new-order-cart',
-            '4' => 'livewire.new-order-wizard',
+            'cart' => 'livewire.new-order-cart',
             default => 'livewire.new-order',
         };
 
@@ -1387,7 +1384,7 @@ class NewOrder extends Component
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
             ->with('maxFileSizeMb', $maxFileSizeMb);
 
-        if ($layout === '2') {
+        if ($layout === 'cart') {
             $view = $view->with('cartSummary', $this->getCartSummary());
         }
 

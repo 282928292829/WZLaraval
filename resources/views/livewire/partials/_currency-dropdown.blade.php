@@ -1,8 +1,8 @@
 {{-- Modern currency dropdown — width fits longest currency, never exceeds it. Expects: idx, item, currencyList, onCurrencyChange, calcTotals, saveDraft, openCurrencyRow --}}
-<div class="relative inline-block">
+<div class="relative w-full">
     <button type="button"
             @click="openCurrencyRow = openCurrencyRow === idx ? null : idx"
-            class="order-form-input w-auto min-w-[6rem] max-w-[14rem] h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
+            class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
             :title="currencyList[item.currency]?.label || ''">
         <span class="truncate" x-text="currencyList[item.currency]?.label || item.currency || ''"></span>
         <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': openCurrencyRow === idx }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>

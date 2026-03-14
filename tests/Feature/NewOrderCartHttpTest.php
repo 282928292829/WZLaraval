@@ -9,7 +9,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Setting::set('order_new_layout', '2', 'string', 'orders');
+    Setting::set('order_new_layout', 'cart', 'string', 'orders');
     app()->setLocale('en');
 });
 
@@ -70,7 +70,7 @@ test('new-order cart layout shows add-product form fields', function (): void {
 });
 
 test('new-order page renders option 3 cards layout with one-card-at-a-time desktop when layout 3 is set', function (): void {
-    Setting::set('order_new_layout', '3', 'string', 'orders');
+    Setting::set('order_new_layout', 'cards', 'string', 'orders');
 
     $response = $this->get(route('new-order'));
 

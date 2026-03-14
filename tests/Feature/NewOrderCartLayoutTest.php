@@ -15,7 +15,7 @@ beforeEach(function (): void {
     Setting::set('orders_per_hour_customer', '100', 'integer', 'orders');
     Setting::set('max_products_per_order', '30', 'integer', 'orders');
     Setting::set('default_currency', 'USD', 'string', 'orders');
-    Setting::set('order_new_layout', '2', 'string', 'orders');
+    Setting::set('order_new_layout', 'cart', 'string', 'orders');
 });
 
 test('cart layout renders new-order-cart view', function (): void {
@@ -229,7 +229,7 @@ test('submitOrder creates order from cart when user is logged in', function (): 
     $order = Order::where('user_id', $user->id)->orderByDesc('id')->first();
     expect($order)->not->toBeNull();
     expect($order->notes)->toBe('Cart order notes');
-    expect((string) $order->layout_option)->toBe('2');
+    expect((string) $order->layout_option)->toBe('cart');
 
     $item = OrderItem::where('order_id', $order->id)->first();
     expect($item)->not->toBeNull();

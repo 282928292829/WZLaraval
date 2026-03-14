@@ -177,7 +177,7 @@ class OrderSettingsPage extends Page
             'order_edit_click_window_minutes' => '10',
             'order_edit_resubmit_window_minutes' => '10',
             'order_edit_window_minutes' => '10',
-            'order_new_layout' => '1',
+            'order_new_layout' => 'cards',
             'order_form_show_add_test_items' => false,
             'order_form_show_reset_all' => true,
             'orders_per_hour_customer' => '50',
@@ -266,6 +266,7 @@ class OrderSettingsPage extends Page
         } elseif (array_is_list($items) === false) {
             $items = array_values($items);
         }
+
         return array_values(array_filter($items, fn ($i) => is_array($i)));
     }
 
@@ -494,12 +495,13 @@ class OrderSettingsPage extends Page
 
                                         Select::make('order_new_layout')
                                             ->label(__('New-Order Form Layout'))
-                                            ->default('1')
+                                            ->default('cards')
                                             ->options([
-                                                '1' => __('order_layout.table'),
-                                                '2' => __('Option 2 — Cart system'),
-                                                '3' => __('Option 3 — Cards everywhere'),
-                                                '4' => __('Option 4 — Wizard'),
+                                                'hybrid' => __('order_layout.hybrid'),
+                                                'table' => __('order_layout.table'),
+                                                'cards' => __('order_layout.cards'),
+                                                'wizard' => __('order_layout.wizard'),
+                                                'cart' => __('order_layout.cart'),
                                             ]),
 
                                         Toggle::make('order_form_show_add_test_items')

@@ -1,10 +1,11 @@
 # Order Form Layouts
 
-Admin configures via **Order Settings** → New-Order Form Layout. Stored as `order_new_layout` (`'1'`, `'2'`, `'3'`, `'4'`).
+Admin configures via **Order Settings** → New-Order Form Layout. Stored as `order_new_layout` (`'hybrid'`, `'table'`, `'cards'`, `'wizard'`, `'cart'`).
 
 | Value | Name | Description |
 |-------|------|--------------|
-| `1` | **Table** | Table on desktop, cards on mobile. Always table on top (desktop) and cards below (mobile). Default. |
-| `2` | **Cart** | Cart-style layout; add items to cart before checkout. |
-| `3` | **Cards** | Cards everywhere — desktop and mobile both use collapsible cards. |
-| `4` | **Wizard** | Step-by-step wizard flow. |
+| `hybrid` | **Hybrid** | Table on desktop, cards on mobile. |
+| `table` | **Table** | Table on desktop and mobile. |
+| `cards` | **Cards** | Cards everywhere — desktop and mobile. |
+| `wizard` | **Wizard** | One step per product. |
+| `cart` | **Cart** | Add to cart with sidebar/bottom sheet. |

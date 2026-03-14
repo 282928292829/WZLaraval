@@ -144,43 +144,16 @@
         {{ __('order_form.th_qty') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
-    <textarea
+    <input
+        type="text"
         x-model="item.qty"
         @blur="calcTotals(); saveDraft()"
+        @input="convertArabicNums($event)"
         placeholder="1"
-        rows="1"
-        dir="rtl"
-        class="order-form-input overflow-hidden w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 resize-none break-words min-h-[2.5rem]"
+        inputmode="numeric"
+        class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
         :title="item.qty || ''"
-        x-init="$nextTick(() => {
-            if ((item.qty || '').trim()) {
-                $el.style.height = 'auto';
-                $el.style.height = Math.min(Math.max($el.scrollHeight, 40), 130) + 'px';
-            } else {
-                $el.style.height = '40px';
-            }
-            const o = $el.scrollHeight > $el.offsetHeight;
-            $el.classList.toggle('overflow-y-auto', o);
-            $el.classList.toggle('scrollbar-hide', o);
-            $el.classList.toggle('overflow-hidden', !o);
-        })"
-        @input="
-            convertArabicNums($event);
-            if (item.qty.length > 2000) { item.qty = item.qty.slice(0, 2000); showNotify('error', maxCharsMsg); }
-            if (!(item.qty || '').trim()) {
-                $el.style.height = '40px';
-                $el.classList.remove('overflow-y-auto','scrollbar-hide');
-                $el.classList.add('overflow-hidden');
-                return;
-            }
-            $el.style.height = 'auto';
-            $el.style.height = Math.min(Math.max($el.scrollHeight, 40), 130) + 'px';
-            const o = $el.scrollHeight > $el.offsetHeight;
-            $el.classList.toggle('overflow-y-auto', o);
-            $el.classList.toggle('scrollbar-hide', o);
-            $el.classList.toggle('overflow-hidden', !o);
-        "
-    ></textarea>
+    >
 </div>
 
 {{-- Price --}}
