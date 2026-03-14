@@ -142,6 +142,8 @@ class NewOrder extends Component
         $pathMap = [
             'new-order-cards' => 'cards',
             'new-order-table' => 'table',
+            'new-order-table-nosticky' => 'table-nosticky',
+            'new-order-table-sticky' => 'table-sticky',
             'new-order-hybrid' => 'hybrid',
             'new-order-wizard' => 'wizard',
             'new-order-cart' => 'cart',
@@ -1368,6 +1370,8 @@ class NewOrder extends Component
         $viewName = match ($layout) {
             'cards' => 'livewire.new-order-cards',
             'table' => 'livewire.new-order-table',
+            'table-nosticky' => 'livewire.new-order-table-nosticky',
+            'table-sticky' => 'livewire.new-order-table-sticky',
             'hybrid' => 'livewire.new-order-hybrid',
             'wizard' => 'livewire.new-order-wizard',
             'cart' => 'livewire.new-order-cart',

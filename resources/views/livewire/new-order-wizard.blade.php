@@ -1,5 +1,5 @@
 {{-- Layout: Wizard — One item per step. /new-order-wizard --}}
-{{-- Phases: item → notes → review. Own Alpine component: newOrderFormWizard(). --}}
+{{-- Phases: item → review. Own Alpine component: newOrderFormWizard(). --}}
 
 @php
     $isLoggedIn = auth()->check();
@@ -68,32 +68,6 @@
 {{-- Toast container --}}
 <div x-ref="toasts" id="toast-container"></div>
 
-{{-- ─── Sticky top progress bar ─────────────────────────────────────────── --}}
-<div class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
-    <div class="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
-
-        {{-- Phase label --}}
-        <span class="shrink-0 text-sm font-semibold text-slate-700 leading-tight">
-            <span x-show="phase === 'item'"
-                  x-text="'{{ __('order_form.wizard_item_step') }}'.replace(':n', currentItemIdx + 1)"></span>
-            <span x-show="phase === 'notes'" x-cloak>{{ __('order_form.wizard_notes_step') }}</span>
-            <span x-show="phase === 'review'" x-cloak>{{ __('order_form.wizard_review_step') }}</span>
-        </span>
-
-        {{-- Item count badge (middle) --}}
-        <span class="flex-1 min-w-0 text-center text-xs text-slate-400 truncate"
-              x-show="filledCount > 0 || items.length > 1"
-              x-text="'{{ __('order_form.wizard_items_added') }}'.replace(':count', filledCount)"
-              x-cloak></span>
-
-        {{-- Estimated total (right) --}}
-        <span class="shrink-0 text-xs text-slate-500 font-medium whitespace-nowrap"
-              x-show="totalSar > 0"
-              x-text="'~' + totalSar.toLocaleString('en-US') + ' {{ __('SAR') }}'"
-              x-cloak></span>
-    </div>
-</div>
-
 <div class="max-w-2xl mx-auto px-4 pt-4 pb-28">
 
     {{-- ─── Edit mode banner ──────────────────────────────────────────────── --}}
@@ -104,7 +78,7 @@
     </section>
     @endif
 
-    {{-- ─── Tips box (phase: item only, hidden on notes/review to keep focus) ── --}}
+    {{-- ─── Tips box (phase: item only, hidden on review to keep focus) ── --}}
     <div x-show="phase === 'item'" x-cloak>
         @include('livewire.partials._order-tips')
     </div>
@@ -153,7 +127,20 @@
                 </button>
                 <span class="text-lg font-bold text-slate-800 leading-tight"
                       x-text="'{{ __('order_form.wizard_item_step') }}'.replace(':n', currentItemIdx + 1)"></span>
+                {{-- Next item (when more items exist) --}}
+                <button type="button"
+                        x-show="currentItemIdx < items.length - 1"
+                        x-cloak
+                        @click="nextItem()"
+                        class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        :aria-label="'{{ __('order_form.wizard_next') }}'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
             </div>
+            <span class="flex-1 min-w-0 text-center text-xs text-slate-400 truncate"
+                  x-text="'{{ __('order_form.wizard_items_added') }}'.replace(':count', filledCount)"></span>
             <div class="flex items-center gap-2 shrink-0">
                 @if ($showAddTestItems ?? false)
                 <button type="button"
@@ -195,7 +182,7 @@
                 {{ __('order_form.wizard_add_another_item') }}
             </button>
 
-            {{-- "Done Adding Items" → go to Notes --}}
+            {{-- "Done Adding Items" → go to Review --}}
             <button type="button"
                     @click="doneAddingItems()"
                     x-show="!editingFromReview"
@@ -235,61 +222,6 @@
     </div>{{-- /phase item --}}
 
     {{-- ══════════════════════════════════════════════════════════════════════
-         PHASE: NOTES — order-level notes before review
-    ══════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="phase === 'notes'" x-cloak
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0 translate-x-2"
-         x-transition:enter-end="opacity-100 translate-x-0">
-
-        {{-- Title + back --}}
-        <div class="flex items-center gap-2 mb-4">
-            <button type="button"
-                    @click="backFromNotes()"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-                    aria-label="{{ __('order_form.wizard_back') }}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                </svg>
-            </button>
-            <h2 class="text-lg font-bold text-slate-800 m-0">{{ __('order_form.wizard_notes_title') }}</h2>
-        </div>
-
-        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            <div class="flex items-center justify-between gap-2 mb-1.5">
-                <h3 class="text-sm font-semibold text-slate-700 m-0">
-                    {{ __('order_form.general_notes') }}
-                    <span class="text-xs font-normal text-slate-400 ms-1">{{ __('order_form.optional') }}</span>
-                </h3>
-                @if ($showResetAll ?? true)
-                <button type="button"
-                        @click="resetAll()"
-                        class="text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                    {{ __('order_form.reset_all') }}
-                </button>
-                @endif
-            </div>
-            <textarea
-                x-model="orderNotes"
-                @input.debounce.500ms="saveDraft()"
-                placeholder="{{ __('order_form.general_notes_ph') }}"
-                rows="4"
-                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-400/10 transition-colors"
-            ></textarea>
-        </section>
-
-        <button type="button"
-                @click="goToReview()"
-                class="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-400 shadow-md shadow-primary-500/20 hover:from-primary-600 hover:to-primary-500 transition-all">
-            {{ __('order_form.wizard_continue_to_review') }}
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-            </svg>
-        </button>
-
-    </div>{{-- /phase notes --}}
-
-    {{-- ══════════════════════════════════════════════════════════════════════
          PHASE: REVIEW — compact item list, editable notes, submit
     ══════════════════════════════════════════════════════════════════════ --}}
     <div x-show="phase === 'review'" x-cloak
@@ -297,7 +229,7 @@
          x-transition:enter-start="opacity-0 translate-x-2"
          x-transition:enter-end="opacity-100 translate-x-0">
 
-        {{-- Title + back --}}
+        {{-- Title + back (to last item) --}}
         <div class="flex items-center gap-2 mb-4">
             <button type="button"
                     @click="backFromReview()"
@@ -321,10 +253,10 @@
 
                     {{-- Item summary --}}
                     <div class="flex-1 min-w-0">
-                        {{-- URL / site --}}
-                        <p class="text-sm font-medium text-slate-700 m-0 truncate"
+                        {{-- URL / site — font-arabic so "بدون رابط" uses IBM Plex Sans Arabic; dir=auto for correct flow --}}
+                        <p class="text-sm font-medium text-slate-700 m-0 truncate font-arabic"
                            x-text="reviewItemLine1(idx)"
-                           dir="ltr"></p>
+                           dir="auto"></p>
                         {{-- Qty × Price Currency --}}
                         <p class="text-xs text-slate-400 m-0 mt-0.5"
                            x-text="reviewItemLine2(idx)"></p>
@@ -392,7 +324,7 @@
     <button type="button"
             @click="submitOrder()"
             :disabled="submitting"
-            class="shrink-0 min-w-[120px] max-w-[180px] w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">
+            class="shrink-0 min-w-[120px] max-w-[180px] lg:min-w-[180px] lg:max-w-none lg:px-6 lg:py-3.5 lg:text-lg w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">
         @if ($editingOrderId)
         <span x-show="!submitting">{{ __('orders.save_changes') }}</span>
         @else
@@ -438,7 +370,7 @@ function newOrderFormWizard(rates, currencyList, maxProducts, defaultCurrency, i
         ...newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes),
 
         // ── Wizard-specific state ──────────────────────────────────────────
-        phase: 'item',              // 'item' | 'notes' | 'review'
+        phase: 'item',              // 'item' | 'review'
         currentItemIdx: 0,          // 0-based index of item being filled
         editingFromReview: false,   // true when jumped back from review to edit
         showDraftPrompt: false,
@@ -576,10 +508,10 @@ function newOrderFormWizard(rates, currencyList, maxProducts, defaultCurrency, i
             this.saveDraft();
         },
 
-        // ── Item phase: "Done Adding Items" → notes ───────────────────────
+        // ── Item phase: "Done Adding Items" → review ─────────────────────
         doneAddingItems() {
             this.saveDraft();
-            this.phase = 'notes';
+            this.phase = 'review';
             this.editingFromReview = false;
         },
 
@@ -624,22 +556,11 @@ function newOrderFormWizard(rates, currencyList, maxProducts, defaultCurrency, i
             }
         },
 
-        // ── Notes phase: back to last item ───────────────────────────────
-        backFromNotes() {
-            this.currentItemIdx = this.items.length - 1;
+        // ── Review phase: back to last item ───────────────────────────────
+        backFromReview() {
+            this.currentItemIdx = Math.max(0, this.items.length - 1);
             this.phase = 'item';
             this.editingFromReview = false;
-        },
-
-        // ── Notes phase: continue to review ──────────────────────────────
-        goToReview() {
-            this.saveDraft();
-            this.phase = 'review';
-        },
-
-        // ── Review phase: back to notes ───────────────────────────────────
-        backFromReview() {
-            this.phase = 'notes';
         },
 
         // ── Review phase: edit a specific item ───────────────────────────
