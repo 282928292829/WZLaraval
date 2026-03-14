@@ -53,7 +53,10 @@ class RoleBasedThrottle
             return redirect()->route('orders.index')->with('error', $message);
         }
 
-        $this->limiter->hit($limiterKey, $decaySeconds);
+        // Only count POST (order submissions / Livewire). GET (page visits) never increments.
+        if ($request->isMethod('POST')) {
+            $this->limiter->hit($limiterKey, $decaySeconds);
+        }
 
         $response = $next($request);
 
