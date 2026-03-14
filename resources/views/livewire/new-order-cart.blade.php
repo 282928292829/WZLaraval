@@ -21,16 +21,17 @@
         {{-- Main: Add-product form (left) --}}
         <div class="flex-1 min-w-0 p-4 md:pr-0 pb-24 md:pb-6">
             <div class="max-w-2xl mx-auto">
-                <div class="flex flex-nowrap items-center justify-between gap-3 mb-5">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-5 relative z-10">
                     <div>
                         <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('Create new order') }}</h1>
                     </div>
+                    <div class="flex items-center gap-2 shrink-0">
                     @if ($showAddTestItems ?? false)
-                    <button type="button" wire:click="addFiveTestItems" class="shrink-0 text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">{{ __('order.dev_add_5_test_items') }}</button>
+                    <button type="button" wire:click="addFiveTestItems" wire:loading.attr="disabled" class="inline-flex items-center justify-center min-h-[44px] py-2 px-4 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-800 border-none rounded-lg cursor-pointer transition-colors disabled:opacity-60">{{ __('order.dev_add_5_test_items') }}</button>
                     @endif
                     <button type="button"
                             @click="focusCartOnDesktop()"
-                            class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-primary-500/10 text-primary-600 border-2 border-primary-500/30 hover:bg-primary-500/20 hover:border-primary-500/50 transition-colors">
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-primary-500/10 text-primary-600 border-2 border-primary-500/30 hover:bg-primary-500/20 hover:border-primary-500/50 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         {{ __('order_form.cart') }}
                         @if (count($items) > 0)
@@ -315,6 +316,8 @@ function newOrderFormCart() {
         showDraftPrompt: false,
         pendingDraftItems: null,
         pendingDraftNotes: '',
+        tipsOpen: false,
+        tipsHidden: false,
         focusCartOnDesktop() {
             this.cartOpen = true;
             if (window.innerWidth >= 768) {
