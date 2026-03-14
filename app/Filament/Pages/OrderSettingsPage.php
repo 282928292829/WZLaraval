@@ -501,7 +501,6 @@ class OrderSettingsPage extends Page
                                                 'table' => __('order_layout.table'),
                                                 'cards' => __('order_layout.cards'),
                                                 'wizard' => __('order_layout.wizard'),
-                                                'cart' => __('order_layout.cart'),
                                             ]),
 
                                         Toggle::make('order_form_show_add_test_items')
