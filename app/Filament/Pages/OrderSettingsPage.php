@@ -78,7 +78,7 @@ class OrderSettingsPage extends Page
         'order_success_redirect_seconds', 'order_success_screen_threshold',
         'max_products_per_order', 'order_edit_enabled', 'order_edit_click_window_minutes',
         'order_edit_resubmit_window_minutes', 'order_edit_window_minutes',
-        'order_new_layout', 'order_form_show_add_test_items', 'order_form_show_reset_all',
+        'order_new_layout', 'order_form_show_add_test_items', 'order_form_show_reset_all', 'order_form_require_terms', 'order_form_terms_template',
         'orders_per_hour_customer', 'orders_per_hour_admin', 'orders_per_day_staff',
         'orders_per_month_customer', 'orders_per_month_admin', 'orders_per_day_customer',
         'max_file_size_mb', 'max_images_per_item', 'max_images_per_order',
@@ -180,6 +180,8 @@ class OrderSettingsPage extends Page
             'order_new_layout' => 'cards',
             'order_form_show_add_test_items' => false,
             'order_form_show_reset_all' => true,
+            'order_form_require_terms' => true,
+            'order_form_terms_template' => '',
             'orders_per_hour_customer' => '50',
             'orders_per_hour_admin' => '50',
             'orders_per_day_staff' => '100',
@@ -513,6 +515,16 @@ class OrderSettingsPage extends Page
                                         Toggle::make('order_form_show_reset_all')
                                             ->label(__('settings.order_form_show_reset_all'))
                                             ->helperText(__('settings.order_form_show_reset_all_help')),
+
+                                        Toggle::make('order_form_require_terms')
+                                            ->label(__('settings.order_form_require_terms'))
+                                            ->helperText(__('settings.order_form_require_terms_help')),
+
+                                        Textarea::make('order_form_terms_template')
+                                            ->label(__('settings.order_form_terms_template'))
+                                            ->rows(3)
+                                            ->placeholder(__('order_form.terms_template_default'))
+                                            ->helperText(__('settings.order_form_terms_template_help')),
 
                                         TextInput::make('orders_per_hour_customer')
                                             ->label(__('Orders/hour — Customer'))
@@ -1101,6 +1113,8 @@ class OrderSettingsPage extends Page
             'order_new_layout' => 'orders',
             'order_form_show_add_test_items' => 'orders',
             'order_form_show_reset_all' => 'orders',
+            'order_form_require_terms' => 'orders',
+            'order_form_terms_template' => 'orders',
             'orders_per_hour_customer' => 'orders',
             'orders_per_hour_admin' => 'orders',
             'orders_per_day_staff' => 'orders',
@@ -1169,7 +1183,7 @@ class OrderSettingsPage extends Page
 
         $booleanKeys = [
             'order_success_screen_enabled', 'order_edit_enabled',
-            'order_form_show_add_test_items', 'order_form_show_reset_all',
+            'order_form_show_add_test_items', 'order_form_show_reset_all', 'order_form_require_terms',
             'customer_can_add_files_after_submit', 'exchange_rates_auto_fetch',
             'qa_customer_section', 'qa_payment_notify', 'qa_shipping_address_btn',
             'qa_similar_order', 'qa_customer_merge', 'qa_customer_cancel',

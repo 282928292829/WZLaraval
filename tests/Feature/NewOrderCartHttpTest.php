@@ -52,7 +52,6 @@ test('new-order page renders cart layout when option 2 is set', function (): voi
     $response = $this->get(route('new-order'));
 
     $response->assertOk();
-    $response->assertSee('Add products one by one', false);
     $response->assertSee('Add to Cart', false);
     $response->assertSee('Cart', false);
 });
@@ -85,7 +84,6 @@ test('new-order-cart route renders cart layout with form sidebar and bottom-shee
     $response = $this->get(route('new-order-cart'));
 
     $response->assertOk();
-    $response->assertSee('Add products one by one', false);
     $response->assertSee('Add to Cart', false);
     $response->assertSee('newOrderFormCart', false);
     $response->assertSee('cart-sidebar', false);
@@ -152,7 +150,6 @@ test('new-order-cart-next route renders Bersonal-style drawer layout', function 
     $response = $this->get(route('new-order-cart-next'));
 
     $response->assertOk();
-    $response->assertSee('Add products one by one', false);
     $response->assertSee('Add to Cart', false);
     $response->assertSee('newOrderFormCartNext', false);
     $response->assertSee('Checkout', false);

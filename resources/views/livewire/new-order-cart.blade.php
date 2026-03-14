@@ -29,7 +29,7 @@
                     <button type="button" wire:click="addFiveTestItems" class="shrink-0 text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">{{ __('order.dev_add_5_test_items') }}</button>
                     @endif
                     <button type="button"
-                            @click="cartOpen = true"
+                            @click="focusCartOnDesktop()"
                             class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-primary-500/10 text-primary-600 border-2 border-primary-500/30 hover:bg-primary-500/20 hover:border-primary-500/50 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         {{ __('order_form.cart') }}
@@ -117,7 +117,7 @@
                     <div class="mb-4" x-data="{ fileName: '' }">
                         <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                         <div class="flex items-center gap-3">
-                            <input type="file" id="new-order-cart-file-input" wire:model="currentItemFile" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+                            <input type="file" id="new-order-cart-file-input" wire:model="currentItemFiles" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" {{ ($maxImagesPerItem ?? 1) > 1 ? 'multiple' : '' }} @change="fileName = $event.target.files.length ? ($event.target.files.length > 1 ? $event.target.files.length + ' files' : $event.target.files[0].name) : ''">
                             <label for="new-order-cart-file-input"
                                    @if ($isGuest) @click.prevent="$wire.openLoginModalForAttach()" @endif
                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
@@ -125,11 +125,9 @@
                                 {{ __('order_form.choose_file') }}
                             </label>
                             <span x-show="fileName" x-text="fileName" class="text-xs text-slate-500 truncate max-w-[12rem]" x-cloak></span>
-                            @if (!$currentItemFile)
                             <span x-show="!fileName" class="text-xs text-slate-400">{{ __('order_form.no_file_chosen') }}</span>
-                            @endif
                         </div>
-                        <p class="text-[0.65rem] text-slate-500 mt-1">{{ __('order_form.file_info') }}</p>
+                        <p class="text-[0.65rem] text-slate-500 mt-1">{{ ($maxImagesPerItem ?? 1) > 1 ? __('order_form.file_info_bulk', ['max' => $maxImagesPerItem ?? 1, 'size' => $maxFileSizeMb ?? 2]) : __('order_form.file_info_with_size', ['size' => $maxFileSizeMb ?? 2]) }}</p>
                     </div>
                     <button type="submit" wire:loading.attr="disabled" class="w-full min-h-[44px] py-3 px-4 inline-flex items-center justify-center gap-2 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                         <span wire:loading.remove wire:target="addToCart"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> {{ __('order_form.add_to_cart') }}</span>
@@ -141,7 +139,7 @@
                 <div class="mt-4 bg-primary-50 border border-primary-200 rounded-xl p-3">
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-sm font-medium text-slate-800">{{ __('order_form.items_in_cart', ['count' => count($items)]) }}</span>
-                        <button type="button" @click="cartOpen = true" class="shrink-0 px-3 py-1.5 text-sm font-semibold text-primary-600 hover:text-primary-700 hover:bg-primary-100 rounded-lg transition-colors">{{ __('order_form.review_cart') }}</button>
+                        <button type="button" @click="focusCartOnDesktop()" class="shrink-0 px-3 py-1.5 text-sm font-semibold text-primary-600 hover:text-primary-700 hover:bg-primary-100 rounded-lg transition-colors">{{ __('order_form.review_cart') }}</button>
                     </div>
                 </div>
                 @endif
@@ -149,7 +147,9 @@
         </div>
 
         {{-- Desktop: Sidebar cart (always visible on md+) --}}
-        <aside class="hidden md:flex md:w-[340px] lg:w-[380px] shrink-0 flex-col bg-white border-s border-slate-200 overflow-hidden" id="cart-sidebar">
+        <aside class="hidden md:flex md:w-[340px] lg:w-[380px] shrink-0 flex-col bg-white border-s border-slate-200 overflow-hidden transition-shadow duration-300"
+               :class="{ 'ring-2 ring-primary-500 ring-offset-2': sidebarHighlight }"
+               id="cart-sidebar">
             <div class="p-4 border-b border-slate-200 shrink-0">
                 <h2 class="text-lg font-bold text-slate-800 m-0">{{ __('order_form.cart') }} ({{ count($items) }})</h2>
             </div>
@@ -311,9 +311,21 @@
 function newOrderFormCart() {
     return {
         cartOpen: false,
+        sidebarHighlight: false,
         showDraftPrompt: false,
         pendingDraftItems: null,
         pendingDraftNotes: '',
+        focusCartOnDesktop() {
+            this.cartOpen = true;
+            if (window.innerWidth >= 768) {
+                this.sidebarHighlight = true;
+                this.$nextTick(() => {
+                    const sb = document.getElementById('cart-sidebar');
+                    if (sb) sb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+                setTimeout(() => { this.sidebarHighlight = false; }, 1200);
+            }
+        },
         peekDraft() {
             try {
                 let raw = localStorage.getItem('wz_order_form_draft');

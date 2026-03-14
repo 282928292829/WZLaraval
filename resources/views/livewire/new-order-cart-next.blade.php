@@ -9,14 +9,15 @@
 
 <div class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
      data-guest="{{ $isGuest ? 'true' : 'false' }}"
-     x-data="newOrderFormCartNext()"
+     x-data="newOrderFormCartNext({{ ($requireTerms ?? true) ? 'true' : 'false' }})"
      x-init="initCartDraft()"
      @notify.window="showNotify($event.detail.type, $event.detail.message)"
      @cart-item-added.window="isShaking = true; setTimeout(() => isShaking = false, 500)"
      @cart-emptied.window="cartOpen = false"
      @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)"
      @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
-     @keydown.escape.window="if (showDraftPrompt) { showDraftPrompt = false; } if (showClearConfirm) { showClearConfirm = false; } else if (cartOpen) { cartOpen = false; }">
+     @zoom-image.window="zoomedImage = $event.detail"
+     @keydown.escape.window="if (zoomedImage) { zoomedImage = null; } else if (showDraftPrompt) { showDraftPrompt = false; } else if (showClearConfirm) { showClearConfirm = false; } else if (cartOpen) { cartOpen = false; }">
     <div x-ref="toasts" id="toast-container-cart-next"></div>
 
     <div class="max-w-2xl mx-auto p-4 pb-24">
@@ -66,17 +67,15 @@
         @endif
 
         <form wire:submit="addToCart" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-5">
+            {{-- Row 1: URL (full) — matches cards _item-fields line 14 --}}
             <div class="mb-3">
                 <label class="block text-sm font-semibold text-slate-800 mb-1.5">{{ __('order_form.th_url') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                 <div dir="ltr">
                     <input type="text" wire:model="currentItem.url" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left" placeholder="{{ __('order_form.url_placeholder') }}" dir="ltr">
                 </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                    <input type="text" wire:model="currentItem.qty" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="1" dir="ltr">
-                </div>
+            {{-- Row 2: Color | Size — matches cards _item-fields lines 56, 98 --}}
+            <div class="grid grid-cols-2 gap-3 mb-3">
                 <div>
                     <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_color') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                     <input type="text" wire:model="currentItem.color" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10">
@@ -86,18 +85,23 @@
                     <input type="text" wire:model="currentItem.size" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10">
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                    <input type="text" wire:model="currentItem.price" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="0" dir="ltr">
+            {{-- Row 3: Qty | Price | Currency — matches cards _item-fields lines 143–186 --}}
+            <div class="flex flex-nowrap items-end gap-2 mb-3 overflow-visible">
+                <div class="min-w-0 flex-1">
+                    <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                    <input type="text" wire:model="currentItem.qty" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="1" dir="ltr">
                 </div>
-                <div x-data="{ open: false }" class="relative">
+                <div class="min-w-0 flex-1">
+                    <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                    <input type="text" wire:model="currentItem.price" class="order-form-input w-full px-3 py-2.5 min-w-[4ch] border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="{{ __('placeholder.amount') }}" dir="ltr">
+                </div>
+                <div x-data="{ open: false }" class="relative min-w-0 flex-1 min-w-[5rem]">
                     <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_currency') }}</label>
                     <button type="button" @click="open = !open" class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
                         <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
                         <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-                    <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
+                    <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-thin {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
                         @foreach ($currencies ?? [] as $code => $data)
                         <button type="button" data-code="{{ $code }}" @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }} — {{ $data['label'] ?? $code }}</button>
                         @endforeach
@@ -108,22 +112,37 @@
                 <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                 <textarea wire:model="currentItem.notes" rows="2" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="{{ __('order_form.notes_placeholder') }}"></textarea>
             </div>
-            <div class="mb-4" x-data="{ fileName: '' }">
+            <div class="mb-4" x-data="cartNextFilePreviews()">
                 <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                <div class="flex items-center gap-3">
-                    <input type="file" id="new-order-cart-next-file-input" wire:model="currentItemFile" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="file" x-ref="fileInput" id="new-order-cart-next-file-input" wire:model="currentItemFiles" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" {{ ($maxImagesPerItem ?? 1) > 1 ? 'multiple' : '' }} @change="onFilesChange($event)">
                     <label for="new-order-cart-next-file-input"
                            @if ($isGuest) @click.prevent="$wire.openLoginModalForAttach()" @endif
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                         {{ __('order_form.choose_file') }}
                     </label>
-                    <span x-show="fileName" x-text="fileName" class="text-xs text-slate-500 truncate max-w-[12rem]" x-cloak></span>
-                    @if (!$currentItemFile)
-                    <span x-show="!fileName" class="text-xs text-slate-400">{{ __('order_form.no_file_chosen') }}</span>
-                    @endif
+                    <template x-for="(fp, idx) in filePreviews" :key="'fp-'+idx">
+                        <div class="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-slate-200 group"
+                             :class="{ 'cursor-pointer': fp.preview }"
+                             @click="fp.preview && $dispatch('zoom-image', fp.preview)">
+                            <template x-if="fp.preview">
+                                <img :src="fp.preview" class="w-full h-full object-cover block pointer-events-none" alt="">
+                            </template>
+                            <template x-if="!fp.preview && fp.type === 'img'">
+                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">...</div>
+                            </template>
+                            <template x-if="!fp.preview && fp.type === 'pdf'">
+                                <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
+                            </template>
+                            <template x-if="!fp.preview && fp.type !== 'img' && fp.type !== 'pdf'">
+                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">?</div>
+                            </template>
+                            <button type="button" @click.stop="removeFile(idx)" class="absolute top-0 end-0 w-4 h-4 bg-red-500 text-white border-none rounded-full text-xs font-bold cursor-pointer flex items-center justify-center z-10 leading-none hover:bg-red-600" aria-label="{{ __('order_form.remove') }}">×</button>
+                        </div>
+                    </template>
                 </div>
-                <p class="text-[0.65rem] text-slate-500 mt-1">{{ __('order_form.file_info') }}</p>
+                <p class="text-[0.65rem] text-slate-500 mt-1">{{ ($maxImagesPerItem ?? 1) > 1 ? __('order_form.file_info_bulk', ['max' => $maxImagesPerItem ?? 1, 'size' => $maxFileSizeMb ?? 2]) : __('order_form.file_info_with_size', ['size' => $maxFileSizeMb ?? 2]) }}</p>
             </div>
             <button type="submit" wire:loading.attr="disabled" class="w-full min-h-[44px] py-3 px-4 inline-flex items-center justify-center gap-2 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                 <span wire:loading.remove wire:target="addToCart"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> {{ __('order_form.add_to_cart') }}</span>
@@ -231,7 +250,7 @@
                                 <span class="truncate">{{ $item['currency'] ?? 'USD' }}</span>
                                 <svg class="w-4 h-4 shrink-0" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
-                            <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-40 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-40 overflow-y-auto {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
+                            <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-40 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-40 overflow-y-auto scrollbar-thin {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
                                 @foreach ($currencies ?? [] as $code => $data)
                                 <button type="button" @click="$wire.set('items.{{ $idx }}.currency', '{{ $code }}'); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 {{ ($item['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }}</button>
                                 @endforeach
@@ -264,15 +283,11 @@
                     <p class="text-sm text-slate-500">{{ __('order_form.cart_price_note') }}</p>
                     @endif
 
-                    @if (count($items) > 0)
+                    @if (count($items) > 0 && ($requireTerms ?? true))
                     <div class="flex items-start gap-3 p-4 bg-slate-50 rounded-xl" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
                         <input type="checkbox" id="cart-next-terms" x-model="termsAccepted" class="mt-1 shrink-0 rounded border-slate-300">
                         <label for="cart-next-terms" class="text-sm text-slate-700 leading-relaxed cursor-pointer">
-                            {{ __('order_form.terms_agreed') }}
-                            <a href="{{ url('/terms-and-conditions') }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline">{{ __('order_form.terms_and_conditions') }}</a>
-                            {{ __('order_form.terms_and') }}
-                            <a href="{{ url('/privacy-policy') }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline">{{ __('order_form.privacy_policy') }}</a>
-                            {{ __('order_form.terms_disclaimer') }}
+                            {!! $termsHtml ?? '' !!}
                         </label>
                     </div>
                     @endif
@@ -315,6 +330,23 @@
     </button>
     @endif
 
+    {{-- Image zoom modal --}}
+    <div x-show="zoomedImage" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9998] bg-black/90 flex items-center justify-center p-4"
+         @click.self="zoomedImage = null">
+        <button type="button"
+                class="absolute top-4 {{ $isRtl ? 'start-4' : 'end-4' }} w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white text-2xl border-none cursor-pointer hover:bg-white/30 z-10"
+                @click="zoomedImage = null"
+                aria-label="{{ __('Close') }}">×</button>
+        <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
+    </div>
+
     {{-- Clear cart confirmation --}}
     <div x-show="showClearConfirm" x-cloak
          x-transition
@@ -336,19 +368,59 @@
 
 @push('scripts')
 <script>
-function newOrderFormCartNext() {
+function cartNextFilePreviews() {
+    return {
+        filePreviews: [],
+        onFilesChange(e) {
+            const files = e.target.files;
+            this.filePreviews = [];
+            if (!files || files.length === 0) return;
+            const arr = Array.from(files).map((f) => ({
+                preview: null,
+                name: f.name,
+                file: f,
+                type: (f.type || '').startsWith('image/') ? 'img' : (f.type || '').includes('pdf') ? 'pdf' : 'other'
+            }));
+            this.filePreviews = arr;
+            arr.forEach((entry) => {
+                if (entry.type === 'img') {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        entry.preview = ev.target.result;
+                        this.filePreviews = [...this.filePreviews];
+                    };
+                    reader.readAsDataURL(entry.file);
+                }
+            });
+        },
+        removeFile(idx) {
+            this.filePreviews.splice(idx, 1);
+            const inp = this.$refs.fileInput;
+            if (!inp) return;
+            const dt = new DataTransfer();
+            for (let i = 0; i < this.filePreviews.length; i++) {
+                dt.items.add(this.filePreviews[i].file);
+            }
+            inp.files = dt.files;
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    };
+}
+function newOrderFormCartNext(requireTerms = true) {
     return {
         cartOpen: false,
         editingIndex: null,
         termsAccepted: false,
+        requireTerms: !!requireTerms,
         showDraftPrompt: false,
         showClearConfirm: false,
         pendingDraftItems: null,
         pendingDraftNotes: '',
         isShaking: false,
+        zoomedImage: null,
 
         handleCheckout() {
-            if (!this.termsAccepted) {
+            if (this.requireTerms && !this.termsAccepted) {
                 this.showNotify('error', @js(__('order_form.terms_accept_title')));
                 const el = document.getElementById('cart-next-terms');
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });

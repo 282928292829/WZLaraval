@@ -69,8 +69,9 @@
 
         {{-- No footer: for sticky submit bars, forms, mobile/desktop order flows --}}
 
-        @livewireScripts
+        {{-- Scripts pushed by components (e.g. newOrderFormCart) must load before Livewire/Alpine so x-data functions exist --}}
         @stack('scripts')
+        @livewireScripts
 
         @env('local')
             <x-dev-toolbar />

@@ -105,9 +105,18 @@
 
     /* Toast — created dynamically in JS */
     #toast-container,
+    #toast-container-cart,
     #toast-container-cart-inline {
-        @apply fixed top-5 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 w-[90%] max-w-[500px] pointer-events-none;
+        @apply fixed top-5 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 w-[min(90%,20rem)] max-w-[22rem] pointer-events-none;
         padding-top: env(safe-area-inset-top, 0px);
+    }
+    /* Cart-next: narrower, centered, never edge-to-edge */
+    #toast-container-cart-next {
+        @apply fixed top-5 left-4 right-4 z-[2000] flex flex-col items-center gap-2 pointer-events-none;
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+    #toast-container-cart-next .toast {
+        @apply w-full max-w-[20rem];
     }
     .toast {
         @apply bg-white/98 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border-e-4 border-primary-500 font-semibold text-sm pointer-events-auto cursor-pointer flex items-center gap-2.5;

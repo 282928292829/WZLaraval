@@ -197,8 +197,8 @@
         </div>
     </div>
 
-    {{-- Desktop: Sidebar summary (always visible) --}}
-    <aside class="hidden md:flex md:w-[320px] lg:w-[360px] shrink-0 flex-col bg-white border-s border-slate-200 overflow-hidden" id="cart-inline-sidebar">
+    {{-- Desktop: Sidebar summary (always visible) — border-s-2 for clear separation from main content --}}
+    <aside class="hidden md:flex md:w-[320px] lg:w-[360px] shrink-0 flex-col bg-white border-s-2 border-slate-200 shadow-[0_0_20px_rgba(0,0,0,0.06)] overflow-hidden" id="cart-inline-sidebar">
         <div class="p-4 border-b border-slate-200 shrink-0">
             <h2 class="text-lg font-bold text-slate-800 m-0" x-text="'{{ __('order_form.cart') }} (' + items.length + ')'"></h2>
         </div>
@@ -216,10 +216,10 @@
                     <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || '1') + ' × ' + (item.currency || 'USD') + ' ' + (item.price || '—')" dir="ltr"></div>
                 </div>
             </template>
-            <div class="pt-3 border-t border-slate-200" x-show="items.length > 0">
+            <div class="pt-3 border-t border-slate-200">
                 <p class="text-[0.7rem] font-normal text-stone-400" x-text="productCountText()"></p>
-                <p class="text-stone-600 font-medium text-sm" x-text="totalText()"></p>
-                <button type="button" @click="submitOrder()" :disabled="submitting"
+                <p class="text-slate-700 font-semibold text-sm" x-text="totalText()"></p>
+                <button type="button" x-show="items.length > 0" @click="submitOrder()" :disabled="submitting"
                         class="w-full mt-3 py-3 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                     <span x-show="!submitting">{{ __('order_form.confirm_order') }}</span>
                     <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
@@ -231,12 +231,12 @@
 
 {{-- Mobile: Bottom-sheet cart summary --}}
 <div class="md:hidden">
-    {{-- Floating bar: pointer-events-none on container so taps pass through to Add product button; button has pointer-events-auto --}}
-    <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white/98 to-primary-50/95 backdrop-blur-xl px-4 py-3 flex justify-between items-center gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] border-t border-primary-100/60 z-[90] pointer-events-none"
+    {{-- Floating bar: summary + Review cart button — solid bg so it stays visible; pointer-events-none on summary area so Add product above remains tappable --}}
+    <div class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 flex justify-between items-center gap-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)] border-t border-slate-200 z-[100] pointer-events-none"
          style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
         <div class="flex flex-col gap-0.5 flex-1 min-w-0 pointer-events-none">
-            <span class="text-[0.7rem] font-normal text-stone-400 whitespace-nowrap overflow-hidden text-ellipsis" x-text="productCountText()"></span>
-            <span class="text-stone-600 font-normal text-sm whitespace-nowrap" x-text="totalText()"></span>
+            <span class="text-xs font-medium text-slate-600 whitespace-nowrap overflow-hidden text-ellipsis" x-text="productCountText()"></span>
+            <span class="text-sm font-semibold text-slate-800 whitespace-nowrap" x-text="totalText()"></span>
         </div>
         <button type="button" @click="cartSheetOpen = true"
                 class="shrink-0 min-w-[120px] py-3 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors pointer-events-auto">
@@ -246,17 +246,30 @@
 
     {{-- Bottom sheet --}}
     <div x-show="cartSheetOpen" x-cloak
-         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter="transition ease-out duration-250"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          @keydown.escape.window="cartSheetOpen = false"
          class="fixed inset-0 z-[3000] flex flex-col">
-        <div class="absolute inset-0 bg-black/50" @click="cartSheetOpen = false"></div>
-        <div class="relative w-full max-h-[85vh] mt-auto bg-white rounded-t-2xl shadow-2xl flex flex-col" @click.stop style="padding-bottom: env(safe-area-inset-bottom);">
-            <div class="flex items-center justify-between p-4 border-b border-slate-200 shrink-0">
+        <div class="absolute inset-0 bg-black/40" @click="cartSheetOpen = false"></div>
+        <div x-show="cartSheetOpen" x-cloak
+             class="relative w-full max-h-[88vh] mt-auto bg-white rounded-t-2xl shadow-2xl flex flex-col overflow-hidden overscroll-contain"
+             @click.stop
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="opacity-0 translate-y-full"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-full"
+             style="padding-bottom: env(safe-area-inset-bottom);">
+            {{-- Drag handle --}}
+            <div class="flex justify-center pt-3 pb-1 shrink-0">
+                <div class="w-10 h-1 rounded-full bg-slate-200" aria-hidden="true"></div>
+            </div>
+            <div class="flex items-center justify-between px-4 pb-3 border-b border-slate-200 shrink-0">
                 <h2 class="text-lg font-bold text-slate-800 m-0" x-text="'{{ __('order_form.cart') }} (' + items.length + ')'"></h2>
                 <button type="button" @click="cartSheetOpen = false" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors" aria-label="{{ __('Close') }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>

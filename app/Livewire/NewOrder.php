@@ -65,8 +65,8 @@ class NewOrder extends Component
     /** Cart layout (Option 2): current form fields before adding to cart */
     public array $currentItem = [];
 
-    /** Cart layout: single file for the current item being added */
-    public $currentItemFile = null;
+    /** Cart layout: files for the current item being added (supports multiple when max_images_per_item > 1) */
+    public $currentItemFiles = [];
 
     // Guest login modal
     public bool $showLoginModal = false;
@@ -296,7 +296,8 @@ class NewOrder extends Component
             return;
         }
 
-        $files = $this->currentItemFile ? [$this->currentItemFile] : [];
+        $raw = $this->currentItemFiles;
+        $files = is_array($raw) ? array_values(array_filter($raw)) : ($raw ? [$raw] : []);
         $fileCount = count($files);
         $normalized = $this->normalizeItemFiles();
         $totalFiles = array_sum(array_map('count', $normalized)) + $fileCount;
@@ -331,7 +332,7 @@ class NewOrder extends Component
 
         $lastCurrency = $item['currency'];
         $this->currentItem = $this->emptyItem($lastCurrency);
-        $this->currentItemFile = null;
+        $this->currentItemFiles = [];
 
         $this->dispatch('notify', type: 'success', message: __('order_form.cart_item_added'));
         $this->dispatch('cart-item-added');
@@ -358,7 +359,7 @@ class NewOrder extends Component
         ];
 
         $existingFiles = $this->normalizeItemFiles()[$index] ?? [];
-        $this->currentItemFile = $existingFiles[0] ?? null;
+        $this->currentItemFiles = array_values($existingFiles);
 
         $this->removeItem($index);
         $this->dispatch('notify', type: 'success', message: __('order_form.cart_item_moved_to_form'));
@@ -435,7 +436,7 @@ class NewOrder extends Component
         $this->orderNotes = '';
         $this->itemFiles = [];
         $this->currentItem = $this->emptyItem($this->defaultCurrency);
-        $this->currentItemFile = null;
+        $this->currentItemFiles = [];
         $this->dispatch('cart-emptied');
         $this->dispatch('notify', type: 'success', message: __('order_form.cleared'));
     }
@@ -1366,6 +1367,24 @@ class NewOrder extends Component
             ->all();
     }
 
+    /**
+     * Render the terms checkbox label from the admin-configurable template.
+     * Placeholders: {terms} → link to terms, {privacy} → link to privacy policy.
+     */
+    private function renderTermsTemplate(): string
+    {
+        $default = "I agree to {terms} and {privacy}. Our team will calculate your order accurately. Final prices may vary. Invoice within 12 hours.";
+        $template = (string) Setting::get('order_form_terms_template', $default) ?: $default;
+
+        $termsLink = '<a href="'.e(url('/terms-and-conditions')).'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">'.e(__('order_form.terms_and_conditions')).'</a>';
+        $privacyLink = '<a href="'.e(url('/privacy-policy')).'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">'.e(__('order_form.privacy_policy')).'</a>';
+
+        $html = e($template);
+        $html = str_replace(['{terms}', '{privacy}'], [$termsLink, $privacyLink], $html);
+
+        return $html;
+    }
+
     public function render(): \Illuminate\View\View
     {
         $maxFileSizeMb = (int) Setting::get('max_file_size_mb', 2);
@@ -1389,6 +1408,7 @@ class NewOrder extends Component
             ->with('orderFormFields', $this->getOrderFormFields())
             ->with('showAddTestItems', (bool) Setting::get('order_form_show_add_test_items', false))
             ->with('showResetAll', (bool) Setting::get('order_form_show_reset_all', true))
+            ->with('requireTerms', (bool) Setting::get('order_form_require_terms', true))
             ->with('commissionSettings', CommissionCalculator::getSettings())
             ->with('allowedMimeTypes', allowed_upload_mime_types())
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
@@ -1396,6 +1416,10 @@ class NewOrder extends Component
 
         if (in_array($layout, ['cart', 'cart-inline', 'cart-next'], true)) {
             $view = $view->with('cartSummary', $this->getCartSummary());
+        }
+
+        if ($layout === 'cart-next') {
+            $view = $view->with('termsHtml', $this->renderTermsTemplate());
         }
 
         if ($this->editingOrderId) {
