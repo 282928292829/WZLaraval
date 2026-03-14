@@ -17,7 +17,11 @@ class Setting extends Model
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('key', $key)->first();
+        try {
+            $setting = static::where('key', $key)->first();
+        } catch (\Throwable) {
+            return $default;
+        }
 
         if (! $setting) {
             return $default;
