@@ -61,6 +61,7 @@ jobs:
             [ -f .env ] || (cp .env.example .env && php artisan key:generate --force) && \
             composer install --no-dev --optimize-autoloader --no-interaction && \
             npm ci && npm run build && \
+            (touch database/database.sqlite 2>/dev/null || true) && \
             php artisan migrate --force && \
             php artisan db:seed --class=RoleAndPermissionSeeder --force && \
             php artisan config:cache && \
