@@ -9,3 +9,4 @@ Admin configures via **Order Settings** → New-Order Form Layout. Stored as `or
 | `cards` | **Cards** | Cards everywhere — desktop and mobile. |
 | `wizard` | **Wizard** | One step per product. |
 | `cart` | **Cart** | Add to cart with sidebar/bottom sheet. |
+| `cart-next` | **Cart-Next** | Bersonal-style drawer with inline edit, terms checkbox. |

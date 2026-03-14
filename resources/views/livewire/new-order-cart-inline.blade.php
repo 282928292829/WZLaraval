@@ -67,9 +67,9 @@
 {{-- Toast container --}}
 <div x-ref="toasts" id="toast-container-cart-inline"></div>
 
-<div class="flex flex-col md:flex-row min-h-[calc(100vh-56px)] w-full max-w-full min-w-0">
+<div class="flex flex-col md:flex-row min-h-[calc(100vh-56px)] w-full max-w-full min-w-0 md:min-h-0">
     {{-- Main: Cards-style item list (left) --}}
-    <div class="flex-1 min-w-0 px-4 py-5 pb-28 md:pb-6 overflow-x-hidden">
+    <div class="flex-1 min-w-0 w-full md:overflow-y-auto px-4 py-5 pb-32 md:pb-6 overflow-x-hidden">
         <div class="max-w-2xl mx-auto">
             {{-- Page header --}}
             <div class="flex flex-nowrap items-center justify-between gap-2 mb-5">
@@ -169,7 +169,7 @@
             </div>
 
             <button type="button" @click="addProduct()"
-                    class="w-full mt-3 min-h-[44px] py-3 inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary-600 bg-white border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50 transition-all cursor-pointer touch-manipulation select-none relative z-10">
+                    class="w-full mt-3 min-h-[44px] py-3 inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary-600 bg-white border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50 transition-all cursor-pointer touch-manipulation select-none relative z-[95] isolate">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
@@ -198,7 +198,7 @@
     </div>
 
     {{-- Desktop: Sidebar summary (always visible) --}}
-    <aside class="hidden md:flex md:min-w-[280px] md:max-w-[40%] lg:w-[360px] shrink-0 flex-col bg-white border-s border-slate-200 overflow-hidden" id="cart-inline-sidebar">
+    <aside class="hidden md:flex md:w-[320px] lg:w-[360px] shrink-0 flex-col bg-white border-s border-slate-200 overflow-hidden" id="cart-inline-sidebar">
         <div class="p-4 border-b border-slate-200 shrink-0">
             <h2 class="text-lg font-bold text-slate-800 m-0" x-text="'{{ __('order_form.cart') }} (' + items.length + ')'"></h2>
         </div>
@@ -306,13 +306,20 @@
             aria-label="{{ __('Close') }}">&times;</button>
     <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
 </div>
+
+{{-- Login modal — must be inside x-data for Alpine/Livewire scope --}}
+@include('livewire.partials._order-login-modal')
+
 </div>
-    @include('livewire.partials._order-login-modal')
 </div>
 
 @push('scripts')
+{{-- Base + cards logic (cart-inline extends newOrderFormCards) --}}
 <script>
 @include('livewire.partials._new-order-form-js')
+</script>
+<script>
+@include('livewire.partials._new-order-form-cards-js')
 </script>
 <script>
 function newOrderFormCartInline(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes) {

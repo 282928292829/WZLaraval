@@ -80,3 +80,80 @@ test('new-order page renders option 3 cards layout when layout 3 is set', functi
     $response->assertSee('newOrderFormCards', false);
     $response->assertSee('items-container', false);
 });
+
+test('new-order-cart route renders cart layout with form sidebar and bottom-sheet', function (): void {
+    $response = $this->get(route('new-order-cart'));
+
+    $response->assertOk();
+    $response->assertSee('Add products one by one', false);
+    $response->assertSee('Add to Cart', false);
+    $response->assertSee('newOrderFormCart', false);
+    $response->assertSee('cart-sidebar', false);
+    $response->assertSee('Cart', false);
+});
+
+test('addToCart adds item to cart', function (): void {
+    Livewire::test(NewOrder::class)
+        ->set('activeLayout', 'cart')
+        ->set('currentItem', [
+            'url' => 'https://example.com/product',
+            'qty' => '2',
+            'color' => 'Blue',
+            'size' => 'M',
+            'price' => '29.99',
+            'currency' => 'USD',
+            'notes' => 'Test note',
+        ])
+        ->call('addToCart')
+        ->assertSet('items.0.url', 'https://example.com/product')
+        ->assertSet('items.0.qty', '2')
+        ->assertSet('items.0.color', 'Blue')
+        ->assertSet('items.0.size', 'M')
+        ->assertSet('items.0.price', '29.99')
+        ->assertSet('items.0.currency', 'USD')
+        ->assertSet('items.0.notes', 'Test note')
+        ->assertSet('currentItem.url', '')
+        ->assertSet('currentItem.color', '')
+        ->assertSet('currentItem.size', '')
+        ->assertSet('currentItem.price', '')
+        ->assertSet('currentItem.notes', '');
+});
+
+test('guest on new-order-cart sees draft restore prompt copy when draft exists', function (): void {
+    $response = $this->get(route('new-order-cart'));
+
+    $response->assertOk();
+    $response->assertSee('Unsaved items from your last visit', false);
+});
+
+test('new-order-cart-inline route renders cards-style layout with sidebar and add product button', function (): void {
+    $response = $this->get(route('new-order-cart-inline'));
+
+    $response->assertOk();
+    $response->assertSee('Create new order', false);
+    $response->assertSee('Add Another Product', false);
+    $response->assertSee('newOrderFormCartInline', false);
+    $response->assertSee('items-container', false);
+    $response->assertSee('cart-inline-sidebar', false);
+    $response->assertSee('Cart', false);
+    $response->assertSee('Review Cart', false);
+});
+
+test('cart-inline addProduct adds item via Livewire', function (): void {
+    Livewire::test(NewOrder::class)
+        ->set('activeLayout', 'cart-inline')
+        ->call('addItem', 'USD')
+        ->assertSet('items.0.url', '')
+        ->assertSet('items.0.qty', '1')
+        ->assertSet('items.0.currency', 'USD');
+});
+
+test('new-order-cart-next route renders Bersonal-style drawer layout', function (): void {
+    $response = $this->get(route('new-order-cart-next'));
+
+    $response->assertOk();
+    $response->assertSee('Add products one by one', false);
+    $response->assertSee('Add to Cart', false);
+    $response->assertSee('newOrderFormCartNext', false);
+    $response->assertSee('Checkout', false);
+});

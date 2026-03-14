@@ -1,7 +1,11 @@
-{{-- Login modal for new-order (shared by Option 1, 3, 4) — x-show with $wire guard prevents false display during Livewire morph --}}
+{{-- Login modal for new-order (shared by Option 1, 3, 4) — x-show with $wire guard prevents false display during Livewire morph. Default hidden so overlay never blocks clicks before Alpine runs. --}}
 <div class="order-login-modal-overlay fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-5"
      x-show="($wire && $wire.showLoginModal) === true"
      x-cloak
+     style="display: none"
+     style="display: none"
+     style="display: none !important"
+     :style="($wire && $wire.showLoginModal) ? { display: 'flex' } : {}"
      x-transition:enter="transition ease-out duration-200"
      x-transition:enter-start="opacity-0"
      x-transition:enter-end="opacity-100"

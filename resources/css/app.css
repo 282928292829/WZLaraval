@@ -104,7 +104,8 @@
 @layer components {
 
     /* Toast — created dynamically in JS */
-    #toast-container {
+    #toast-container,
+    #toast-container-cart-inline {
         @apply fixed top-5 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 w-[90%] max-w-[500px] pointer-events-none;
         padding-top: env(safe-area-inset-top, 0px);
     }

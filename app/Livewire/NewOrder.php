@@ -108,19 +108,19 @@ class NewOrder extends Component
             }
         }
 
-        if ($this->activeLayout === 'cart') {
+        if (in_array($this->activeLayout, ['cart', 'cart-next'], true)) {
             $this->currentItem = $this->emptyItem($this->defaultCurrency);
         }
 
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
-            if ($this->activeLayout === 'cart' && ! empty($this->items)) {
+            if (in_array($this->activeLayout, ['cart', 'cart-next'], true) && ! empty($this->items)) {
                 $last = $this->items[array_key_last($this->items)];
                 $this->currentItem = $this->emptyItem($last['currency'] ?? $this->defaultCurrency);
             }
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
-            if ($this->activeLayout === 'cart') {
+            if (in_array($this->activeLayout, ['cart', 'cart-next'], true)) {
                 $this->currentItem['url'] = $product_url;
             } else {
                 $firstItem = $this->emptyItem($this->defaultCurrency);
@@ -148,6 +148,7 @@ class NewOrder extends Component
             'new-order-wizard' => 'wizard',
             'new-order-cart' => 'cart',
             'new-order-cart-inline' => 'cart-inline',
+            'new-order-cart-next' => 'cart-next',
         ];
 
         $path = trim(request()->path(), '/');
@@ -333,6 +334,7 @@ class NewOrder extends Component
         $this->currentItemFile = null;
 
         $this->dispatch('notify', type: 'success', message: __('order_form.cart_item_added'));
+        $this->dispatch('cart-item-added');
     }
 
     /**
@@ -434,6 +436,7 @@ class NewOrder extends Component
         $this->itemFiles = [];
         $this->currentItem = $this->emptyItem($this->defaultCurrency);
         $this->currentItemFile = null;
+        $this->dispatch('cart-emptied');
         $this->dispatch('notify', type: 'success', message: __('order_form.cleared'));
     }
 
@@ -445,7 +448,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== 'cart') {
+        if (! in_array($this->activeLayout, ['cart', 'cart-next'], true)) {
             return;
         }
         if (count($this->items) > 0) {
@@ -484,7 +487,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== 'cart') {
+        if (! in_array($this->activeLayout, ['cart', 'cart-next'], true)) {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -495,7 +498,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if ($this->activeLayout !== 'cart') {
+        if (! in_array($this->activeLayout, ['cart', 'cart-next'], true)) {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -1377,6 +1380,7 @@ class NewOrder extends Component
             'wizard' => 'livewire.new-order-wizard',
             'cart' => 'livewire.new-order-cart',
             'cart-inline' => 'livewire.new-order-cart-inline',
+            'cart-next' => 'livewire.new-order-cart-next',
             default => 'livewire.new-order',
         };
 
@@ -1390,7 +1394,7 @@ class NewOrder extends Component
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
             ->with('maxFileSizeMb', $maxFileSizeMb);
 
-        if (in_array($layout, ['cart', 'cart-inline'], true)) {
+        if (in_array($layout, ['cart', 'cart-inline', 'cart-next'], true)) {
             $view = $view->with('cartSummary', $this->getCartSummary());
         }
 

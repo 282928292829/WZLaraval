@@ -7,11 +7,14 @@
 @endphp
 
 <div class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
-     x-data="cartPageNotify()"
+     data-guest="{{ $isGuest ? 'true' : 'false' }}"
+     x-data="newOrderFormCart()"
      x-init="initCartDraft()"
      @notify.window="showNotify($event.detail.type, $event.detail.message)"
      @cart-emptied.window="cartOpen = false"
-     @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)">
+     @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)"
+     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+     @keydown.escape.window="if (showDraftPrompt) { showDraftPrompt = false; }">
     <div x-ref="toasts" id="toast-container-cart"></div>
 
     <div class="flex flex-col md:flex-row min-h-[calc(100vh-56px)]">
@@ -21,7 +24,6 @@
                 <div class="flex flex-nowrap items-center justify-between gap-3 mb-5">
                     <div>
                         <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('Create new order') }}</h1>
-                        <p class="text-sm text-slate-500 mt-0.5 mb-0">{{ __('order_form.add_products_one_by_one') }}</p>
                     </div>
                     @if ($showAddTestItems ?? false)
                     <button type="button" wire:click="addFiveTestItems" class="shrink-0 text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">{{ __('order.dev_add_5_test_items') }}</button>
@@ -39,54 +41,86 @@
 
                 @include('livewire.partials._order-tips')
 
+                {{-- Draft restore prompt — shown instead of silently restoring (guests only) --}}
+                @if ($isGuest)
+                <div x-show="showDraftPrompt" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="mb-4 bg-white border border-primary-200 rounded-xl p-4 shadow-sm">
+                    <p class="text-sm font-semibold text-slate-800 m-0 mb-1">{{ __('order_form.draft_restore_title') }}</p>
+                    <p class="text-xs text-slate-500 mb-3"
+                       x-text="'{{ __('order_form.draft_restore_desc') }}'.replace(':count', pendingDraftItems ? pendingDraftItems.length : '')"></p>
+                    <div class="flex gap-2">
+                        <button type="button"
+                                @click="restoreDraft()"
+                                class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-sm hover:from-primary-600 hover:to-primary-500 transition-colors">
+                            {{ __('order_form.draft_restore') }}
+                        </button>
+                        <button type="button"
+                                @click="discardDraft()"
+                                class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                            {{ __('order_form.draft_start_fresh') }}
+                        </button>
+                    </div>
+                </div>
+                @endif
+
                 <form wire:submit="addToCart" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-5">
-                    <div class="mb-3">
-                        <label class="block text-sm font-semibold text-slate-800 mb-1.5">{{ __('order_form.th_url') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                        <div dir="ltr">
-                            <input type="text" wire:model="currentItem.url" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left" placeholder="{{ __('order_form.url_placeholder') }}" dir="ltr">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.qty" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="1" dir="ltr">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_color') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.color" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_size') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.size" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.price" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="0" dir="ltr">
-                        </div>
-                        <div x-data="{ open: false }" class="relative">
-                            <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_currency') }}</label>
-                            <button type="button" @click="open = !open" class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
-                                <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
-                                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </button>
-                            <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
-                                @foreach ($currencies ?? [] as $code => $data)
-                                <button type="button" data-code="{{ $code }}" @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }} — {{ $data['label'] ?? $code }}</button>
-                                @endforeach
+                    {{-- Same field arrangement as Cards layout (grid-cols-6) for mobile parity --}}
+                    <div class="grid grid-cols-6 gap-x-3 gap-y-2.5">
+                        {{-- URL — full width --}}
+                        <div class="col-span-6">
+                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_url') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                            <div dir="ltr">
+                                <input type="text" wire:model="currentItem.url" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left min-h-[2.5rem]" placeholder="{{ __('order_form.url_placeholder') }}" dir="ltr">
                             </div>
                         </div>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                        <textarea wire:model="currentItem.notes" rows="2" class="order-form-input w-full px-3 py-2.5 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="{{ __('order_form.notes_placeholder') }}"></textarea>
+                        {{-- Color — half, Size — half (same row on all screens, matching Cards) --}}
+                        <div class="col-span-3">
+                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_color') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                            <input type="text" wire:model="currentItem.color" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_size') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                            <input type="text" wire:model="currentItem.size" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]">
+                        </div>
+                        {{-- Qty + Price + Currency — inline row (same as Cards) --}}
+                        <div class="col-span-6 flex flex-nowrap items-end gap-2">
+                            <div class="min-w-0 flex-1">
+                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                                <input type="text" wire:model="currentItem.qty" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="1" dir="ltr">
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                                <input type="text" wire:model="currentItem.price" class="order-form-input w-full px-3 py-2 min-w-[4ch] border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="{{ __('placeholder.amount') }}" dir="ltr">
+                            </div>
+                            <div x-data="{ open: false }" class="relative min-w-0 flex-1 min-w-[5rem]">
+                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_currency') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                                <button type="button" @click="open = !open" class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
+                                    <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
+                                    <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
+                                    @foreach ($currencies ?? [] as $code => $data)
+                                    <button type="button" data-code="{{ $code }}" @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }} — {{ $data['label'] ?? $code }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        {{-- Notes — full width --}}
+                        <div class="col-span-6">
+                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                            <textarea wire:model="currentItem.notes" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]" placeholder="{{ __('order_form.notes_placeholder') }}"></textarea>
+                        </div>
                     </div>
                     <div class="mb-4" x-data="{ fileName: '' }">
                         <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                         <div class="flex items-center gap-3">
                             <input type="file" id="new-order-cart-file-input" wire:model="currentItemFile" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''">
-                            <label for="new-order-cart-file-input" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
+                            <label for="new-order-cart-file-input"
+                                   @if ($isGuest) @click.prevent="$wire.openLoginModalForAttach()" @endif
+                                   class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                 {{ __('order_form.choose_file') }}
                             </label>
@@ -248,27 +282,88 @@
             </div>
         </div>
     </div>
+
+    {{-- Mobile: Thumb-reachable FAB to open cart (visible when cart has items) --}}
+    @if (count($items) > 0)
+    <button type="button"
+            x-show="!cartOpen"
+            x-cloak
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-90"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="cartOpen = true"
+            class="md:hidden fixed z-[2900] w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center hover:from-primary-600 hover:to-primary-500 active:scale-95 transition-all"
+            style="bottom: max(1.5rem, env(safe-area-inset-bottom)); right: max(1.5rem, env(safe-area-inset-right)); left: auto;"
+            aria-label="{{ __('order_form.cart') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        <span class="absolute -top-1 -end-1 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-white text-primary-600 text-xs font-bold flex items-center justify-center border border-primary-200">{{ count($items) }}</span>
+    </button>
+    @endif
 </div>
     @include('livewire.partials._order-login-modal')
 </div>
 
 @push('scripts')
 <script>
-function cartPageNotify() {
+function newOrderFormCart() {
     return {
         cartOpen: false,
+        showDraftPrompt: false,
+        pendingDraftItems: null,
+        pendingDraftNotes: '',
+        peekDraft() {
+            try {
+                let raw = localStorage.getItem('wz_order_form_draft');
+                let notes = localStorage.getItem('wz_order_form_notes');
+                if (!raw && localStorage.getItem('wz_opus46_draft')) {
+                    raw = localStorage.getItem('wz_opus46_draft');
+                    notes = localStorage.getItem('wz_opus46_notes');
+                }
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (!Array.isArray(data) || data.length === 0) return null;
+                const hasMeaningfulContent = data.some(d =>
+                    (d.url || '').trim() || (d.color || '').trim() ||
+                    (d.size || '').trim() || (d.notes || '').trim() ||
+                    (parseFloat(d.price) > 0)
+                );
+                if (!hasMeaningfulContent) return null;
+                return { items: data, notes: notes || '' };
+            } catch { return null; }
+        },
+        restoreDraft() {
+            if (!this.pendingDraftItems) {
+                this.showDraftPrompt = false;
+                return;
+            }
+            this.$wire.loadGuestDraftFromStorage(this.pendingDraftItems, this.pendingDraftNotes || '');
+            this.pendingDraftItems = null;
+            this.pendingDraftNotes = '';
+            this.showDraftPrompt = false;
+            this.showNotify('success', @js(__('order_form.draft_restored')));
+        },
+        discardDraft() {
+            try {
+                localStorage.removeItem('wz_order_form_draft');
+                localStorage.removeItem('wz_order_form_notes');
+                localStorage.removeItem('wz_opus46_draft');
+                localStorage.removeItem('wz_opus46_notes');
+            } catch {}
+            this.pendingDraftItems = null;
+            this.pendingDraftNotes = '';
+            this.showDraftPrompt = false;
+        },
         initCartDraft() {
             @if ($isGuest && count($items) === 0)
-            try {
-                const raw = localStorage.getItem('wz_order_form_draft');
-                const notes = localStorage.getItem('wz_order_form_notes') || '';
-                if (raw) {
-                    const data = JSON.parse(raw);
-                    if (Array.isArray(data) && data.length > 0) {
-                        this.$wire.loadGuestDraftFromStorage(data, notes);
-                    }
-                }
-            } catch (_) {}
+            const draft = this.peekDraft();
+            if (draft) {
+                this.pendingDraftItems = draft.items;
+                this.pendingDraftNotes = draft.notes;
+                this.showDraftPrompt = true;
+            }
             @endif
         },
         saveCartDraftToStorage(items, notes) {
