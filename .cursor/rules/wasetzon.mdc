@@ -20,9 +20,9 @@ alwaysApply: true
 
 Update each session for handoff.
 
-- **Last completed:** Duplicate order flow (`?duplicate_from={id}`), product_url pre-fill, success screen
-- **Next:** Duplicate button on order show page (`/orders/{id}`) — visible to customers and staff, links to `/new-order?duplicate_from={id}`
-- **Other open items:** (add as needed)
+- **Last completed:** Cards layout built (`new-order-cards.blade.php`). Old customer-built layouts (numbered 1–4) deleted — `new-order.blade.php` kept as temporary logic reference only.
+- **Next:** Build Table layout (`new-order-table.blade.php`) — see `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md` for full spec and build order.
+- **Other open items:** After Table → Hybrid → Wizard (rebuild) → Cart (rebuild) → delete `new-order.blade.php` → set Cards as default fallback in render switch.
 
 ## Stack
 Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie Permission, MySQL 8, Redis

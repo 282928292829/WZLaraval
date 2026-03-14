@@ -15,6 +15,7 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\NewOrder;
+use App\Livewire\OldNewOrder;
 use Illuminate\Support\Facades\Route;
 
 Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
@@ -96,6 +97,11 @@ Route::get('/new-order-wizard', NewOrder::class)
 Route::get('/new-order-cart', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-cart');
+
+// Standalone reference: old responsive layout (Option 1). For AI reference when building the 5 new layouts.
+Route::get('/old-new-order', OldNewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('old-new-order');
 
 Route::middleware('auth')->group(function () {
     Route::post('/orders/dismiss-comments-discovery', [OrderController::class, 'dismissCommentsDiscovery'])->name('orders.comments-discovery.dismiss');

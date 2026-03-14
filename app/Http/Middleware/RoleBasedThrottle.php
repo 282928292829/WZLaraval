@@ -30,6 +30,11 @@ class RoleBasedThrottle
 
         $decaySeconds = 3600; // 1 hour
 
+        // 0 means unlimited — skip all rate-limit checks entirely
+        if ($maxAttempts === 0) {
+            return $next($request);
+        }
+
         $limiterKey = $key.':'.($user ? $user->id : $request->ip());
 
         if ($this->limiter->tooManyAttempts($limiterKey, $maxAttempts)) {

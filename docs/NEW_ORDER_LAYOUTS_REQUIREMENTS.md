@@ -28,11 +28,23 @@ Also read: `LARAVEL_PLAN.md`, `.cursor/rules/wasetzon.mdc`, `docs/ORDER_LAYOUTS.
 
 ---
 
-## Two Systems Running in Parallel
-- **Customer-built system:** 4 existing layouts (current code — do not touch)
-- **Claude-built system:** 5 new layouts built in parallel
+## Current State
 
-Admin can switch between all layouts. If Claude's system wins, the customer-built layouts are deleted. All 5 Claude layouts are permanent — admin chooses which one is active at any time.
+The old customer-built layouts (numbered 1–4) have been deleted. Only `new-order.blade.php` (the original responsive/hybrid layout) is kept temporarily as a **logic reference only** — do NOT copy its UI or look. It will be deleted once all 5 new layouts are complete.
+
+### 5 New Claude-Built Layouts
+
+Layout numbering is for reference only — build order is what matters.
+
+| # | Name | Desktop | Mobile | URL | Status |
+|---|------|---------|--------|-----|--------|
+| 1 | Hybrid | Table | Cards | `/new-order-hybrid` | ❌ Not built |
+| 2 | Table | Table | Table (horizontal scroll) | `/new-order-table` | ❌ Not built |
+| 3 | Cards | Cards | Cards | `/new-order-cards` | ✅ Done |
+| 4 | Wizard | Step per item | Step per item | `/new-order-wizard` | ❌ Rebuild from scratch |
+| 5 | Cart | Sidebar cart | Bottom-sheet cart | `/new-order-cart` | ❌ Rebuild from scratch |
+
+> **Note:** `new-order-wizard.blade.php` and `new-order-cart.blade.php` exist on disk but are old code — delete them and rebuild from scratch. Do not use them as a base.
 
 ---
 
@@ -40,47 +52,36 @@ Admin can switch between all layouts. If Claude's system wins, the customer-buil
 
 ### Shared (one place only)
 - `NewOrder.php` — all server logic, validation, field config, file uploads, submission, guest draft
-- `_item-fields.blade.php` — shared field HTML partial
-  - Extract from Layout 1 (Hybrid) only — _order-item-table-row and _order-item-mobile-card. Exact same fields and naming as current site default.
-  - Add a new field once in this partial, all 5 layouts inherit it
-- Login modal partial — identical across all layouts
-- Tips/hints partial — identical across all layouts
+- `_item-fields.blade.php` — shared field HTML partial (already extracted, lives in `livewire/partials/`)
+  - Add a new field once in this partial, all 5 layouts inherit it automatically
+- `livewire.partials._order-login-modal` — identical login modal across all layouts (already extracted)
+- `livewire.partials._order-tips` — identical tips/hints box across all layouts (already extracted)
 
 ### Fully Isolated Per Layout
 - One blade file per layout
-- One Alpine component per layout (uniquely named e.g. `newOrderFormCards()`)
-- Own submit footer HTML per layout
+- One Alpine component per layout (uniquely named e.g. `newOrderFormTable()`, `newOrderFormHybrid()`)
+- Own submit footer HTML per layout — design, look, and feel must be independent per layout, not a copy of a shared bar
 - Own item card/row HTML per layout
 
 **No shared Alpine between layouts. No cross-layout @if branching. No mixing.**
-
----
-
-## The 5 Layouts
-
-| # | Name | Desktop | Mobile | URL |
-|---|------|---------|--------|-----|
-| 1 | Hybrid | Table | Cards | `/new-order-hybrid` |
-| 2 | Table | Table | Table (horizontal scroll) | `/new-order-table` |
-| 3 | Cards | Cards | Cards | `/new-order-cards` |
-| 4 | Wizard | Step per item | Step per item | `/new-order-wizard` |
-| 5 | Cart | Sidebar cart | Bottom-sheet cart | `/new-order-cart` |
+**Submit footer is NOT a shared partial — each layout owns its footer design.**
 
 ---
 
 ## Layout-Specific Rules
 
-### Layout 1 — Hybrid
-- Breakpoint: `md` (768px) — table on desktop, cards on mobile
-- Mobile: collapsible cards (same as Layout 3 mobile)
-
-### Layout 2 — Table
+### Layout 1 — Table
 - Full table on both desktop AND mobile
 - No layout switching at any breakpoint — table always
 - Mobile: horizontal scroll to see all columns
-- Build fresh markup (new table structure, new row HTML) — do NOT copy current desktop table. Keep same fields and logic (via _item-fields, NewOrder, newOrderForm).
+- Fresh markup — do NOT copy old desktop table. Use `_item-fields`, `NewOrder`, `newOrderFormTable()`.
 
-### Layout 3 — Cards ← Build First
+### Layout 2 — Hybrid
+- Breakpoint: `md` (768px) — table on desktop, cards on mobile
+- Mobile: collapsible cards (same behavior as Cards layout)
+- Logic reference: `new-order.blade.php` — for field/logic understanding only, not UI
+
+### Layout 3 — Cards ✅ Done
 - Each item = one card
 - Collapsed card must fit without scroll; expanded card may scroll on small viewports if needed
 - Adding a new item collapses the previous card
@@ -102,7 +103,7 @@ Admin can switch between all layouts. If Claude's system wins, the customer-buil
 ---
 
 ## Guest Draft Behavior
-- Do NOT silently restore (current behavior is wrong)
+- Do NOT silently restore
 - Show a prompt: "Last time you added some items — restore or start fresh?"
 - Two clear buttons: **Restore** / **Start Fresh**
 
@@ -125,10 +126,11 @@ Admin can switch between all layouts. If Claude's system wins, the customer-buil
 
 ## Design Direction
 - Fresh design — cleaner, neutral grays, more modern
-- Do NOT copy the current site look; design from scratch
+- Do NOT copy the old `new-order.blade.php` look — design from scratch
 - Keep brand primary (orange) for CTAs only; use neutral grays for cards
 - Typography: smaller, lighter labels; bolder values
 - Less "form", more "chat-like" — one thing at a time where possible
+- Use Cards layout (`new-order-cards.blade.php`) as the visual/UX reference for new builds
 
 ---
 
@@ -141,25 +143,20 @@ Admin can switch between all layouts. If Claude's system wins, the customer-buil
 ## Admin Control
 - Admin switches the active layout from Filament settings panel
 - All 5 Claude layouts remain permanently available — admin picks which one customers see
-- Old customer-built layouts deleted only when explicitly approved by owner
+- `new-order.blade.php` is the current `default` fallback — will be replaced by Cards once all 5 are done
 
 ---
 
 ## Build Order
-1. Layout 3 — Cards (`/new-order-cards`) — start here
-2. Layout 2 — Table (`/new-order-table`)
-3. Layout 1 — Hybrid (`/new-order-hybrid`) — table desktop, cards mobile
-4. Layout 4 — Wizard (`/new-order-wizard`)
-5. Layout 5 — Cart (`/new-order-cart`)
+1. ✅ Cards (`/new-order-cards`) — done
+2. Table (`/new-order-table`) — **build next**
+3. Hybrid (`/new-order-hybrid`) — table desktop, cards mobile
+4. Wizard (`/new-order-wizard`) — rebuild from scratch
+5. Cart (`/new-order-cart`) — rebuild from scratch
 
----
-
-## Pre-build (do before Layout 3)
-1. Extract `_item-fields.blade.php` from Layout 1 (Hybrid) — use _order-item-table-row and _order-item-mobile-card as source. Same fields and naming exactly as current default layout.
-2. Extract `_order-login-modal` and `_order-tips` as shared partials from existing new-order
-3. Ensure `NewOrder.php` remains single source for validation, submission, `getOrderFormFields()`
-
-*Note: Previous Claude-built `/new-order-cards` was removed. Rebuild from scratch.*
+### Before building each layout
+- Delete the old blade file if it exists (Wizard, Cart)
+- Build fresh — own blade, own Alpine component, shared partials via @include
 
 ---
 
@@ -169,14 +166,18 @@ Paste this at the top of a new chat:
 ```
 Read wasetzonlaraval/docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md in full before anything else.
 
-Task: Build all 5 new order form layouts. Do not touch existing customer-built layouts.
+Task: Build the remaining new order form layouts. Do not touch new-order.blade.php (old reference) or new-order-cards.blade.php (done).
 
-Steps:
-1. Pre-build: Extract _item-fields.blade.php, _order-login-modal, _order-tips from current Layout 1.
-2. Build in order: Cards → Table → Hybrid → Wizard → Cart.
+Current status:
+- Cards ✅ done (new-order-cards.blade.php)
+- Table ❌ not built → build new-order-table.blade.php
+- Hybrid ❌ not built → build new-order-hybrid.blade.php
+- Wizard ❌ rebuild → delete old new-order-wizard.blade.php, build fresh
+- Cart ❌ rebuild → delete old new-order-cart.blade.php, build fresh
 
-Each layout: own blade + own Alpine component. Shared: NewOrder.php, _item-fields, login modal, tips.
-Logic (fields, validation, file uploads, calcTotals, saveDraft) lives in NewOrder + newOrderForm — keep it.
+Build order: Table → Hybrid → Wizard → Cart
 
-Start with pre-build, then Layout 3 (Cards).
+Each layout: own blade + own Alpine component (uniquely named). Shared: NewOrder.php, _item-fields, _order-login-modal, _order-tips.
+Logic lives in NewOrder.php — do not duplicate it in blade.
+UI reference: new-order-cards.blade.php. Do NOT copy old new-order.blade.php UI.
 ```

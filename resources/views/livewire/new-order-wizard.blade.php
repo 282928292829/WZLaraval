@@ -1,19 +1,22 @@
-{{-- /new-order — Wizard (Option 4) — Rebuilt from scratch. Mobile-first. --}}
-{{-- Step 1: Products only (one at a time). Step 2: Notes + Review + Submit. --}}
+{{-- Layout: Wizard — One item per step. /new-order-wizard --}}
+{{-- Phases: item → notes → review. Own Alpine component: newOrderFormWizard(). --}}
+
 @php
     $isLoggedIn = auth()->check();
 @endphp
+
 <div>
 <div
-    x-data="newOrderWizardForm(
+    data-guest="{{ auth()->guest() ? 'true' : 'false' }}"
+    x-data="newOrderFormWizard(
         @js($exchangeRates),
         @js($currencies),
         {{ $maxProducts }},
         @js($defaultCurrency),
         {{ $isLoggedIn ? 'true' : 'false' }},
         @js($commissionSettings),
-        @js(($productUrl || $duplicateFrom) ? $items : null),
-        @js($duplicateFrom ? $orderNotes : null),
+        @js(($editingOrderId || $productUrl || $duplicateFrom) ? $items : null),
+        @js(($editingOrderId || $duplicateFrom) ? $orderNotes : null),
         {{ $maxImagesPerItem }},
         {{ $maxImagesPerOrder }},
         @js(__('order_form.max_per_item_reached', ['max' => $maxImagesPerItem])),
@@ -44,168 +47,362 @@
             ],
         ]),
         @js($allowedMimeTypes ?? []),
-        {{ $maxFileSizeBytes ?? (2 * 1024 * 1024) }},
-        {{ $maxProducts }}
+        {{ $maxFileSizeBytes ?? (2 * 1024 * 1024) }}
     )"
-    x-init="init()"
+    x-init="
+        init();
+        @if ($duplicateFrom)
+        $nextTick(() => showNotify('success', @js(__('order.duplicate_prefilled'))));
+        @endif
+        @if ($editingOrderId)
+        $nextTick(() => showNotify('success', @js(__('orders.edit_prefilled'))));
+        @endif
+    "
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
     @zoom-image.window="zoomedImage = $event.detail"
-    @keydown.escape.window="closeZoom()"
-    class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)]"
+    @keydown.escape.window="closeZoom(); if (showDraftPrompt) { showDraftPrompt = false; }"
+    @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
 >
-    <div x-ref="toasts" id="toast-container"></div>
 
-    <div class="max-w-2xl mx-auto p-4 min-h-0 flex flex-col" style="min-height: calc(100vh - 8rem);">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
-            <h1 class="text-xl font-bold text-slate-800 m-0">{{ __('Create new order') }}</h1>
-            @if ($showAddTestItems ?? false)
-            <button type="button" @click="addFiveTestItems(); activeItemIndex = Math.max(0, items.length - 1)" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                {{ __('order.dev_add_5_test_items') }}
-            </button>
-            @endif
-        </div>
+{{-- Toast container --}}
+<div x-ref="toasts" id="toast-container"></div>
 
-        {{-- Progress: 2 steps --}}
-        <div class="flex items-center gap-2 mb-4 shrink-0">
-            <span class="text-sm font-semibold text-slate-600" x-text="'{{ __('order_form.wizard_step_of') }}'.replace(':n', currentStep).replace(':total', totalSteps)"></span>
-            <div class="flex-1 flex gap-1">
-                <div class="flex-1 h-1.5 rounded-full transition-colors" :class="currentStep >= 1 ? 'bg-primary-500' : 'bg-primary-100'"></div>
-                <div class="flex-1 h-1.5 rounded-full transition-colors" :class="currentStep >= 2 ? 'bg-primary-500' : 'bg-primary-100'"></div>
-            </div>
-        </div>
+{{-- ─── Sticky top progress bar ─────────────────────────────────────────── --}}
+<div class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
 
-        {{-- Step content --}}
-        <div class="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
-            {{-- Step 1: Products only (one at a time on mobile) --}}
-            <section x-show="currentStep === 1" x-cloak class="flex flex-col gap-3 min-h-0">
-                {{-- Tips box --}}
-                <div class="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden shrink-0" x-show="!tipsHidden" x-cloak>
-                    <div class="px-4 py-3 flex justify-between items-center cursor-pointer border-b border-primary-100" @click="tipsOpen = !tipsOpen">
-                        <h2 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.tips_title') }}</h2>
-                        <span x-text="tipsOpen ? '▲' : '▼'" class="text-primary-500 text-xs"></span>
-                    </div>
-                    <div x-show="tipsOpen" x-collapse class="p-4 text-sm leading-relaxed text-slate-600">
-                        <ul class="list-none p-0 m-0">
-                            @for ($i = 1; $i <= 8; $i++)
-                                <li class="mb-2.5 relative ps-[18px] before:content-['•'] before:absolute before:start-0 before:text-primary-500 before:font-bold">{{ __("order_form.tip_{$i}") }}</li>
-                            @endfor
-                        </ul>
-                        <div class="mt-4 pt-4 border-t border-primary-100">
-                            <label class="flex items-center gap-2 text-sm text-slate-500 cursor-pointer">
-                                <input type="checkbox" @change="hideTips30Days()" class="cursor-pointer">
-                                <span>{{ __('order_form.tips_dont_show') }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+        {{-- Phase label --}}
+        <span class="shrink-0 text-sm font-semibold text-slate-700 leading-tight">
+            <span x-show="phase === 'item'"
+                  x-text="'{{ __('order_form.wizard_item_step') }}'.replace(':n', currentItemIdx + 1)"></span>
+            <span x-show="phase === 'notes'" x-cloak>{{ __('order_form.wizard_notes_step') }}</span>
+            <span x-show="phase === 'review'" x-cloak>{{ __('order_form.wizard_review_step') }}</span>
+        </span>
 
-                <div class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 flex flex-col gap-3 flex-1 min-h-0">
-                    {{-- Product indicator: Product X of Y (with prev/next when multiple) --}}
-                    <div class="flex items-center justify-between gap-2 shrink-0">
-                        <span class="text-sm font-semibold text-slate-700" x-text="'{{ __('order_form.wizard_product_of') }}'.replace(':n', activeItemIndex + 1).replace(':total', items.length)"></span>
-                        <div class="flex items-center gap-1" x-show="items.length > 1">
-                            <button type="button" @click="activeItemIndex = Math.max(0, activeItemIndex - 1)"
-                                    :disabled="activeItemIndex <= 0"
-                                    class="w-9 h-9 flex items-center justify-center rounded-lg border border-primary-200 bg-white text-slate-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                    aria-label="{{ __('order_form.wizard_back') }}">‹</button>
-                            <button type="button" @click="activeItemIndex = Math.min(items.length - 1, activeItemIndex + 1)"
-                                    :disabled="activeItemIndex >= items.length - 1"
-                                    class="w-9 h-9 flex items-center justify-center rounded-lg border border-primary-200 bg-white text-slate-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                    aria-label="{{ __('order_form.wizard_next') }}">›</button>
-                        </div>
-                    </div>
+        {{-- Item count badge (middle) --}}
+        <span class="flex-1 min-w-0 text-center text-xs text-slate-400 truncate"
+              x-show="filledCount > 0 || items.length > 1"
+              x-text="'{{ __('order_form.wizard_items_added') }}'.replace(':count', filledCount)"
+              x-cloak></span>
 
-                    {{-- One product form at a time --}}
-                    <div class="flex-1 min-h-0 overflow-y-auto">
-                        <template x-for="(item, idx) in items" :key="idx">
-                            <div x-show="activeItemIndex === idx" x-cloak class="py-1">
-                                <div class="flex items-center justify-between gap-2 mb-2" x-show="items.length > 1">
-                                    <span class="text-xs text-slate-500">{{ __('order_form.product_num') }} <span x-text="idx + 1"></span></span>
-                                    <button type="button" @click="removeItem(idx)"
-                                            class="text-red-600 text-xs font-medium hover:text-red-700 py-1 px-2">{{ __('order_form.remove') }}</button>
-                                </div>
-                                @include('livewire.partials._wizard-item-form')
-                            </div>
-                        </template>
-                    </div>
-
-                    {{-- Add another / Continue to submit --}}
-                    <div class="flex flex-col gap-2 shrink-0 pt-2 border-t border-primary-100">
-                        <button type="button" x-show="items.length < maxProducts"
-                                @click="addProductWizard()"
-                                class="w-full py-2.5 inline-flex items-center justify-center gap-2 bg-primary-50 text-primary-500 border border-primary-200 font-medium rounded-lg text-sm hover:bg-primary-100 transition-colors">
-                            + {{ __('order_form.wizard_add_another') }}
-                        </button>
-                        <button type="button" @click="goToSubmitStep()"
-                                class="w-full py-3 px-4 rounded-lg font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors">
-                            {{ __('order_form.wizard_continue_to_submit') }}
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            {{-- Step 2: Notes + Review + Submit --}}
-            <section x-show="currentStep === 2" x-cloak class="flex flex-col gap-3 min-h-0">
-                <div class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 flex flex-col gap-4">
-                    {{-- Review list (items first) --}}
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-800 m-0 mb-2">{{ __('order_form.wizard_step_2_title') }}</h2>
-                        <div class="space-y-2 max-h-[30vh] overflow-y-auto">
-                            <template x-for="(item, idx) in items" :key="idx">
-                                <div class="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-primary-50/50 border border-primary-100">
-                                    <div class="min-w-0 flex-1">
-                                        <span class="font-medium text-sm text-slate-800" x-text="'{{ __('order_form.product_num') }} ' + (idx + 1)"></span>
-                                        <span class="text-slate-500 text-sm ms-1" dir="ltr" x-text="getItemSite(item) || ((item.url || '').substring(0, 40) + ((item.url || '').length > 40 ? '...' : '')) || '{{ __('common.dash') }}'"></span>
-                                        <div class="text-xs text-slate-500 mt-0.5" x-text="(item.qty || 1) + ' × ' + (item.price || '{{ __('common.dash') }}') + ' ' + (item.currency || '')"></div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    {{-- General notes (below items) --}}
-                    <div>
-                        <div class="flex justify-between items-center mb-1.5">
-                            <label class="block text-sm font-semibold text-slate-800">{{ __('order_form.general_notes') }} <span class="text-slate-400 font-normal">{{ __('order_form.optional') }}</span></label>
-                            @if ($showResetAll ?? true)
-                            <button type="button" @click="resetAll()"
-                                    class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                                {{ __('order_form.reset_all') }}
-                            </button>
-                            @endif
-                        </div>
-                        <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()"
-                                  placeholder="{{ __('order_form.general_notes_ph') }}"
-                                  rows="2"
-                                  class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"></textarea>
-                    </div>
-
-                    {{-- Total --}}
-                    <div class="pt-3 border-t border-primary-100">
-                        <span class="text-sm font-semibold text-slate-700" x-text="totalText()"></span>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        {{-- Navigation footer --}}
-        <div class="flex gap-3 mt-4 pt-4 border-t border-primary-100 shrink-0">
-            <button type="button" x-show="currentStep > 1" @click="prevStep()"
-                    class="flex-1 py-3 px-4 rounded-lg font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-                {{ __('order_form.wizard_back') }}
-            </button>
-            <template x-if="currentStep === 2">
-                <button type="button" @click="submitOrder()" :disabled="submitting"
-                        class="flex-1 py-3 px-4 rounded-lg font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:pointer-events-none">
-                    <span x-show="!submitting">{{ __('order_form.confirm_order') }}</span>
-                    <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
-                </button>
-            </template>
-        </div>
+        {{-- Estimated total (right) --}}
+        <span class="shrink-0 text-xs text-slate-500 font-medium whitespace-nowrap"
+              x-show="totalSar > 0"
+              x-text="'~' + totalSar.toLocaleString('en-US') + ' {{ __('SAR') }}'"
+              x-cloak></span>
     </div>
 </div>
 
-{{-- Image Zoom Modal --}}
+<div class="max-w-2xl mx-auto px-4 pt-4 pb-28">
+
+    {{-- ─── Edit mode banner ──────────────────────────────────────────────── --}}
+    @if ($editingOrderId)
+    <section class="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <p class="text-sm font-semibold text-amber-800 m-0">{{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}</p>
+        <p class="text-xs text-amber-700 mt-1 mb-0">{{ __('orders.edit_resubmit_deadline_hint') }}</p>
+    </section>
+    @endif
+
+    {{-- ─── Tips box (phase: item only, hidden on notes/review to keep focus) ── --}}
+    <div x-show="phase === 'item'" x-cloak>
+        @include('livewire.partials._order-tips')
+    </div>
+
+    {{-- ─── Draft restore prompt ──────────────────────────────────────────── --}}
+    <div x-show="showDraftPrompt" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="mb-4 bg-white border border-primary-200 rounded-xl p-4 shadow-sm">
+        <p class="text-sm font-semibold text-slate-800 m-0 mb-1">{{ __('order_form.draft_restore_title') }}</p>
+        <p class="text-xs text-slate-500 mb-3"
+           x-text="'{{ __('order_form.draft_restore_desc') }}'.replace(':count', pendingDraftItems ? pendingDraftItems.length : '')"></p>
+        <div class="flex gap-2">
+            <button type="button"
+                    @click="restoreDraft()"
+                    class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-sm hover:from-primary-600 hover:to-primary-500 transition-colors">
+                {{ __('order_form.draft_restore') }}
+            </button>
+            <button type="button"
+                    @click="discardDraft()"
+                    class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                {{ __('order_form.draft_start_fresh') }}
+            </button>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         PHASE: ITEM — fill one item at a time
+    ══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="phase === 'item'" x-cloak>
+
+        {{-- Page title row --}}
+        <div class="flex flex-nowrap items-center justify-between gap-2 mb-4">
+            <div class="shrink-0 flex items-center gap-2">
+                {{-- Back to previous item (only when not on first) --}}
+                <button type="button"
+                        x-show="currentItemIdx > 0"
+                        x-cloak
+                        @click="backToPreviousItem()"
+                        class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        :aria-label="'{{ __('order_form.wizard_back') }}'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                    </svg>
+                </button>
+                <span class="text-lg font-bold text-slate-800 leading-tight"
+                      x-text="'{{ __('order_form.wizard_item_step') }}'.replace(':n', currentItemIdx + 1)"></span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                @if ($showAddTestItems ?? false)
+                <button type="button"
+                        @click="addFiveTestItems()"
+                        class="text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                    {{ __('order.dev_add_5_test_items') }}
+                </button>
+                @endif
+            </div>
+        </div>
+
+        {{-- Item card with fields — x-for over all items, only active shown --}}
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <template x-for="(item, idx) in items" :key="item._id || idx">
+                <div x-show="idx === currentItemIdx"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-x-2"
+                     x-transition:enter-end="opacity-100 translate-x-0"
+                     class="p-4 grid grid-cols-6 gap-x-3 gap-y-2.5">
+                    @include('livewire.partials._item-fields')
+                </div>
+            </template>
+        </div>
+
+        {{-- Action buttons row --}}
+        <div class="mt-3 flex flex-col gap-2">
+
+            {{-- "Add Another Item" — disabled at max --}}
+            <button type="button"
+                    @click="addAnotherItem()"
+                    x-show="!editingFromReview"
+                    x-cloak
+                    :disabled="items.length >= maxProducts"
+                    class="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary-600 bg-white border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50 transition-all disabled:opacity-50 disabled:pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                {{ __('order_form.wizard_add_another_item') }}
+            </button>
+
+            {{-- "Done Adding Items" → go to Notes --}}
+            <button type="button"
+                    @click="doneAddingItems()"
+                    x-show="!editingFromReview"
+                    x-cloak
+                    class="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-400 shadow-md shadow-primary-500/20 hover:from-primary-600 hover:to-primary-500 transition-all">
+                {{ __('order_form.wizard_done_adding') }}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
+
+            {{-- "Save & Back to Review" — shown only when editing from Review --}}
+            <button type="button"
+                    @click="saveAndBackToReview()"
+                    x-show="editingFromReview"
+                    x-cloak
+                    class="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-400 shadow-md shadow-primary-500/20 hover:from-primary-600 hover:to-primary-500 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                {{ __('order_form.wizard_save_back_to_review') }}
+            </button>
+
+            {{-- Remove current item (visible only when there is more than 1 item) --}}
+            <button type="button"
+                    x-show="items.length > 1"
+                    x-cloak
+                    @click="removeCurrentItem()"
+                    class="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-transparent hover:border-red-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+                {{ __('order_form.wizard_remove_this_item') }}
+            </button>
+
+        </div>
+    </div>{{-- /phase item --}}
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         PHASE: NOTES — order-level notes before review
+    ══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="phase === 'notes'" x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 translate-x-2"
+         x-transition:enter-end="opacity-100 translate-x-0">
+
+        {{-- Title + back --}}
+        <div class="flex items-center gap-2 mb-4">
+            <button type="button"
+                    @click="backFromNotes()"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                    aria-label="{{ __('order_form.wizard_back') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+            <h2 class="text-lg font-bold text-slate-800 m-0">{{ __('order_form.wizard_notes_title') }}</h2>
+        </div>
+
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+                <h3 class="text-sm font-semibold text-slate-700 m-0">
+                    {{ __('order_form.general_notes') }}
+                    <span class="text-xs font-normal text-slate-400 ms-1">{{ __('order_form.optional') }}</span>
+                </h3>
+                @if ($showResetAll ?? true)
+                <button type="button"
+                        @click="resetAll()"
+                        class="text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                    {{ __('order_form.reset_all') }}
+                </button>
+                @endif
+            </div>
+            <textarea
+                x-model="orderNotes"
+                @input.debounce.500ms="saveDraft()"
+                placeholder="{{ __('order_form.general_notes_ph') }}"
+                rows="4"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-400/10 transition-colors"
+            ></textarea>
+        </section>
+
+        <button type="button"
+                @click="goToReview()"
+                class="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-400 shadow-md shadow-primary-500/20 hover:from-primary-600 hover:to-primary-500 transition-all">
+            {{ __('order_form.wizard_continue_to_review') }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+        </button>
+
+    </div>{{-- /phase notes --}}
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         PHASE: REVIEW — compact item list, editable notes, submit
+    ══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="phase === 'review'" x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 translate-x-2"
+         x-transition:enter-end="opacity-100 translate-x-0">
+
+        {{-- Title + back --}}
+        <div class="flex items-center gap-2 mb-4">
+            <button type="button"
+                    @click="backFromReview()"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                    aria-label="{{ __('order_form.wizard_back') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+            <h2 class="text-lg font-bold text-slate-800 m-0">{{ __('order_form.wizard_review_title') }}</h2>
+        </div>
+
+        {{-- Items list --}}
+        <div class="flex flex-col gap-2 mb-3">
+            <template x-for="(item, idx) in items" :key="item._id || idx">
+                <div class="bg-white rounded-xl border border-slate-200 px-3.5 py-3 flex items-center gap-3">
+
+                    {{-- Number badge --}}
+                    <span class="shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold flex items-center justify-center leading-none"
+                          x-text="idx + 1"></span>
+
+                    {{-- Item summary --}}
+                    <div class="flex-1 min-w-0">
+                        {{-- URL / site --}}
+                        <p class="text-sm font-medium text-slate-700 m-0 truncate"
+                           x-text="reviewItemLine1(idx)"
+                           dir="ltr"></p>
+                        {{-- Qty × Price Currency --}}
+                        <p class="text-xs text-slate-400 m-0 mt-0.5"
+                           x-text="reviewItemLine2(idx)"></p>
+                    </div>
+
+                    {{-- Edit button --}}
+                    <button type="button"
+                            @click="editItemFromReview(idx)"
+                            class="shrink-0 min-h-[44px] inline-flex items-center justify-center py-1 px-2.5 rounded-md text-xs font-semibold text-primary-600 bg-primary-50 border border-primary-100 hover:bg-primary-100 hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 transition-colors">
+                        {{ __('order_form.show_edit') }}
+                    </button>
+
+                    {{-- Remove button --}}
+                    <button type="button"
+                            @click="removeItemFromReview(idx)"
+                            class="shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 transition-colors"
+                            :aria-label="'{{ __('order_form.remove') }}'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                    </button>
+
+                </div>
+            </template>
+        </div>
+
+        {{-- "Add another item" link from review (convenience) --}}
+        <button type="button"
+                @click="addAnotherItemFromReview()"
+                :disabled="items.length >= maxProducts"
+                class="w-full mb-3 min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-primary-600 bg-white border border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50 transition-all disabled:opacity-50 disabled:pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            {{ __('order_form.wizard_add_another_item') }}
+        </button>
+
+        {{-- Order notes (inline editable in review) --}}
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 mb-3">
+            <h3 class="text-sm font-semibold text-slate-700 m-0 mb-1.5">
+                {{ __('order_form.general_notes') }}
+                <span class="text-xs font-normal text-slate-400 ms-1">{{ __('order_form.optional') }}</span>
+            </h3>
+            <textarea
+                x-model="orderNotes"
+                @input.debounce.500ms="saveDraft()"
+                placeholder="{{ __('order_form.general_notes_ph') }}"
+                rows="2"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-400/10 transition-colors"
+            ></textarea>
+        </section>
+
+    </div>{{-- /phase review --}}
+
+</div>{{-- /max-w-2xl --}}
+
+{{-- ─── Fixed submit footer (visible only on review) ────────────────────────── --}}
+<div class="order-summary-card" x-show="phase === 'review'" x-cloak>
+    <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+        <span class="text-[0.7rem] font-normal text-stone-400 whitespace-nowrap overflow-hidden text-ellipsis"
+              x-text="productCountText()"></span>
+        <span class="text-stone-400 font-normal text-[0.7rem] whitespace-nowrap"
+              x-text="totalText()"></span>
+    </div>
+    <button type="button"
+            @click="submitOrder()"
+            :disabled="submitting"
+            class="shrink-0 min-w-[120px] max-w-[180px] w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">
+        @if ($editingOrderId)
+        <span x-show="!submitting">{{ __('orders.save_changes') }}</span>
+        @else
+        <span x-show="!submitting">{{ __('order_form.confirm_order') }}</span>
+        @endif
+        <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
+    </button>
+</div>
+
+{{-- ─── Image zoom modal ─────────────────────────────────────────────────────── --}}
 <div class="fixed inset-0 z-[9998] bg-black/90 flex items-center justify-center p-4"
      x-show="zoomedImage"
      x-cloak
@@ -216,168 +413,370 @@
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
      @click.self="closeZoom()">
-    <button type="button" class="absolute top-4 end-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white text-2xl border-none cursor-pointer hover:bg-white/30 z-10" @click="closeZoom()" aria-label="{{ __('Close') }}">&times;</button>
+    <button type="button"
+            class="absolute top-4 end-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white text-2xl border-none cursor-pointer hover:bg-white/30 z-10"
+            @click="closeZoom()"
+            aria-label="{{ __('Close') }}">&times;</button>
     <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
 </div>
 
+{{-- ─── Login modal ──────────────────────────────────────────────────────────── --}}
 @include('livewire.partials._order-login-modal')
+
+</div>
 </div>
 
 @push('scripts')
+{{-- Shared core logic --}}
 <script>
 @include('livewire.partials._new-order-form-js')
+</script>
 
-function newOrderWizardForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes, maxProductsArg) {
-    const maxP = maxProductsArg ?? maxProducts;
-    const base = newOrderForm(rates, currencyList, maxP, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes);
+<script>
+function newOrderFormWizard(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes) {
+    return {
+        ...newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes),
 
-    base.currentStep = 1;
-    base.totalSteps = 2;
-    base.activeItemIndex = 0;
+        // ── Wizard-specific state ──────────────────────────────────────────
+        phase: 'item',              // 'item' | 'notes' | 'review'
+        currentItemIdx: 0,          // 0-based index of item being filled
+        editingFromReview: false,   // true when jumped back from review to edit
+        showDraftPrompt: false,
+        pendingDraftItems: null,
+        pendingDraftNotes: '',
 
-    base.init = function() {
-        this.checkTipsHidden();
-        if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
-            this.items = initialItems.map((d, i) => ({
-                url: d.url || '', qty: (d.qty || '1').toString(), color: d.color || '', size: d.size || '',
-                price: (d.price !== null && d.price !== undefined) ? String(d.price) : '',
+        // ── Override init() ───────────────────────────────────────────────
+        init() {
+            this.checkTipsHidden();
+
+            if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
+                // Pre-filled (duplicate / edit / product_url) — load directly, no prompt
+                this.items = initialItems.map((d) => ({
+                    _id: Math.random().toString(36).slice(2),
+                    url: d.url || '',
+                    qty: (d.qty || '1').toString(),
+                    color: d.color || '',
+                    size: d.size || '',
+                    price: (d.price !== null && d.price !== undefined) ? String(d.price) : '',
+                    currency: d.currency || this.defaultCurrency,
+                    notes: d.notes || '',
+                    _expanded: true, _focused: false, _showOptional: false,
+                    _files: []
+                }));
+                this.orderNotes = initialOrderNotes || '';
+                this.currentItemIdx = 0;
+                this.phase = 'item';
+            } else {
+                // Check for saved draft — show prompt, never silently restore
+                const draft = this.peekDraft();
+                if (draft) {
+                    this.pendingDraftItems = draft.items;
+                    this.pendingDraftNotes = draft.notes;
+                    this.showDraftPrompt = true;
+                    this.items = [this.emptyItem()];
+                    this.currentItemIdx = 0;
+                } else {
+                    this.items = [this.emptyItem()];
+                    this.currentItemIdx = 0;
+                }
+            }
+
+            this.calcTotals();
+
+            window.addEventListener('beforeunload', (e) => {
+                if (this.submitting || !this.hasUnsavedData()) return;
+                @if (config('app.env') === 'local')
+                return;
+                @endif
+                e.preventDefault();
+            });
+        },
+
+        // ── Draft: peek without loading ───────────────────────────────────
+        peekDraft() {
+            try {
+                let raw = localStorage.getItem('wz_order_form_draft');
+                let notes = localStorage.getItem('wz_order_form_notes');
+                // Legacy key migration
+                if (!raw && localStorage.getItem('wz_opus46_draft')) {
+                    raw = localStorage.getItem('wz_opus46_draft');
+                    notes = localStorage.getItem('wz_opus46_notes');
+                    localStorage.removeItem('wz_opus46_draft');
+                    localStorage.removeItem('wz_opus46_notes');
+                    if (raw) localStorage.setItem('wz_order_form_draft', raw);
+                    if (notes) localStorage.setItem('wz_order_form_notes', notes);
+                }
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (!Array.isArray(data) || data.length === 0) return null;
+                const hasMeaningfulContent = data.some(d =>
+                    (d.url || '').trim() || (d.color || '').trim() ||
+                    (d.size || '').trim() || (d.notes || '').trim() ||
+                    (parseFloat(d.price) > 0)
+                );
+                if (!hasMeaningfulContent) return null;
+                return { items: data, notes: notes || '' };
+            } catch {
+                return null;
+            }
+        },
+
+        // ── Draft: restore ────────────────────────────────────────────────
+        restoreDraft() {
+            if (!this.pendingDraftItems) {
+                this.showDraftPrompt = false;
+                return;
+            }
+            this.items = this.pendingDraftItems.map((d) => ({
+                _id: Math.random().toString(36).slice(2),
+                url: d.url || '', qty: d.qty || '1', color: d.color || '',
+                size: d.size || '', price: d.price || '',
                 currency: d.currency || this.defaultCurrency, notes: d.notes || '',
                 _expanded: true, _focused: false, _showOptional: false,
                 _files: []
             }));
-            this.orderNotes = initialOrderNotes || '';
-            this.activeItemIndex = 0;
-        } else if (!this.loadDraft()) {
+            this.orderNotes = this.pendingDraftNotes || '';
+            this.pendingDraftItems = null;
+            this.pendingDraftNotes = '';
+            this.showDraftPrompt = false;
+            this.currentItemIdx = 0;
+            this.phase = 'item';
+            this.editingFromReview = false;
+            this.calcTotals();
+            this.showNotify('success', @js(__('order_form.draft_restored')));
+        },
+
+        // ── Draft: discard, start fresh ───────────────────────────────────
+        discardDraft() {
+            this.clearDraft();
+            this.pendingDraftItems = null;
+            this.pendingDraftNotes = '';
+            this.showDraftPrompt = false;
             this.items = [this.emptyItem()];
-            this.activeItemIndex = 0;
-        } else {
-            this.activeItemIndex = 0;
-        }
-        this.calcTotals();
+            this.orderNotes = '';
+            this.currentItemIdx = 0;
+            this.phase = 'item';
+            this.editingFromReview = false;
+            this.calcTotals();
+            this.$nextTick(() => this.saveDraft());
+        },
 
-        window.addEventListener('beforeunload', (e) => {
-            if (this.submitting || !this.hasUnsavedData()) return;
-            @if (config('app.env') === 'local')
-            return;
-            @endif
-            e.preventDefault();
-        });
+        // ── Item phase: "Add Another Item" ────────────────────────────────
+        addAnotherItem() {
+            if (this.items.length >= this.maxProducts) {
+                this.showNotify('error', @js(__('order_form.max_products', ['max' => $maxProducts ?? 30])));
+                return;
+            }
+            const lastCur = this.items.length > 0
+                ? this.items[this.items.length - 1].currency
+                : this.defaultCurrency;
+            this.items.push(this.emptyItem(lastCur));
+            this.currentItemIdx = this.items.length - 1;
+            this.editingFromReview = false;
+            this.saveDraft();
+        },
+
+        // ── Item phase: "Done Adding Items" → notes ───────────────────────
+        doneAddingItems() {
+            this.saveDraft();
+            this.phase = 'notes';
+            this.editingFromReview = false;
+        },
+
+        // ── Item phase: "Save & Back to Review" (only when editingFromReview) ──
+        saveAndBackToReview() {
+            this.saveDraft();
+            this.phase = 'review';
+            this.editingFromReview = false;
+        },
+
+        // ── Item phase: back to previous item ────────────────────────────
+        backToPreviousItem() {
+            if (this.currentItemIdx > 0) {
+                this.currentItemIdx--;
+                this.editingFromReview = false;
+            }
+        },
+
+        // ── Item phase: remove the currently displayed item ───────────────
+        removeCurrentItem() {
+            if (!confirm(@js(__('order_form.remove_item_confirm')))) return;
+            const idx = this.currentItemIdx;
+            this.$wire.removeItem(idx);
+            this.items.splice(idx, 1);
+            this.calcTotals();
+            this.saveDraft();
+
+            if (this.items.length === 0) {
+                // Removed last item — start fresh
+                this.items = [this.emptyItem()];
+                this.currentItemIdx = 0;
+                this.phase = 'item';
+                this.editingFromReview = false;
+            } else {
+                // Move to the previous item (or stay at 0)
+                this.currentItemIdx = Math.max(0, idx - 1);
+                // If we were editing from review and still have items, go back to review
+                if (this.editingFromReview) {
+                    this.phase = 'review';
+                    this.editingFromReview = false;
+                }
+            }
+        },
+
+        // ── Notes phase: back to last item ───────────────────────────────
+        backFromNotes() {
+            this.currentItemIdx = this.items.length - 1;
+            this.phase = 'item';
+            this.editingFromReview = false;
+        },
+
+        // ── Notes phase: continue to review ──────────────────────────────
+        goToReview() {
+            this.saveDraft();
+            this.phase = 'review';
+        },
+
+        // ── Review phase: back to notes ───────────────────────────────────
+        backFromReview() {
+            this.phase = 'notes';
+        },
+
+        // ── Review phase: edit a specific item ───────────────────────────
+        editItemFromReview(idx) {
+            this.currentItemIdx = idx;
+            this.phase = 'item';
+            this.editingFromReview = true;
+            this.$nextTick(() => {
+                this.showNotify('success', @js(__('order_form.wizard_editing_toast')));
+            });
+        },
+
+        // ── Review phase: add another item (jumps back to item phase) ────
+        addAnotherItemFromReview() {
+            if (this.items.length >= this.maxProducts) {
+                this.showNotify('error', @js(__('order_form.max_products', ['max' => $maxProducts ?? 30])));
+                return;
+            }
+            const lastCur = this.items.length > 0
+                ? this.items[this.items.length - 1].currency
+                : this.defaultCurrency;
+            this.items.push(this.emptyItem(lastCur));
+            this.currentItemIdx = this.items.length - 1;
+            this.phase = 'item';
+            this.editingFromReview = false;
+            this.saveDraft();
+        },
+
+        // ── Review phase: remove an item from the list ────────────────────
+        removeItemFromReview(idx) {
+            if (!confirm(@js(__('order_form.remove_item_confirm')))) return;
+            this.$wire.removeItem(idx);
+            this.items.splice(idx, 1);
+            this.calcTotals();
+            this.saveDraft();
+
+            if (this.items.length === 0) {
+                // All items removed — back to phase 'item' with one empty
+                this.items = [this.emptyItem()];
+                this.currentItemIdx = 0;
+                this.phase = 'item';
+                this.editingFromReview = false;
+            }
+            // else stay in review — list updates reactively
+        },
+
+        // ── Review: line 1 — URL domain or fallback ───────────────────────
+        reviewItemLine1(idx) {
+            const item = this.items[idx];
+            if (!item) return '';
+            const noUrl = @js(__('order_form.wizard_no_url'));
+            const url = (item.url || '').trim();
+            if (!url) return noUrl;
+            try {
+                const host = new URL(url.startsWith('http') ? url : 'https://' + url)
+                    .hostname.replace('www.', '');
+                return host.length > 40 ? host.substring(0, 40) + '…' : host;
+            } catch {
+                return url.length > 40 ? url.substring(0, 40) + '…' : url;
+            }
+        },
+
+        // ── Review: line 2 — qty × price currency ────────────────────────
+        reviewItemLine2(idx) {
+            const item = this.items[idx];
+            if (!item) return '';
+            const dash = '—';
+            const qty = item.qty || '1';
+            const price = item.price ? item.price : dash;
+            const currency = item.currency || '';
+            return `${qty} × ${price} ${currency}`.trim();
+        },
+
+        // ── Override resetAll ─────────────────────────────────────────────
+        resetAll() {
+            if (!confirm(@js(__('order_form.reset_confirm')))) return;
+            this.items = [this.emptyItem()];
+            this.orderNotes = '';
+            this.currentItemIdx = 0;
+            this.phase = 'item';
+            this.editingFromReview = false;
+            this.clearDraft();
+            this.calcTotals();
+            this.showNotify('success', @js(__('order_form.cleared')));
+        },
+
+        // ── Override addFiveTestItems — wizard-aware ──────────────────────
+        addFiveTestItems() {
+            const urls = [
+                'https://www.amazon.com/dp/B0BSHF7LLL',
+                'https://www.ebay.com/itm/' + Math.floor(100000000 + Math.random() * 900000000),
+                'https://www.walmart.com/ip/' + Math.floor(100000 + Math.random() * 900000),
+                'https://www.target.com/p/product-' + Math.floor(100 + Math.random() * 900),
+                'https://www.aliexpress.com/item/' + Math.floor(1000000000 + Math.random() * 9000000000) + '.html',
+            ];
+            const sizes = this.testOptions?.sizes || ['S', 'M', 'L', 'XL', 'US 8'];
+            const currencies = ['USD', 'EUR', 'GBP'];
+            const colors = this.testOptions?.colors || ['White', 'Black', 'Navy', 'Red', 'Beige'];
+            const notes = this.testOptions?.notes || ['Same as picture', 'Please send photo', 'Exact match', 'As shown', 'Confirm color'];
+            const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
+            const isEmpty = (item) =>
+                !(item.url || '').trim() && !(item.color || '').trim() &&
+                !(item.size || '').trim() && !parseFloat(item.price) &&
+                !(item.notes || '').trim();
+
+            for (let i = 0; i < 5; i++) {
+                const cur = currencies[i % currencies.length] || lastCur;
+                const testData = {
+                    _id: Math.random().toString(36).slice(2),
+                    url: urls[i],
+                    qty: String(Math.floor(Math.random() * 2) + 1),
+                    color: colors[i % colors.length],
+                    size: sizes[Math.floor(Math.random() * sizes.length)],
+                    price: String((Math.random() * 80 + 15).toFixed(2)),
+                    currency: cur,
+                    notes: notes[i % notes.length],
+                    _expanded: true, _focused: false, _showOptional: false,
+                    _files: []
+                };
+                const emptyIdx = this.items.findIndex(isEmpty);
+                if (emptyIdx !== -1) {
+                    Object.assign(this.items[emptyIdx], testData);
+                } else if (this.items.length < this.maxProducts) {
+                    this.items.push(testData);
+                } else {
+                    break;
+                }
+            }
+
+            this.currentItemIdx = Math.min(this.currentItemIdx, this.items.length - 1);
+            this.editingFromReview = false;
+            this.phase = 'item';
+            this.calcTotals();
+            this.saveDraft();
+            this.showNotify('success', @js(__('order.dev_5_items_added')));
+        },
     };
-
-    const origLoadDraft = base.loadDraft;
-    base.loadDraft = function() {
-        const ok = origLoadDraft.call(this);
-        if (ok) this.activeItemIndex = 0;
-        return ok;
-    };
-
-    base.addProductWizard = function() {
-        if (this.items.length >= this.maxProducts) {
-            this.showNotify('error', @js(__('order_form.max_products', ['max' => $maxProducts ?? 30])));
-            return;
-        }
-        const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
-        this.items.push(this.emptyItem(lastCur));
-        this.activeItemIndex = this.items.length - 1;
-        this.saveDraft();
-    };
-
-    base.removeItem = function(idx) {
-        this.$wire.removeItem(idx);
-        this.items.splice(idx, 1);
-        if (this.items.length === 0) {
-            this.items.push(this.emptyItem());
-            this.activeItemIndex = 0;
-        } else {
-            if (idx < this.activeItemIndex) this.activeItemIndex--;
-            else if (this.activeItemIndex >= this.items.length) this.activeItemIndex = Math.max(0, this.items.length - 1);
-        }
-        this.calcTotals();
-        this.saveDraft();
-    };
-
-    base.hasAtLeastOneFilledItem = function() {
-        return this.items.some(i =>
-            (i.url || '').trim() ||
-            (i.color || '').trim() ||
-            (i.size || '').trim() ||
-            (i.notes || '').trim() ||
-            (parseFloat(i.price) > 0) ||
-            ((i._files || []).length > 0)
-        );
-    };
-
-    base.goToSubmitStep = function() {
-        this.currentStep = 2;
-    };
-
-    base.nextStep = function() {
-        if (this.currentStep < this.totalSteps) this.currentStep++;
-    };
-
-    base.prevStep = function() {
-        if (this.currentStep > 1) this.currentStep--;
-    };
-
-    base.resetAll = function() {
-        if (!confirm('{{ __('order_form.reset_confirm') }}')) return;
-        this.items = [this.emptyItem()];
-        this.orderNotes = '';
-        this.activeItemIndex = 0;
-        this.currentStep = 1;
-        this.clearDraft();
-        this.calcTotals();
-        this.showNotify('success', '{{ __('order_form.cleared') }}');
-    };
-
-    base.hideTips30Days = function() {
-        try {
-            localStorage.setItem('wz_order_form_tips_until', (Date.now() + 30*24*60*60*1000).toString());
-        } catch {}
-        this.tipsHidden = true;
-        this.showNotify('success', '{{ __('order_form.tips_hidden') }}');
-    };
-
-    base.addFiveTestItems = function() {
-        const urls = [
-            'https://www.amazon.com/dp/B0BSHF7LLL',
-            'https://www.ebay.com/itm/' + Math.floor(100000000 + Math.random() * 900000000),
-            'https://www.walmart.com/ip/' + Math.floor(100000 + Math.random() * 900000),
-            'https://www.target.com/p/product-' + Math.floor(100 + Math.random() * 900),
-            'https://www.aliexpress.com/item/' + Math.floor(1000000000 + Math.random() * 9000000000) + '.html',
-        ];
-        const sizes = this.testOptions?.sizes || ['S', 'M', 'L', 'XL', 'US 8', 'US 10', 'One Size'];
-        const currencies = ['USD', 'EUR', 'GBP'];
-        const colors = this.testOptions?.colors || ['White / Blue if unavailable', 'Black / Gray if unavailable', 'Navy / Blue', 'Red / Maroon', 'Beige / White'];
-        const notes = this.testOptions?.notes || ['Same as picture', 'Please send photo when it arrives', 'Exact match to image', 'I want image when it arrives', 'As shown in listing'];
-        const lastCur = this.items.length > 0 ? this.items[this.items.length - 1].currency : this.defaultCurrency;
-        const isEmpty = (item) => !(item.url || '').trim() && !(item.color || '').trim() && !(item.size || '').trim() && !parseFloat(item.price) && !(item.notes || '').trim();
-        for (let i = 0; i < 5; i++) {
-            const cur = currencies[i % currencies.length] || lastCur;
-            const testData = {
-                url: urls[i],
-                qty: String(Math.floor(Math.random() * 2) + 1),
-                color: colors[i % colors.length],
-                size: sizes[Math.floor(Math.random() * sizes.length)],
-                price: String((Math.random() * 80 + 15).toFixed(2)),
-                currency: cur,
-                notes: notes[i % notes.length],
-                _expanded: true, _focused: false, _showOptional: false,
-                _files: []
-            };
-            const emptyIdx = this.items.findIndex(isEmpty);
-            if (emptyIdx !== -1) {
-                Object.assign(this.items[emptyIdx], testData);
-            } else if (this.items.length < this.maxProducts) {
-                this.items.push(testData);
-            } else break;
-        }
-        this.calcTotals();
-        this.saveDraft();
-        this.showNotify('success', '{{ __('order.dev_5_items_added') }}');
-    };
-
-    return base;
 }
 </script>
 @endpush

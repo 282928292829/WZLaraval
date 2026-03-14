@@ -270,6 +270,12 @@ Manual SSH deployment (no Forge/Ploi):
 
 ## Current Task
 
-**Completed:** Dashboard removed, orders as hub — Removed `/dashboard` route, controller, and view. All auth redirects (login, register, email verification, social auth, password confirm) now go to `/orders`. Customer orders index redesigned: Order count + New Order + Account in header; Last order quick-access card; All orders list. Bilingual translations added (`orders.last_order_label`, `Welcome to Wasetzon. You will be redirected to your orders in`). Tests updated to assert redirect to `orders.index`.
+**Completed:** Dashboard removed, orders as hub. Cards new-order layout built (`new-order-cards.blade.php`). Old customer-built layouts (numbered 1–4) deleted — only `new-order.blade.php` kept as temporary logic reference.
 
-**Next session:** Start next session with: `Read LARAVEL_PLAN.md then continue from the Current Task section.`
+**In progress:** Building 5 new Claude-built order form layouts. Cards is done. Remaining:
+- Table (`/new-order-table`) — not built yet → **start here**
+- Hybrid (`/new-order-hybrid`) — not built yet
+- Wizard (`/new-order-wizard`) — old file exists, delete and rebuild from scratch
+- Cart (`/new-order-cart`) — old file exists, delete and rebuild from scratch
+
+**Next session:** Read `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md` then build Table layout first.

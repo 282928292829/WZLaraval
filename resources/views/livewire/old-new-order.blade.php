@@ -15,7 +15,6 @@
 {{-- ORDER FORM                                                   --}}
 {{-- ============================================================ --}}
 <div
-    data-guest="{{ auth()->guest() ? 'true' : 'false' }}"
     x-data="newOrderForm(
         @js($exchangeRates),
         @js($currencies),
@@ -70,7 +69,6 @@
     @notify.window="showNotify($event.detail.type, $event.detail.message)"
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
-    @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
     class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)]"
 >
 
@@ -133,15 +131,9 @@
                 </div>
             </div>
             <div class="flex flex-col gap-3 shrink-0 pt-3 border-t border-primary-100 mt-3">
-                @if ($addProductAsLink ?? false)
-                <button type="button" @click="addProduct()" class="bg-transparent border-none text-primary-500 text-sm underline cursor-pointer p-0 font-inherit hover:text-primary-600 transition-colors">
-                    + {{ __('order_form.add_product') }}
-                </button>
-                @else
                 <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                     + {{ __('order_form.add_product') }}
                 </button>
-                @endif
                 <div class="flex flex-col gap-1.5">
                     <div class="flex justify-between items-center">
                         <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
@@ -156,7 +148,7 @@
             </div>
         </section>
         @else
-        {{-- Table: desktop table, mobile cards --}}
+        {{-- Option 1: Desktop table, mobile cards --}}
         <section class="bg-white rounded-xl shadow-sm border border-primary-100 p-4 mb-4 lg:mb-0 lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
 
             {{-- Desktop: HTML table (only scrollable area) — design-3 layout --}}
@@ -185,10 +177,7 @@
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_currency') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                             <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
-                            <th class="text-start p-2 font-bold text-xs text-slate-800">
-                                <span class="block">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></span>
-                                <span class="block text-[0.65rem] font-normal text-slate-500 mt-0.5">{{ __('order_form.file_info_bulk', ['max' => $maxImagesPerItem ?? 3, 'size' => $maxFileSizeMb ?? 2]) }}</span>
-                            </th>
+                            <th class="text-start p-2 font-bold text-xs text-slate-800">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></th>
                         </tr>
                     </thead>
                     <tbody class="border-t border-primary-100">
@@ -201,15 +190,9 @@
 
             {{-- Desktop: Add Product, General notes, Reset — always under table edge --}}
             <div class="hidden lg:flex lg:flex-col lg:gap-3 lg:shrink-0 pt-3 border-t border-primary-100">
-                @if ($addProductAsLink ?? false)
-                <button type="button" @click="addProduct()" class="bg-transparent border-none text-primary-500 text-sm underline cursor-pointer p-0 font-inherit hover:text-primary-600 transition-colors">
-                    + {{ __('order_form.add_product') }}
-                </button>
-                @else
                 <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
                     + {{ __('order_form.add_product') }}
                 </button>
-                @endif
                 <div class="flex flex-col gap-1.5">
                     <div class="flex justify-between items-center">
                         <h3 class="text-sm font-semibold text-slate-800 m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
@@ -232,31 +215,24 @@
                 </div>
             </div>
 
-        </section>
-
-        {{-- Add Product + General Notes — mobile only; desktop has them under table --}}
-        <div class="lg:hidden bg-white -mx-4 px-4 pt-2 pb-2 border-t border-primary-100/60">
-            @if ($addProductAsLink ?? false)
-            <button type="button" @click="addProduct()" class="bg-transparent border-none text-primary-500 text-sm underline cursor-pointer p-0 font-inherit hover:text-primary-600 transition-colors">
-                + {{ __('order_form.add_product') }}
-            </button>
-            @else
-            <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
-                + {{ __('order_form.add_product') }}
-            </button>
-            @endif
-            <section class="mt-2">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <h3 class="text-base m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
-                    @if ($showResetAll ?? true)
-                    <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
-                        {{ __('order_form.reset_all') }}
-                    </button>
-                    @endif
+            {{-- Add Product + General Notes — mobile only; under cards, same section --}}
+            <div class="lg:hidden flex flex-col gap-3 pt-3 mt-3 border-t border-primary-100">
+                <button type="button" @click="addProduct()" class="w-full py-3 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary-500/10 to-primary-400/5 text-primary-500 border-2 border-primary-500/25 font-semibold rounded-md text-sm hover:from-primary-500/20 hover:to-primary-400/10 hover:border-primary-500 transition-all">
+                    + {{ __('order_form.add_product') }}
+                </button>
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-base m-0">{{ __('order_form.general_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></h3>
+                        @if ($showResetAll ?? true)
+                        <button type="button" @click="resetAll()" class="bg-transparent border-none text-slate-400 text-sm underline cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">
+                            {{ __('order_form.reset_all') }}
+                        </button>
+                        @endif
+                    </div>
+                    <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
                 </div>
-                <textarea x-model="orderNotes" @input.debounce.500ms="saveDraft()" placeholder="{{ __('order_form.general_notes_ph') }}" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-colors sm:text-base"></textarea>
-            </section>
-        </div>
+            </div>
+        </section>
         @endif
 
         {{-- Fixed Footer --}}

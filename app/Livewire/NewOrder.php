@@ -1369,7 +1369,7 @@ class NewOrder extends Component
             'cards' => 'livewire.new-order-cards',
             'table' => 'livewire.new-order-table',
             'hybrid' => 'livewire.new-order-hybrid',
-            'wizard' => 'livewire.new-order-wizard-new',
+            'wizard' => 'livewire.new-order-wizard',
             'cart' => 'livewire.new-order-cart',
             default => 'livewire.new-order',
         };

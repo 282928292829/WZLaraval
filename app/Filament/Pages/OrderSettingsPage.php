@@ -514,11 +514,17 @@ class OrderSettingsPage extends Page
 
                                         TextInput::make('orders_per_hour_customer')
                                             ->label(__('Orders/hour — Customer'))
-                                            ->numeric(),
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(10000)
+                                            ->helperText(__('Max orders per customer per hour. 0 = unlimited.')),
 
                                         TextInput::make('orders_per_hour_admin')
                                             ->label(__('Orders/hour — Admin'))
-                                            ->numeric(),
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(10000)
+                                            ->helperText(__('Max orders per staff per hour. 0 = unlimited.')),
 
                                         TextInput::make('max_file_size_mb')
                                             ->label(__('Max File Size (MB)'))
