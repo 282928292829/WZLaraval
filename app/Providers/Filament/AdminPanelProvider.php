@@ -71,6 +71,8 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar'))
                     ->openUrlInNewTab(false),
             ])
-            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.dev-toolbar'));
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, app()->environment('local')
+                ? fn () => view('components.dev-toolbar')
+                : fn () => '');
     }
 }

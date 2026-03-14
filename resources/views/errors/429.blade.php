@@ -69,12 +69,6 @@
             transition: border-color .15s, color .15s;
         }
         a.btn-ghost:hover { border-color: #9ca3af; color: #374151; }
-        .site-name {
-            margin-top: 2.5rem;
-            font-size: .8125rem;
-            color: #d1d5db;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -87,6 +81,5 @@
             <a href="{{ route('orders.index') }}" class="btn-ghost">{{ __('errors.404.my_orders') }}</a>
         </div>
     </div>
-    <p class="site-name">{{ config('app.name', 'Wasetzon') }}</p>
 </body>
 </html>

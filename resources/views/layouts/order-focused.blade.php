@@ -72,7 +72,9 @@
         @livewireScripts
         @stack('scripts')
 
-        <x-dev-toolbar />
+        @env('local')
+            <x-dev-toolbar />
+        @endenv
 
         <script>
             if ('serviceWorker' in navigator) {

@@ -59,6 +59,8 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd $DEPLOY_PATH && \
             [ -f .env ] || (cp .env.example .env && php artisan key:generate --force) && \
+            sed -i 's/^APP_ENV=.*/APP_ENV=production/' .env && \
+            sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' .env && \
             composer install --no-dev --optimize-autoloader --no-interaction && \
             npm ci && npm run build && \
             (touch database/database.sqlite 2>/dev/null || true) && \

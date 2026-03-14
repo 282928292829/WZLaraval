@@ -586,7 +586,7 @@ class NewOrder extends Component
         // Per-hour limit
         $hourlyLimit = $isStaff
             ? (int) Setting::get('orders_per_hour_admin', 50)
-            : (int) Setting::get('orders_per_hour_customer', 50);
+            : (int) Setting::get('orders_per_hour_customer', 30);
 
         if ($hourlyLimit > 0) {
             $hourlyCount = Order::where('user_id', $user->id)

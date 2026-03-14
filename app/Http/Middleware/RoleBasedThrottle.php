@@ -16,7 +16,7 @@ class RoleBasedThrottle
      * Apply permission-aware rate limiting, reading limits from the settings table.
      *
      * Staff (users with view-all-orders) → orders_per_hour_admin (default 50).
-     * Everyone else (customers, guests)  → orders_per_hour_customer (default 50).
+     * Everyone else (customers, guests)  → orders_per_hour_customer (default 30).
      */
     public function handle(Request $request, Closure $next, string $key = 'new-order'): Response
     {
@@ -26,7 +26,7 @@ class RoleBasedThrottle
 
         $maxAttempts = $isStaff
             ? (int) Setting::get('orders_per_hour_admin', 50)
-            : (int) Setting::get('orders_per_hour_customer', 10);
+            : (int) Setting::get('orders_per_hour_customer', 30);
 
         $decaySeconds = 3600; // 1 hour
 
