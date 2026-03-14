@@ -103,6 +103,14 @@ Route::get('/new-order-wizard', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-wizard');
 
+Route::get('/new-order-cart', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-cart');
+
+Route::get('/new-order-cart-inline', NewOrder::class)
+    ->middleware('role.throttle:new-order')
+    ->name('new-order-cart-inline');
+
 // Standalone reference: old responsive layout (Option 1). For AI reference when building the 5 new layouts.
 Route::get('/old-new-order', OldNewOrder::class)
     ->middleware('role.throttle:new-order')

@@ -108,19 +108,19 @@ class NewOrder extends Component
             }
         }
 
-        if (in_array($this->activeLayout, ['cart', 'hybrid'], true)) {
+        if ($this->activeLayout === 'cart') {
             $this->currentItem = $this->emptyItem($this->defaultCurrency);
         }
 
         if ($duplicate_from && Auth::check()) {
             $this->prefillFromDuplicate($duplicate_from);
-            if (in_array($this->activeLayout, ['cart', 'hybrid'], true) && ! empty($this->items)) {
+            if ($this->activeLayout === 'cart' && ! empty($this->items)) {
                 $last = $this->items[array_key_last($this->items)];
                 $this->currentItem = $this->emptyItem($last['currency'] ?? $this->defaultCurrency);
             }
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
-            if (in_array($this->activeLayout, ['cart', 'hybrid'], true)) {
+            if ($this->activeLayout === 'cart') {
                 $this->currentItem['url'] = $product_url;
             } else {
                 $firstItem = $this->emptyItem($this->defaultCurrency);
@@ -146,6 +146,8 @@ class NewOrder extends Component
             'new-order-table-sticky' => 'table-sticky',
             'new-order-hybrid' => 'hybrid',
             'new-order-wizard' => 'wizard',
+            'new-order-cart' => 'cart',
+            'new-order-cart-inline' => 'cart-inline',
         ];
 
         $path = trim(request()->path(), '/');
@@ -443,7 +445,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if (! in_array($this->activeLayout, ['cart', 'hybrid'], true)) {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         if (count($this->items) > 0) {
@@ -482,7 +484,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if (! in_array($this->activeLayout, ['cart', 'hybrid'], true)) {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -493,7 +495,7 @@ class NewOrder extends Component
         if (Auth::check()) {
             return;
         }
-        if (! in_array($this->activeLayout, ['cart', 'hybrid'], true)) {
+        if ($this->activeLayout !== 'cart') {
             return;
         }
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
@@ -1373,7 +1375,8 @@ class NewOrder extends Component
             'table-sticky' => 'livewire.new-order-table-sticky',
             'hybrid' => 'livewire.new-order-hybrid',
             'wizard' => 'livewire.new-order-wizard',
-            'cart' => 'livewire.new-order-cards', // Cart layout removed; fallback to Cards until rebuild
+            'cart' => 'livewire.new-order-cart',
+            'cart-inline' => 'livewire.new-order-cart-inline',
             default => 'livewire.new-order',
         };
 
@@ -1387,7 +1390,7 @@ class NewOrder extends Component
             ->with('maxFileSizeBytes', $maxFileSizeMb * 1024 * 1024)
             ->with('maxFileSizeMb', $maxFileSizeMb);
 
-        if (in_array($layout, ['cart', 'hybrid'], true)) {
+        if (in_array($layout, ['cart', 'cart-inline'], true)) {
             $view = $view->with('cartSummary', $this->getCartSummary());
         }
 

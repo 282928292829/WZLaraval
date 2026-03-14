@@ -348,7 +348,7 @@
 
                             {{-- Currency --}}
                             <td class="py-2 px-2">
-                                @include('livewire.partials._currency-dropdown')
+                                @include('livewire.partials._currency-dropdown', ['compact' => true])
                             </td>
 
                             {{-- Notes --}}

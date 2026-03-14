@@ -645,6 +645,7 @@
     "order_layout.cards": "Cards — cards on desktop and mobile",
     "order_layout.wizard": "Wizard — one step per product",
     "order_layout.cart": "Cart — add to cart with sidebar/bottom sheet",
+    "order_layout.cart_inline": "Cart — summary sidebar (inline items)",
     "Option 2 — Cart system": "Option 2 — Cart system",
     "Option 3 — Cards everywhere": "Option 3 — Cards everywhere",
     "Option 4 — Wizard": "Option 4 — Wizard",

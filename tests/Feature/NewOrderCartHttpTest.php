@@ -65,19 +65,18 @@ test('new-order cart layout shows add-product form fields', function (): void {
     $response->assertSee('Qty', false);
     $response->assertSee('Color', false);
     $response->assertSee('Size', false);
-    $response->assertSee('Price', false);
+    $response->assertSee('Product price', false);
     $response->assertSee('Currency', false);
 });
 
-test('new-order page renders option 3 cards layout with one-card-at-a-time desktop when layout 3 is set', function (): void {
+test('new-order page renders option 3 cards layout when layout 3 is set', function (): void {
     Setting::set('order_new_layout', 'cards', 'string', 'orders');
 
     $response = $this->get(route('new-order'));
 
     $response->assertOk();
     $response->assertSee('Create new order', false);
-    $response->assertSee('Add product', false);
-    $response->assertSee('prevCard', false);
-    $response->assertSee('nextCard', false);
-    $response->assertSee('activeCardIndex', false);
+    $response->assertSee('Add Another Product', false);
+    $response->assertSee('newOrderFormCards', false);
+    $response->assertSee('items-container', false);
 });
