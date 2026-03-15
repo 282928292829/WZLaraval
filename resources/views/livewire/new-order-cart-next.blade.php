@@ -217,6 +217,25 @@
                         @if (!empty(trim($item['notes'] ?? '')))
                         <p class="text-xs text-slate-500 mt-1">{{ __('order_form.th_notes') }}: {{ \Illuminate\Support\Str::limit($item['notes'], 80) }}</p>
                         @endif
+                        @php $itemPreviews = $this->getItemFilePreviews($idx); @endphp
+                        @if (count($itemPreviews) > 0)
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            @foreach ($itemPreviews as $fp)
+                            <div class="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-slate-200 {{ $fp['url'] ? 'cursor-pointer' : '' }}"
+                                 @if ($fp['url']) data-zoom-src="{{ $fp['url'] }}" @click="$dispatch('zoom-image', $event.currentTarget.dataset.zoomSrc)" @endif>
+                                @if ($fp['url'])
+                                <img src="{{ $fp['url'] }}" class="w-full h-full object-cover block" alt="">
+                                @elseif ($fp['type'] === 'img')
+                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">...</div>
+                                @elseif ($fp['type'] === 'pdf')
+                                <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
+                                @else
+                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">?</div>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                     {{-- Expanded: inline edit form — wire:model.blur ensures edits sync on blur before Save closes panel --}}
                     <div x-show="editingIndex === {{ $idx }}" x-cloak class="space-y-3">
@@ -260,6 +279,27 @@
                             <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_notes') }}</label>
                             <textarea wire:model.blur="items.{{ $idx }}.notes" rows="2" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none"></textarea>
                         </div>
+                        @if (count($itemPreviews) > 0)
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_files') }}</label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @foreach ($itemPreviews as $fp)
+                                <div class="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-slate-200 {{ $fp['url'] ? 'cursor-pointer' : '' }}"
+                                     @if ($fp['url']) data-zoom-src="{{ $fp['url'] }}" @click="$dispatch('zoom-image', $event.currentTarget.dataset.zoomSrc)" @endif>
+                                    @if ($fp['url'])
+                                    <img src="{{ $fp['url'] }}" class="w-full h-full object-cover block" alt="">
+                                    @elseif ($fp['type'] === 'img')
+                                    <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">...</div>
+                                    @elseif ($fp['type'] === 'pdf')
+                                    <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
+                                    @else
+                                    <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">?</div>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
                         <button type="button" @click="$wire.syncItemEdits(); editingIndex = null" class="w-full py-2 px-4 rounded-lg text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
                             {{ __('order_form.save') }}
                         </button>

@@ -27,11 +27,15 @@ class SetLocale
             $locale = $configLocale;
         }
 
+        // Persist locale so it survives across requests (session + user when authenticated)
         if ($request->has('lang')) {
             session(['locale' => $locale]);
             if (auth()->check()) {
                 auth()->user()->update(['locale' => $locale]);
             }
+        } elseif (auth()->check() && $locale === auth()->user()->locale) {
+            // Sync session when we used user's stored locale (e.g. after session expiry)
+            session(['locale' => $locale]);
         }
 
         app()->setLocale($locale);

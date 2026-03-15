@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Enums\AdminNavigationGroup;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\TranslationsPage;
 use App\Http\Middleware\SetLocale;
@@ -13,6 +12,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -33,7 +33,18 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->navigationGroups(AdminNavigationGroup::class)
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label(fn (): string => __('Orders')),
+                NavigationGroup::make()
+                    ->label(fn (): string => __('Order Setup')),
+                NavigationGroup::make()
+                    ->label(fn (): string => __('Content')),
+                NavigationGroup::make()
+                    ->label(fn (): string => __('Settings')),
+                NavigationGroup::make()
+                    ->label(fn (): string => __('Users')),
+            ])
             ->favicon(fn () => Setting::faviconUrl('admin'))
             ->brandName(fn () => LogoHelper::getAdminLogoText())
             ->brandLogo(fn () => LogoHelper::getAdminLogoUrl())
@@ -47,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 GeneralSettingsPage::class,
                 TranslationsPage::class,
             ])
-            ->homeUrl(fn () => route('orders.index'))
+            ->homeUrl('/admin')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([
                 EncryptCookies::class,
@@ -64,15 +75,17 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn (): string => view('components.admin-topbar-homepage')->render())
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE, fn (): string => view('components.admin-login-language-switch')->render())
             ->userMenuItems([
                 Action::make('language')
-                    ->label(fn (): string => __('Switch language text'))
-                    ->icon('heroicon-o-language')
+                    ->label(fn (): string => app()->getLocale() === 'ar' ? 'English' : 'العربية')
+                    ->icon('heroicon-o-globe-alt')
                     ->url(fn (): string => route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar'))
                     ->openUrlInNewTab(false),
             ])
             ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, app()->environment('local')
-                ? fn () => view('components.dev-toolbar')
+                ? fn () => view('components.admin-login-dev-buttons')
                 : fn () => '');
     }
 }

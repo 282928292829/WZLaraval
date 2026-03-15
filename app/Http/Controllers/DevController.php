@@ -35,6 +35,12 @@ class DevController extends Controller
 
         Auth::login($user);
 
+        // When coming from admin login, redirect to admin panel
+        $previous = url()->previous();
+        if ($previous && str_contains($previous, '/admin')) {
+            return redirect('/admin');
+        }
+
         return redirect()->back();
     }
 }

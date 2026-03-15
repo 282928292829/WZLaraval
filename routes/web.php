@@ -28,6 +28,7 @@ Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
     if (auth()->check()) {
         auth()->user()->update(['locale' => $locale]);
     }
+    session()->save();
 
     $url = url()->previous();
     $parsed = parse_url($url);
@@ -38,7 +39,12 @@ Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
     }
     $query['lang'] = $locale;
 
-    return redirect()->to($path.'?'.http_build_query($query));
+    return redirect()
+        ->to($path.'?'.http_build_query($query))
+        ->withHeaders([
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
 })->name('language.switch');
 
 Route::get('/', function () {
