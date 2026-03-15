@@ -20,8 +20,8 @@ class TestimonialForm
                     ->image()
                     ->disk('public')
                     ->directory('testimonials')
-                    ->required()
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->helperText(__('testimonials.image_optional')),
 
                 TextInput::make('name_ar')
                     ->label(__('Name (Arabic)'))

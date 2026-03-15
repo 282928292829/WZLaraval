@@ -41,10 +41,8 @@
                                          loading="lazy"
                                          draggable="false">
                                 @else
-                                    <div class="w-full h-full flex items-center justify-center text-gray-400">
-                                        <svg class="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/>
-                                        </svg>
+                                    <div class="w-full h-full flex items-center justify-center bg-primary-500 text-white text-center px-4">
+                                        <span class="text-lg sm:text-xl font-semibold">{{ __('testimonials.placeholder_label') }}</span>
                                     </div>
                                 @endif
                             </button>
@@ -78,6 +76,10 @@
                                         <img src="{{ $t->getImageUrl() }}"
                                              alt="{{ $t->getName() ?: __('testimonials.client_review_alt') }}"
                                              class="w-full aspect-square object-cover rounded-xl mb-5">
+                                    @else
+                                        <div class="w-full aspect-square flex items-center justify-center bg-primary-500 text-white rounded-xl mb-5">
+                                            <span class="text-lg font-semibold">{{ __('testimonials.placeholder_label') }}</span>
+                                        </div>
                                     @endif
                                     @if ($t->getName())
                                         <p class="font-semibold text-gray-900 text-lg">{{ $t->getName() }}</p>

@@ -307,9 +307,12 @@
                     <span wire:loading.remove wire:target="submitOrder">{{ __('order_form.checkout') }}</span>
                     <span wire:loading wire:target="submitOrder">{{ __('order_form.submitting') }}...</span>
                 </button>
-                <button type="button" @click="showClearConfirm = true" class="w-full py-2 px-4 rounded-lg font-medium text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors">
-                    {{ __('order_form.clear_cart') }}
-                </button>
+                {{-- Deliberately de-emphasized: small link style, separated, to reduce accidental taps --}}
+                <div class="pt-3 mt-1 border-t border-slate-100">
+                    <button type="button" @click="showClearConfirm = true" class="text-xs text-slate-400 hover:text-red-600 underline underline-offset-2 transition-colors py-1">
+                        {{ __('order_form.clear_cart') }}
+                    </button>
+                </div>
             </div>
             @endif
         </div>
@@ -347,17 +350,17 @@
         <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
     </div>
 
-    {{-- Clear cart confirmation --}}
+    {{-- Clear cart confirmation — explicit warning, Cancel prominent to reduce accidental confirm --}}
     <div x-show="showClearConfirm" x-cloak
          x-transition
          class="fixed inset-0 z-[3100] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/50" @click="showClearConfirm = false"></div>
         <div class="relative bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
             <h3 class="text-lg font-bold text-slate-800 m-0 mb-2">{{ __('order_form.clear_cart_confirm_title') }}</h3>
-            <p class="text-sm text-slate-600 mb-4">{{ __('order_form.clear_cart_confirm_desc') }}</p>
-            <div class="flex gap-3 justify-end">
-                <button type="button" @click="showClearConfirm = false" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">{{ __('Cancel') }}</button>
-                <button type="button" @click="confirmClearCart()" class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">{{ __('order_form.clear_cart') }}</button>
+            <p class="text-sm text-slate-600 mb-4">{{ __('order_form.clear_cart_confirm_desc', ['count' => count($items)]) }}</p>
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" @click="confirmClearCart()" class="px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">{{ __('order_form.clear_cart_confirm_btn') }}</button>
+                <button type="button" @click="showClearConfirm = false" class="px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-200 text-slate-800 hover:bg-slate-300 transition-colors border border-slate-300">{{ __('Cancel') }}</button>
             </div>
         </div>
     </div>

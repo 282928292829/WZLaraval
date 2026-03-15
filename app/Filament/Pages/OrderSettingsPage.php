@@ -432,8 +432,8 @@ class OrderSettingsPage extends Page
                                     ->columns(2)
                                     ->collapsible(),
                             ]),
-                        Tab::make(__('Rules & Form'))
-                            ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+                        Tab::make(__('Order Rules'))
+                            ->icon(Heroicon::OutlinedShoppingCart)
                             ->schema([
                                 Section::make(__('Order Rules'))
                                     ->icon(Heroicon::OutlinedShoppingCart)
@@ -494,37 +494,6 @@ class OrderSettingsPage extends Page
                                             ->minValue(0)
                                             ->maxValue(10000)
                                             ->helperText(__('Max orders per staff per month. 0 = unlimited.')),
-
-                                        Select::make('order_new_layout')
-                                            ->label(__('New-Order Form Layout'))
-                                            ->default('cards')
-                                            ->options([
-                                                'hybrid' => __('order_layout.hybrid'),
-                                                'table' => __('order_layout.table'),
-                                                'cards' => __('order_layout.cards'),
-                                                'wizard' => __('order_layout.wizard'),
-                                                'cart' => __('order_layout.cart'),
-                                                'cart-inline' => __('order_layout.cart_inline'),
-                                                'cart-next' => __('order_layout.cart_next'),
-                                            ]),
-
-                                        Toggle::make('order_form_show_add_test_items')
-                                            ->label(__('settings.order_form_show_add_test_items'))
-                                            ->helperText(__('settings.order_form_show_add_test_items_help')),
-
-                                        Toggle::make('order_form_show_reset_all')
-                                            ->label(__('settings.order_form_show_reset_all'))
-                                            ->helperText(__('settings.order_form_show_reset_all_help')),
-
-                                        Toggle::make('order_form_require_terms')
-                                            ->label(__('settings.order_form_require_terms'))
-                                            ->helperText(__('settings.order_form_require_terms_help')),
-
-                                        Textarea::make('order_form_terms_template')
-                                            ->label(__('settings.order_form_terms_template'))
-                                            ->rows(3)
-                                            ->placeholder(__('order_form.terms_template_default'))
-                                            ->helperText(__('settings.order_form_terms_template_help')),
 
                                         TextInput::make('orders_per_hour_customer')
                                             ->label(__('Orders/hour — Customer'))
@@ -599,11 +568,57 @@ class OrderSettingsPage extends Page
                                             ->minValue(0)
                                             ->maxValue(20)
                                             ->helperText(__('settings.payment_notify_standalone_max_files_help')),
-
                                     ])
                                     ->columns(3),
+                            ]),
+                        Tab::make(__('Order Form'))
+                            ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+                            ->schema([
+                                Section::make(__('Order Form'))
+                                    ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+                                    ->schema([
+                                        Select::make('order_new_layout')
+                                            ->label(__('New-Order Form Layout'))
+                                            ->default('cards')
+                                            ->options([
+                                                'hybrid' => '1. '.__('order_layout.hybrid'),
+                                                'table' => '2. '.__('order_layout.table'),
+                                                'cards' => '3. '.__('order_layout.cards'),
+                                                'wizard' => '4. '.__('order_layout.wizard'),
+                                                'cart' => '5. '.__('order_layout.cart'),
+                                                'cart-inline' => '6. '.__('order_layout.cart_inline'),
+                                                'cart-next' => '7. '.__('order_layout.cart_next'),
+                                            ]),
 
-                                // ── Order Form Fields ─────────────────────────────────────────
+                                        Toggle::make('order_form_show_add_test_items')
+                                            ->label(__('settings.order_form_show_add_test_items'))
+                                            ->helperText(__('settings.order_form_show_add_test_items_help')),
+
+                                        Toggle::make('order_form_show_reset_all')
+                                            ->label(__('settings.order_form_show_reset_all'))
+                                            ->helperText(__('settings.order_form_show_reset_all_help')),
+
+                                        Section::make(__('settings.order_form_terms_section'))
+                                            ->description(__('settings.order_form_terms_section_help'))
+                                            ->schema([
+                                                Toggle::make('order_form_require_terms')
+                                                    ->label(__('settings.order_form_require_terms'))
+                                                    ->helperText(__('settings.order_form_require_terms_help'))
+                                                    ->live(),
+
+                                                Textarea::make('order_form_terms_template')
+                                                    ->label(__('settings.order_form_terms_template'))
+                                                    ->rows(3)
+                                                    ->placeholder(__('order_form.terms_template_default'))
+                                                    ->helperText(__('settings.order_form_terms_template_help'))
+                                                    ->visible(fn ($get) => $get('order_form_require_terms'))
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->collapsible(),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsible(),
+
                                 Section::make(__('Order Form Fields'))
                                     ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
                                     ->description(__('Control which fields appear in the new-order form, their order, and which are collapsed under "show more" on mobile.'))

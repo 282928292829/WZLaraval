@@ -1375,13 +1375,12 @@ class NewOrder extends Component
     }
 
     /**
-     * Render the terms checkbox label from the admin-configurable template.
+     * Render the terms checkbox label. Always uses translation for 100% bilingual support.
      * Placeholders: {terms} → link to terms, {privacy} → link to privacy policy.
      */
     private function renderTermsTemplate(): string
     {
-        $default = 'I agree to {terms} and {privacy}. Our team will calculate your order accurately. Final prices may vary. Invoice within 12 hours.';
-        $template = (string) Setting::get('order_form_terms_template', $default) ?: $default;
+        $template = __('order_form.terms_template_default');
 
         $termsLink = '<a href="'.e(url('/terms-and-conditions')).'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">'.e(__('order_form.terms_and_conditions')).'</a>';
         $privacyLink = '<a href="'.e(url('/privacy-policy')).'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">'.e(__('order_form.privacy_policy')).'</a>';
