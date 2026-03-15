@@ -1,10 +1,13 @@
-{{-- Layout: Table — Full table on desktop AND mobile (horizontal scroll on mobile). /new-order-table --}}
+{{--
+  Layout: Table
+  Viewport-fill: height calc(100dvh - 56px). Single overflow-auto scroll container handles both axes.
+  Footer is inline at bottom of flex column. Test URL: /new-order-table
+--}}
 
 @php
     $isLoggedIn = auth()->check();
 @endphp
 
-<div>
 <div
     data-guest="{{ auth()->guest() ? 'true' : 'false' }}"
     x-data="newOrderFormTable(
@@ -61,17 +64,18 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
-    class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-y-hidden overflow-x-auto"
-    style="height: calc(100vh - 56px);"
+    class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-hidden"
+    style="height: calc(100dvh - 56px);"
 >
 
 {{-- Toast container --}}
 <div x-ref="toasts" id="toast-container"></div>
 
-<div class="max-w-6xl mx-auto px-3 py-5 pb-28">
+{{-- ── HEADER SECTION ─────────────────────────────────────────── --}}
+<div class="shrink-0 max-w-6xl w-full mx-auto px-3 pt-3 pb-2">
 
     {{-- Page header --}}
-    <div class="flex flex-nowrap items-center justify-between gap-2 mb-5">
+    <div class="flex flex-nowrap items-center justify-between gap-2 mb-2">
         <span class="shrink-0 text-lg font-bold text-slate-800 leading-tight">
             @if ($editingOrderId)
                 {{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}
@@ -79,7 +83,8 @@
                 {{ __('Create new order') }}
             @endif
         </span>
-        <span class="flex-1 min-w-0 text-xs text-slate-400 text-center truncate" x-show="filledCount > 0" x-text="productCountText()" x-cloak></span>
+        <span class="flex-1 min-w-0 text-xs text-slate-400 text-center truncate"
+              x-show="filledCount > 0" x-text="productCountText()" x-cloak></span>
         @if ($showAddTestItems ?? false)
         <button type="button"
                 @click="addFiveTestItems()"
@@ -91,9 +96,9 @@
 
     {{-- Edit mode banner --}}
     @if ($editingOrderId)
-    <section class="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-xl">
+    <section class="p-3 mb-2 bg-amber-50 border border-amber-200 rounded-xl">
         <p class="text-sm font-semibold text-amber-800 m-0">{{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}</p>
-        <p class="text-xs text-amber-700 mt-1 mb-0">{{ __('orders.edit_resubmit_deadline_hint') }}</p>
+        <p class="text-xs text-amber-700 mt-1 mb-0">{{ __('order_form.edit_resubmit_deadline_hint') }}</p>
     </section>
     @endif
 
@@ -105,28 +110,35 @@
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-y-1"
          x-transition:enter-end="opacity-100 translate-y-0"
-         class="mb-4 bg-white border border-primary-200 rounded-xl p-4 shadow-sm">
+         class="mb-2 bg-white border border-primary-200 rounded-xl p-3 shadow-sm">
         <p class="text-sm font-semibold text-slate-800 m-0 mb-1">{{ __('order_form.draft_restore_title') }}</p>
-        <p class="text-xs text-slate-500 mb-3"
+        <p class="text-xs text-slate-500 mb-2.5"
            x-text="'{{ __('order_form.draft_restore_desc') }}'.replace(':count', pendingDraftItems ? pendingDraftItems.length : '')"></p>
         <div class="flex gap-2">
             <button type="button"
                     @click="restoreDraft()"
-                    class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-sm hover:from-primary-600 hover:to-primary-500 transition-colors">
+                    class="flex-1 py-2 px-3 rounded-lg text-sm font-semibold bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-sm hover:from-primary-600 hover:to-primary-500 transition-colors">
                 {{ __('order_form.draft_restore') }}
             </button>
             <button type="button"
                     @click="discardDraft()"
-                    class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                    class="flex-1 py-2 px-3 rounded-lg text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
                 {{ __('order_form.draft_start_fresh') }}
             </button>
         </div>
     </div>
 
-    {{-- Table container — horizontal scroll on all screen sizes --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div class="overflow-x-auto" x-ref="tableScrollContainer">
-            <table class="w-full min-w-[860px] border-collapse text-sm">
+</div>
+
+{{-- ── MIDDLE: TABLE CARD + NOTES ─────────────────────────────── --}}
+<div class="flex-1 min-h-0 flex flex-col max-w-6xl w-full mx-auto px-3 pb-2 overflow-hidden gap-2">
+
+    {{-- Table card — flex-1 so it fills available space --}}
+    <div class="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+
+        {{-- Single overflow-auto container: handles both x and y scroll --}}
+        <div class="flex-1 min-h-0 overflow-auto" x-ref="tableScrollContainer">
+            <table class="w-full min-w-[1020px] border-collapse text-sm">
                 <thead class="sticky top-0 z-20 shadow-sm">
                     <tr class="bg-slate-100 border-b border-slate-200">
                         <th class="w-8 py-2.5 px-2"></th>
@@ -134,19 +146,19 @@
                             {{ __('order_form.th_num_1') }}<br>
                             {{ __('order_form.th_num_2') }}
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[280px] md:min-w-[220px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[220px] md:min-w-[280px]">
                             {{ __('order_form.th_url') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-20">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-14">
                             {{ __('order_form.th_qty') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[100px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[90px]">
                             {{ __('order_form.th_color') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[100px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[90px]">
                             {{ __('order_form.th_size') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
@@ -154,29 +166,28 @@
                             {{ __('order_form.th_price_per_unit') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-24">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-20">
                             {{ __('order_form.th_currency') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[130px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[140px]">
                             {{ __('order_form.th_notes') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[110px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[100px]">
                             {{ __('order_form.th_files') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="w-10 py-2.5 px-2"></th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-for="(item, idx) in items" :key="item._id || idx">
                         <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors group align-top">
 
-                            {{-- Delete --}}
+                            {{-- Delete — undo toast in removeItem() handles safety, no confirm() needed --}}
                             <td class="py-2 px-1 text-center">
                                 <button type="button"
-                                        @click="if (confirm('{{ __('order_form.remove_item_confirm') }}')) removeItem(idx)"
+                                        @click="removeItem(idx)"
                                         class="inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 focus-visible:text-red-500 focus-visible:outline-none transition-colors"
                                         :aria-label="'{{ __('order_form.remove') }}'">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -422,21 +433,22 @@
             </table>
         </div>
 
-        {{-- Add row button — full width, under table --}}
-        <div class="border-t border-slate-100 px-3 py-2.5">
+        {{-- Add row button — shrink-0 at bottom of card, outside scroll container --}}
+        <div class="shrink-0 border-t border-slate-100 px-3 py-2.5">
             <button type="button"
                     @click="addProduct()"
-                    class="w-full min-h-[56px] inline-flex items-center justify-center gap-2 rounded-lg text-base font-semibold text-primary-600 bg-primary-50 border border-dashed border-primary-200 hover:bg-primary-100 hover:border-primary-400 transition-all">
+                    class="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold text-primary-600 bg-primary-50 border border-dashed border-primary-200 hover:bg-primary-100 hover:border-primary-400 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
                 {{ __('order_form.add_product') }}
             </button>
         </div>
+
     </div>
 
-    {{-- General notes — under table --}}
-    <section class="mt-3 bg-white rounded-xl border border-slate-200 p-3">
+    {{-- General notes — shrink-0, always visible below table card --}}
+    <div class="shrink-0 bg-white rounded-xl border border-slate-200 px-3 py-2">
         <div class="flex items-center justify-between gap-2 mb-1.5">
             <h3 class="text-sm font-semibold text-slate-700 m-0">
                 {{ __('order_form.general_notes') }}
@@ -457,30 +469,31 @@
             rows="2"
             class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-400/10 transition-colors"
         ></textarea>
-    </section>
-
+    </div>
 
 </div>
 
-{{-- Fixed submit footer --}}
-<div class="order-summary-card">
-    <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-        <span class="text-[0.7rem] font-normal text-stone-400 whitespace-nowrap overflow-hidden text-ellipsis"
-              x-text="productCountText()"></span>
-        <span class="text-stone-400 font-normal text-[0.7rem] whitespace-nowrap"
-              x-text="totalText()"></span>
+{{-- ── FOOTER: inline, not fixed ──────────────────────────────── --}}
+<div class="shrink-0 bg-white border-t border-slate-200">
+    <div class="max-w-6xl mx-auto px-3 py-2.5 flex items-center gap-3">
+        <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span class="text-[0.7rem] font-normal text-stone-400 whitespace-nowrap overflow-hidden text-ellipsis"
+                  x-text="productCountText()"></span>
+            <span class="text-stone-400 font-normal text-[0.7rem] whitespace-nowrap"
+                  x-text="totalText()"></span>
+        </div>
+        <button type="button"
+                @click="submitOrder()"
+                :disabled="submitting"
+                class="shrink-0 min-w-[120px] max-w-[180px] w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">
+            @if ($editingOrderId)
+            <span x-show="!submitting">{{ __('orders.save_changes') }}</span>
+            @else
+            <span x-show="!submitting">{{ __('order_form.confirm_order') }}</span>
+            @endif
+            <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
+        </button>
     </div>
-    <button type="button"
-            @click="submitOrder()"
-            :disabled="submitting"
-            class="shrink-0 min-w-[120px] max-w-[180px] w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">
-        @if ($editingOrderId)
-        <span x-show="!submitting">{{ __('orders.save_changes') }}</span>
-        @else
-        <span x-show="!submitting">{{ __('order_form.confirm_order') }}</span>
-        @endif
-        <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
-    </button>
 </div>
 
 {{-- Image zoom modal --}}
@@ -505,7 +518,6 @@
 @include('livewire.partials._order-login-modal')
 
 </div>
-</div>
 
 @push('scripts')
 {{-- Shared core logic --}}
@@ -523,12 +535,11 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
         pendingDraftItems: null,
         pendingDraftNotes: '',
 
-        // Override init() — show draft prompt instead of silently restoring
+        // Show draft prompt instead of silently restoring
         init() {
             this.checkTipsHidden();
 
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {
-                // Pre-filled from duplicate/edit — load directly, no prompt
                 this.items = initialItems.map((d) => ({
                     _id: Math.random().toString(36).slice(2),
                     url: d.url || '', qty: (d.qty || '1').toString(), color: d.color || '', size: d.size || '',
@@ -539,7 +550,6 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
                 }));
                 this.orderNotes = initialOrderNotes || '';
             } else {
-                // Check for saved draft — show prompt instead of silently loading
                 const draft = this.peekDraft();
                 if (draft) {
                     this.pendingDraftItems = draft.items;
@@ -562,7 +572,7 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             });
         },
 
-        // Default starting rows for table layout — 5 on desktop, 3 on mobile
+        // 5 rows on desktop (≥768px), 3 on mobile
         defaultRows() {
             const count = window.innerWidth >= 768 ? 5 : 3;
             const rows = [];
@@ -572,7 +582,7 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             return rows;
         },
 
-        // Read draft without loading it
+        // Read draft without loading it — only return if it has real content
         peekDraft() {
             try {
                 let raw = localStorage.getItem('wz_order_form_draft');
@@ -600,12 +610,8 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             }
         },
 
-        // Restore draft
         restoreDraft() {
-            if (!this.pendingDraftItems) {
-                this.showDraftPrompt = false;
-                return;
-            }
+            if (!this.pendingDraftItems) { this.showDraftPrompt = false; return; }
             this.items = this.pendingDraftItems.map((d) => ({
                 _id: Math.random().toString(36).slice(2),
                 url: d.url || '', qty: d.qty || '1', color: d.color || '',
@@ -622,7 +628,6 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             this.showNotify('success', @js(__('order_form.draft_restored')));
         },
 
-        // Discard draft and start fresh
         discardDraft() {
             this.clearDraft();
             this.pendingDraftItems = null;
@@ -634,7 +639,7 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             this.$nextTick(() => this.saveDraft());
         },
 
-        // Override addProduct() — scroll table to bottom after adding
+        // Scroll the overflow-auto container — works because it handles both axes
         addProduct() {
             if (this.items.length >= this.maxProducts) {
                 this.showNotify('error', @js(__('order_form.max_products', ['max' => $maxProducts ?? 30])));
@@ -647,12 +652,14 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             this.$nextTick(() => {
                 setTimeout(() => {
                     const el = this.$refs.tableScrollContainer;
-                    if (el) { el.scrollTop = el.scrollHeight - el.clientHeight; }
+                    if (el) {
+                        el.scrollTop = el.scrollHeight - el.clientHeight;
+                    }
                 }, 100);
             });
         },
 
-        // Override removeItem() — keep at least 1 row, undo toast
+        // Undo toast handles safety — no confirm() dialog
         removeItem(idx) {
             if (this.items.length === 0) return;
             const removed = { ...this.items[idx] };
@@ -663,14 +670,13 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
                 this.items = [this.emptyItem()];
                 this.calcTotals();
             }
-            // Undo toast
             const c = this.$refs.toasts;
             if (c) {
                 const t = document.createElement('div');
                 t.className = 'toast success';
                 const label = @js(__('order_form.item_removed'));
                 const undoLabel = @js(__('order_form.undo'));
-                t.innerHTML = `<span style="flex:1">${label}</span><button type="button" class="toast-close" style="font-weight:600;color:var(--color-primary-600,#7c3aed)">${undoLabel}</button>`;
+                t.innerHTML = `<span style="flex:1">${label}</span><button type="button" class="toast-close" style="font-weight:600;color:var(--color-primary-600,#ea580c)">${undoLabel}</button>`;
                 let undone = false;
                 const closeToast = () => {
                     t.style.animation = 'toastOut 0.4s ease forwards';
@@ -692,7 +698,6 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             }
         },
 
-        // Override resetAll — table starts with default rows
         resetAll() {
             if (!confirm('{{ __('order_form.reset_confirm') }}')) return;
             this.items = this.defaultRows();
@@ -702,7 +707,6 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             this.showNotify('success', '{{ __('order_form.cleared') }}');
         },
 
-        // Override addFiveTestItems
         addFiveTestItems() {
             const urls = [
                 'https://www.amazon.com/dp/B0BSHF7LLL',
@@ -721,6 +725,7 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             for (let i = 0; i < 5; i++) {
                 const cur = currencies[i % currencies.length] || lastCur;
                 const testData = {
+                    _id: Math.random().toString(36).slice(2),
                     url: urls[i], qty: String(Math.floor(Math.random() * 2) + 1),
                     color: colors[i % colors.length], size: sizes[Math.floor(Math.random() * sizes.length)],
                     price: String((Math.random() * 80 + 15).toFixed(2)), currency: cur,

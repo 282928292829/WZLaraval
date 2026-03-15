@@ -218,30 +218,30 @@
                         <p class="text-xs text-slate-500 mt-1">{{ __('order_form.th_notes') }}: {{ \Illuminate\Support\Str::limit($item['notes'], 80) }}</p>
                         @endif
                     </div>
-                    {{-- Expanded: inline edit form --}}
+                    {{-- Expanded: inline edit form — wire:model.blur ensures edits sync on blur before Save closes panel --}}
                     <div x-show="editingIndex === {{ $idx }}" x-cloak class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_url') }}</label>
-                            <input type="text" wire:model="items.{{ $idx }}.url" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" dir="ltr">
+                            <input type="text" wire:model.blur="items.{{ $idx }}.url" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" dir="ltr">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_price_per_unit') }}</label>
-                                <input type="text" wire:model="items.{{ $idx }}.price" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
+                                <input type="text" wire:model.blur="items.{{ $idx }}.price" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_qty') }}</label>
-                                <input type="text" wire:model="items.{{ $idx }}.qty" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
+                                <input type="text" wire:model.blur="items.{{ $idx }}.qty" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_color') }}</label>
-                                <input type="text" wire:model="items.{{ $idx }}.color" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <input type="text" wire:model.blur="items.{{ $idx }}.color" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_size') }}</label>
-                                <input type="text" wire:model="items.{{ $idx }}.size" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <input type="text" wire:model.blur="items.{{ $idx }}.size" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
                             </div>
                         </div>
                         <div x-data="{ open: false }" class="relative">
@@ -258,9 +258,9 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_notes') }}</label>
-                            <textarea wire:model="items.{{ $idx }}.notes" rows="2" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none"></textarea>
+                            <textarea wire:model.blur="items.{{ $idx }}.notes" rows="2" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none"></textarea>
                         </div>
-                        <button type="button" @click="editingIndex = null" class="w-full py-2 px-4 rounded-lg text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
+                        <button type="button" @click="$wire.syncItemEdits(); editingIndex = null" class="w-full py-2 px-4 rounded-lg text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
                             {{ __('order_form.save') }}
                         </button>
                     </div>
@@ -474,6 +474,7 @@ function newOrderFormCartNext(requireTerms = true) {
                 localStorage.removeItem('wz_order_form_notes');
                 localStorage.removeItem('wz_opus46_draft');
                 localStorage.removeItem('wz_opus46_notes');
+                sessionStorage.setItem('wz_draft_discarded', '1');
             } catch {}
             this.pendingDraftItems = null;
             this.pendingDraftNotes = '';
@@ -481,6 +482,15 @@ function newOrderFormCartNext(requireTerms = true) {
         },
         initCartDraft() {
             @if ($isGuest && count($items) === 0)
+            if (sessionStorage.getItem('wz_draft_discarded')) {
+                try {
+                    localStorage.removeItem('wz_order_form_draft');
+                    localStorage.removeItem('wz_order_form_notes');
+                    localStorage.removeItem('wz_opus46_draft');
+                    localStorage.removeItem('wz_opus46_notes');
+                } catch {}
+                return;
+            }
             const draft = this.peekDraft();
             if (draft) {
                 this.pendingDraftItems = draft.items;
@@ -492,6 +502,7 @@ function newOrderFormCartNext(requireTerms = true) {
         saveCartDraftToStorage(items, notes) {
             try {
                 if (Array.isArray(items) && items.length > 0) {
+                    sessionStorage.removeItem('wz_draft_discarded');
                     localStorage.setItem('wz_order_form_draft', JSON.stringify(items));
                     localStorage.setItem('wz_order_form_notes', notes || '');
                 } else {

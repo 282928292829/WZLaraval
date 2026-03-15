@@ -12,7 +12,13 @@
     <div x-show="tipsOpen" x-collapse class="p-4 text-sm leading-relaxed text-slate-600">
         <ul class="list-none p-0 m-0">
             @for ($i = 1; $i <= 8; $i++)
-                <li class="mb-2.5 relative ps-[18px] before:content-['•'] before:absolute before:start-0 before:text-primary-500 before:font-bold">{{ __("order_form.tip_{$i}") }}</li>
+                <li class="mb-2.5 relative ps-[18px] before:content-['•'] before:absolute before:start-0 before:text-primary-500 before:font-bold">
+                    @if ($i === 5)
+                        {{ __('order_form.tip_5', ['max_per_item' => $maxImagesPerItem ?? 3, 'max_per_order' => $maxImagesPerOrder ?? 10]) }}
+                    @else
+                        {{ __("order_form.tip_{$i}") }}
+                    @endif
+                </li>
             @endfor
         </ul>
         <div class="mt-4 pt-4 border-t border-primary-100">

@@ -142,8 +142,6 @@ class NewOrder extends Component
         $pathMap = [
             'new-order-cards' => 'cards',
             'new-order-table' => 'table',
-            'new-order-table-nosticky' => 'table-nosticky',
-            'new-order-table-sticky' => 'table-sticky',
             'new-order-hybrid' => 'hybrid',
             'new-order-wizard' => 'wizard',
             'new-order-cart' => 'cart',
@@ -265,6 +263,15 @@ class NewOrder extends Component
             return;
         }
         $this->items[] = $this->emptyItem($currency ?: $this->defaultCurrency);
+    }
+
+    /**
+     * Cart-next: No-op called when Save is clicked in the inline edit panel.
+     * Forces a Livewire round-trip so wire:model.blur updates are committed.
+     */
+    public function syncItemEdits(): void
+    {
+        // No-op — Livewire round-trip ensures pending wire:model.blur updates are flushed
     }
 
     public function removeItem(int $index): void
@@ -1373,7 +1380,7 @@ class NewOrder extends Component
      */
     private function renderTermsTemplate(): string
     {
-        $default = "I agree to {terms} and {privacy}. Our team will calculate your order accurately. Final prices may vary. Invoice within 12 hours.";
+        $default = 'I agree to {terms} and {privacy}. Our team will calculate your order accurately. Final prices may vary. Invoice within 12 hours.';
         $template = (string) Setting::get('order_form_terms_template', $default) ?: $default;
 
         $termsLink = '<a href="'.e(url('/terms-and-conditions')).'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">'.e(__('order_form.terms_and_conditions')).'</a>';
@@ -1393,8 +1400,6 @@ class NewOrder extends Component
         $viewName = match ($layout) {
             'cards' => 'livewire.new-order-cards',
             'table' => 'livewire.new-order-table',
-            'table-nosticky' => 'livewire.new-order-table-nosticky',
-            'table-sticky' => 'livewire.new-order-table-sticky',
             'hybrid' => 'livewire.new-order-hybrid',
             'wizard' => 'livewire.new-order-wizard',
             'cart' => 'livewire.new-order-cart',

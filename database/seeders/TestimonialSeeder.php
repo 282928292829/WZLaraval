@@ -4,29 +4,52 @@ namespace Database\Seeders;
 
 use App\Models\Testimonial;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class TestimonialSeeder extends Seeder
 {
     /**
-     * Testimonial images from https://wasetzon.com/testimonials/
-     * Each entry: [sort_order, image_url, filename, name_ar, name_en]
+     * Legacy testimonial images from WordPress (wasetzon.com/testimonials).
+     * Copied from Wordpress/pwa3/old-wordpress/old-wp-content/uploads/2020/10/
+     * Each entry: [sort_order, filename, name_ar, name_en, quote_ar, quote_en]
      */
     private array $testimonials = [
-        [12, 'https://wasetzon.com/wp-content/uploads/2020/10/12-862x862.png', '12-862x862.png', 'Amazon 12', 'Amazon 12'],
-        [11, 'https://wasetzon.com/wp-content/uploads/2020/10/11-862x862.png', '11-862x862.png', 'Amazon 11', 'Amazon 11'],
-        [10, 'https://wasetzon.com/wp-content/uploads/2020/10/10-862x862.png', '10-862x862.png', 'Amazon 10', 'Amazon 10'],
-        [9, 'https://wasetzon.com/wp-content/uploads/2020/10/9-862x862.png', '9-862x862.png', 'Amazon 9', 'Amazon 9'],
-        [8, 'https://wasetzon.com/wp-content/uploads/2020/10/8-862x862.png', '8-862x862.png', 'Amazon 8', 'Amazon 8'],
-        [7, 'https://wasetzon.com/wp-content/uploads/2020/10/7-862x862.png', '7-862x862.png', 'Amazon 7', 'Amazon 7'],
-        [6, 'https://wasetzon.com/wp-content/uploads/2020/10/6-862x862.png', '6-862x862.png', 'Amazon 6', 'Amazon 6'],
-        [5, 'https://wasetzon.com/wp-content/uploads/2020/10/5-1-862x862.png', '5-1-862x862.png', 'Amazon 5', 'Amazon 5'],
-        [4, 'https://wasetzon.com/wp-content/uploads/2020/10/4-862x862.png', '4-862x862.png', 'Amazon 4', 'Amazon 4'],
-        [3, 'https://wasetzon.com/wp-content/uploads/2020/10/3-862x862.png', '3-862x862.png', 'Amazon 3', 'Amazon 3'],
-        [2, 'https://wasetzon.com/wp-content/uploads/2020/10/2-1-862x862.png', '2-1-862x862.png', 'Amazon 2', 'Amazon 2'],
-        [1, 'https://wasetzon.com/wp-content/uploads/2020/10/1-862x862.png', '1-862x862.png', 'Amazon 1', 'Amazon 1'],
+        [
+            1,
+            '1-862x862.png',
+            null,
+            null,
+            'تجربة رائعة! توصيل سريع وخدمة عملاء ممتازة. أنصح الجميع باستخدام وسيط زون.',
+            'Excellent experience! Fast delivery and great customer service. I recommend Wasetzon to everyone.',
+        ],
+        [
+            2,
+            '2-1-862x862.png',
+            null,
+            null,
+            'اشتريت عدة مرات وكانت المعاملة دائماً احترافية. الشحن وصل في الوقت المحدد.',
+            'I have ordered multiple times and the service has always been professional. Shipping arrived on time.',
+        ],
+        [3, '3-862x862.png', null, null, null, null],
+        [4, '4-862x862.png', null, null, null, null],
+        [5, '5-1-862x862.png', null, null, null, null],
+        [6, '6-862x862.png', null, null, null, null],
+        [7, '7-862x862.png', null, null, null, null],
+        [8, '8-862x862.png', null, null, null, null],
+        [9, '9-862x862.png', null, null, null, null],
+        [10, '10-862x862.png', null, null, null, null],
+        [11, '11-862x862.png', null, null, null, null],
+        [12, '12-862x862.png', null, null, null, null],
     ];
+
+    private string $legacyPath = '';
+
+    public function __construct()
+    {
+        $base = dirname(__DIR__, 2); // wasetzonlaraval/
+        $this->legacyPath = $base.'/../Wordpress/pwa3/old-wordpress/old-wp-content/uploads/2020/10';
+    }
 
     public function run(): void
     {
@@ -34,37 +57,35 @@ class TestimonialSeeder extends Seeder
         $dir = 'testimonials';
         $disk->makeDirectory($dir);
 
-        foreach ($this->testimonials as [$sortOrder, $url, $filename, $nameAr, $nameEn]) {
+        Testimonial::query()->delete();
+
+        foreach ($this->testimonials as [$sortOrder, $filename, $nameAr, $nameEn, $quoteAr, $quoteEn]) {
             $path = "{$dir}/{$filename}";
 
-            if ($disk->exists($path)) {
-                $this->upsertTestimonial($path, $sortOrder, $nameAr, $nameEn);
+            if (! $disk->exists($path)) {
+                $src = "{$this->legacyPath}/{$filename}";
+                if (File::exists($src)) {
+                    $disk->put($path, File::get($src));
+                } else {
+                    $this->command?->warn("Legacy image not found: {$src}");
 
-                continue;
+                    continue;
+                }
             }
 
-            $response = Http::timeout(30)->get($url);
-
-            if (! $response->successful()) {
-                $this->command?->warn("Failed to download {$url}: HTTP {$response->status()}");
-
-                continue;
-            }
-
-            $disk->put($path, $response->body());
-            $this->upsertTestimonial($path, $sortOrder, $nameAr, $nameEn);
+            $this->upsertTestimonial($path, $sortOrder, $nameAr, $nameEn, $quoteAr, $quoteEn);
         }
     }
 
-    private function upsertTestimonial(string $imagePath, int $sortOrder, string $nameAr, string $nameEn): void
+    private function upsertTestimonial(string $imagePath, int $sortOrder, ?string $nameAr, ?string $nameEn, ?string $quoteAr, ?string $quoteEn): void
     {
         Testimonial::updateOrCreate(
-            ['name_en' => $nameEn],
+            ['image_path' => $imagePath],
             [
-                'image_path' => $imagePath,
                 'name_ar' => $nameAr,
-                'quote_ar' => null,
-                'quote_en' => null,
+                'name_en' => $nameEn,
+                'quote_ar' => $quoteAr,
+                'quote_en' => $quoteEn,
                 'sort_order' => $sortOrder,
                 'is_published' => true,
             ]

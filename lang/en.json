@@ -1755,7 +1755,7 @@
     "order_form.tip_2": "2) The clearer your specs, the faster and more accurate the purchase and shipping.",
     "order_form.tip_3": "3) When you enter a price in any currency, the system auto-calculates value in SAR.",
     "order_form.tip_4": "4) After clicking Submit you will be redirected to the order page to track your order.",
-    "order_form.tip_5": "5) Attaching files is optional. One file per product, max 10 files per order.",
+    "order_form.tip_5": "5) Attaching files is optional. Up to :max_per_item file(s) per product, max :max_per_order files per order.",
     "order_form.tip_6": "6) Don't forget to click the Submit button at the bottom to save the order.",
     "order_form.tip_7": "7) To clear all data and start over, click the Clear link at the bottom.",
     "order_form.tip_8": "8) Fill only the rows you need. Empty rows are ignored when you submit.",

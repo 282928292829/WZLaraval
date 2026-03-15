@@ -71,7 +71,7 @@
 
         {{-- Scripts pushed by components (e.g. newOrderFormCart) must load before Livewire/Alpine so x-data functions exist --}}
         @stack('scripts')
-        @livewireScripts
+        @livewireScriptConfig
 
         @env('local')
             <x-dev-toolbar />

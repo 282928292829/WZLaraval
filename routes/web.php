@@ -86,15 +86,6 @@ Route::get('/new-order-table', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-table');
 
-// Test variants — compare body-scroll (no sticky) vs viewport-fill (sticky thead)
-Route::get('/new-order-table-nosticky', NewOrder::class)
-    ->middleware('role.throttle:new-order')
-    ->name('new-order-table-nosticky');
-
-Route::get('/new-order-table-sticky', NewOrder::class)
-    ->middleware('role.throttle:new-order')
-    ->name('new-order-table-sticky');
-
 Route::get('/new-order-hybrid', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-hybrid');
