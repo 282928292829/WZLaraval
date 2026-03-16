@@ -38,6 +38,47 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
         filledCount: 0,
         submitting: false,
         openCurrencyRow: null,
+        pasteFeedbackIdx: null,
+        openFeedbackIdx: null,
+        pasteLabel: @js(__('order_form.paste')),
+        pastedLabel: @js(__('order_form.pasted')),
+        openLabel: @js(__('order_form.open')),
+        openedLabel: @js(__('order_form.opened')),
+        pasteFailedMsg: @js(__('order_form.paste_failed')),
+        doPasteForItem(idx, ev) {
+            if (!navigator.clipboard?.readText) {
+                this.focusUrlAndNotify(idx, ev);
+                return;
+            }
+            navigator.clipboard.readText().then(t => {
+                this.items[idx].url = t;
+                this.calcTotals();
+                this.saveDraft();
+                const block = ev?.target?.closest?.('.order-cell-url');
+                if (block) {
+                    const ta = block.querySelector('textarea');
+                    if (ta) ta.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                this.pasteFeedbackIdx = idx;
+                setTimeout(() => { this.pasteFeedbackIdx = null; }, 1500);
+            }).catch(() => {
+                this.focusUrlAndNotify(idx, ev);
+            });
+        },
+        focusUrlAndNotify(idx, ev) {
+            const block = ev?.target?.closest?.('.order-cell-url');
+            const ta = block?.querySelector('textarea');
+            if (ta) ta.focus();
+            this.showNotify('error', this.pasteFailedMsg);
+        },
+        doOpenForItem(idx) {
+            const v = (this.items[idx]?.url || '').trim();
+            if (!v) return;
+            const url = v.startsWith('http') ? v : 'https://' + v;
+            window.open(url, '_blank');
+            this.openFeedbackIdx = idx;
+            setTimeout(() => { this.openFeedbackIdx = null; }, 1500);
+        },
         init() {
             this.checkTipsHidden();
             if (initialItems && Array.isArray(initialItems) && initialItems.length > 0) {

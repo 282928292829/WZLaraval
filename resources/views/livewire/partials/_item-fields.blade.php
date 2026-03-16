@@ -11,11 +11,34 @@
 --}}
 
 {{-- URL — full width --}}
+@php
+    $showUrlPasteOpen = $showUrlPasteOpen ?? false;
+@endphp
 <div class="order-cell-url col-span-6">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-0.5">
+        <span class="text-xs text-slate-500 font-medium">
+            {{ __('order_form.th_url') }}
+            <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+        </span>
+        <div class="flex gap-2 shrink-0 items-center min-h-[44px]" dir="ltr">
+            <button type="button" @click="doPasteForItem(idx, $event)"
+                class="text-xs text-primary-600 hover:text-primary-700 hover:underline focus:outline-none focus:underline py-2 -my-1">
+                <span x-text="pasteFeedbackIdx === idx ? pastedLabel : pasteLabel"></span>
+            </button>
+            <span class="text-slate-300">|</span>
+            <button type="button" @click="doOpenForItem(idx)"
+                class="text-xs text-primary-600 hover:text-primary-700 hover:underline focus:outline-none focus:underline py-2 -my-1">
+                <span x-text="openFeedbackIdx === idx ? openedLabel : openLabel"></span>
+            </button>
+        </div>
+    </div>
+    @else
     <span class="block text-xs text-slate-500 mb-0.5 font-medium">
         {{ __('order_form.th_url') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
+    @endif
     <textarea
         x-model="item.url"
         @blur="calcTotals(); saveDraft()"

@@ -76,7 +76,6 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn (): string => view('components.admin-topbar-homepage')->render())
-            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE, fn (): string => view('components.admin-login-language-switch')->render())
             ->userMenuItems([
                 Action::make('language')
                     ->label(fn (): string => app()->getLocale() === 'ar' ? 'English' : 'العربية')
@@ -84,8 +83,6 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => route('language.switch', app()->getLocale() === 'ar' ? 'en' : 'ar'))
                     ->openUrlInNewTab(false),
             ])
-            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, app()->environment('local')
-                ? fn () => view('components.admin-login-dev-buttons')
-                : fn () => '');
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('components.admin-login-dev-buttons'));
     }
 }
