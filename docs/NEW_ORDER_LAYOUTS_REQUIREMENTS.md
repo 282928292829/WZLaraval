@@ -1,8 +1,13 @@
-# New Order Layouts — Requirements & Handoff
+# New Order Layouts — Reference
 
 ## How to Use This Doc
-Read this before starting any new chat session on this feature.
-Also read: `LARAVEL_PLAN.md`, `.cursor/rules/wasetzon.mdc`, `docs/ORDER_LAYOUTS.md`
+This doc describes **what exists today** — layouts, architecture, rules, and where things live. Use it when working on the new-order feature.
+Also read: `LARAVEL_PLAN.md`, `.cursor/rules/wasetzon.mdc`
+
+---
+
+## Current State (Overview)
+All 7 layouts exist. The admin chooses which one customers see at `/new-order` via Filament settings. Direct routes (`/new-order-cards`, `/new-order-cart-next`, etc.) always show that specific layout. Legacy `new-order.blade.php` is used only when the resolved layout key doesn't match one of the 7.
 
 ---
 
@@ -28,23 +33,18 @@ Also read: `LARAVEL_PLAN.md`, `.cursor/rules/wasetzon.mdc`, `docs/ORDER_LAYOUTS.
 
 ---
 
-## Current State
+### Layouts (7 + legacy)
 
-The old customer-built layouts (numbered 1–4) have been deleted. Only `new-order.blade.php` (the original responsive/hybrid layout) is kept temporarily as a **logic reference only** — do NOT copy its UI or look. It will be deleted once all 5 new layouts are complete.
-
-### 5 New Claude-Built Layouts
-
-Layout numbering is for reference only — build order is what matters.
-
-| # | Name | Desktop | Mobile | URL | Status |
-|---|------|---------|--------|-----|--------|
-| 1 | Hybrid | Table | Cards | `/new-order-hybrid` | ❌ Not built |
-| 2 | Table | Table | Table (horizontal scroll) | `/new-order-table` | ❌ Not built |
-| 3 | Cards | Cards | Cards | `/new-order-cards` | ✅ Done |
-| 4 | Wizard | Step per item | Step per item | `/new-order-wizard` | ❌ Rebuild from scratch |
-| 5 | Cart | Sidebar cart | Bottom-sheet cart | `/new-order-cart` | ❌ Rebuild from scratch |
-
-> **Note:** `new-order-wizard.blade.php` and `new-order-cart.blade.php` exist on disk but are old code — delete them and rebuild from scratch. Do not use them as a base.
+| Layout | URL | Notes |
+|--------|-----|-------|
+| Cards | `/new-order-cards` | Each item = one card |
+| Table | `/new-order-table` | Table on desktop and mobile |
+| Hybrid | `/new-order-hybrid` | Table on desktop, cards on mobile |
+| Wizard | `/new-order-wizard` | Step per item |
+| Cart | `/new-order-cart` | Sidebar/bottom-sheet cart |
+| Cart Inline | `/new-order-cart-inline` | Inline cart variant |
+| Cart Next | `/new-order-cart-next` | Drawer, inline edit, image thumbnails (primary cart) |
+| (legacy) | `/new-order` | Fallback when resolved layout doesn't match above |
 
 ---
 
@@ -53,7 +53,7 @@ Layout numbering is for reference only — build order is what matters.
 ### Shared (one place only)
 - `NewOrder.php` — all server logic, validation, field config, file uploads, submission, guest draft
 - `_item-fields.blade.php` — shared field HTML partial (already extracted, lives in `livewire/partials/`)
-  - Add a new field once in this partial, all 5 layouts inherit it automatically
+  - Add a new field once in this partial, layouts that use it inherit automatically
 - `livewire.partials._order-login-modal` — identical login modal across all layouts (already extracted)
 - `livewire.partials._order-tips` — identical tips/hints box across all layouts (already extracted)
 
@@ -95,10 +95,19 @@ Layout numbering is for reference only — build order is what matters.
 - Final steps: Order Notes → Review all items → Submit
 - Back navigation must work — user can go back and edit any item
 
-### Layout 5 — Cart
+### Layout — Cart
 - Desktop: sidebar panel (drawer from side) showing cart items, main form on left
 - Mobile: bottom-sheet cart (drawer from bottom), thumb-reachable
 - User adds items in main form, cart updates live
+
+### Layout — Cart Inline
+- Inline cart variant (no drawer)
+
+### Layout — Cart Next (primary cart)
+- Drawer from left (EN) or right (AR/RTL)
+- Inline edit in drawer: `syncItemEdits`, `wire:model.blur`
+- Image thumbnails in cart item cards; click to zoom
+- Draft restore: Restore / Start Fresh prompt
 
 ---
 
@@ -110,10 +119,10 @@ Layout numbering is for reference only — build order is what matters.
 ---
 
 ## Fields
-- Same fields as current system for all 5 layouts
+- Same fields as current system for all layouts
 - Field config (optional/required/show/hide) driven by `NewOrder.php` via `getOrderFormFields()` — never hardcoded in blade
 - Blades must use `orderFormFields` passed from `NewOrder::getOrderFormFields()`
-- New fields added to `_item-fields.blade.php` once — all 5 layouts inherit automatically
+- New fields added to `_item-fields.blade.php` once — layouts that use it inherit automatically
 
 ---
 
@@ -142,42 +151,4 @@ Layout numbering is for reference only — build order is what matters.
 
 ## Admin Control
 - Admin switches the active layout from Filament settings panel
-- All 5 Claude layouts remain permanently available — admin picks which one customers see
-- `new-order.blade.php` is the current `default` fallback — will be replaced by Cards once all 5 are done
-
----
-
-## Build Order
-1. ✅ Cards (`/new-order-cards`) — done
-2. Table (`/new-order-table`) — **build next**
-3. Hybrid (`/new-order-hybrid`) — table desktop, cards mobile
-4. Wizard (`/new-order-wizard`) — rebuild from scratch
-5. Cart (`/new-order-cart`) — rebuild from scratch
-
-### Before building each layout
-- Delete the old blade file if it exists (Wizard, Cart)
-- Build fresh — own blade, own Alpine component, shared partials via @include
-
----
-
-## Starting a New Chat Session
-Paste this at the top of a new chat:
-
-```
-Read wasetzonlaraval/docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md in full before anything else.
-
-Task: Build the remaining new order form layouts. Do not touch new-order.blade.php (old reference) or new-order-cards.blade.php (done).
-
-Current status:
-- Cards ✅ done (new-order-cards.blade.php)
-- Table ❌ not built → build new-order-table.blade.php
-- Hybrid ❌ not built → build new-order-hybrid.blade.php
-- Wizard ❌ rebuild → delete old new-order-wizard.blade.php, build fresh
-- Cart ❌ rebuild → delete old new-order-cart.blade.php, build fresh
-
-Build order: Table → Hybrid → Wizard → Cart
-
-Each layout: own blade + own Alpine component (uniquely named). Shared: NewOrder.php, _item-fields, _order-login-modal, _order-tips.
-Logic lives in NewOrder.php — do not duplicate it in blade.
-UI reference: new-order-cards.blade.php. Do NOT copy old new-order.blade.php UI.
-```
+- All 7 layouts remain available — admin picks which one customers see at `/new-order`

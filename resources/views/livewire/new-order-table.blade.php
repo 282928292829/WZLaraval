@@ -139,42 +139,42 @@
         {{-- Single overflow-auto container: handles both x and y scroll --}}
         <div class="flex-1 min-h-0 overflow-auto" x-ref="tableScrollContainer">
             <table class="w-full min-w-[1020px] border-collapse text-sm">
-                <thead class="sticky top-0 z-20 shadow-sm">
-                    <tr class="bg-slate-100 border-b border-slate-200">
-                        <th class="w-8 py-2.5 px-2"></th>
-                        <th class="w-8 py-2.5 px-2 text-center text-xs font-semibold text-slate-500">
+                <thead class="sticky top-0 z-20 bg-primary-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+                    <tr class="border-b-2 border-primary-200/90">
+                        <th class="w-8 py-2.5 px-2 bg-primary-50"></th>
+                        <th class="w-8 py-2.5 px-2 text-center text-xs font-semibold text-slate-700 bg-primary-50">
                             {{ __('order_form.th_num_1') }}<br>
                             {{ __('order_form.th_num_2') }}
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[220px] md:min-w-[280px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 bg-primary-50 min-w-[220px] md:min-w-[280px]">
                             {{ __('order_form.th_url') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-14">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 w-14">
                             {{ __('order_form.th_qty') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[90px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 min-w-[90px]">
                             {{ __('order_form.th_color') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[90px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 min-w-[90px]">
                             {{ __('order_form.th_size') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-24">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 w-24">
                             {{ __('order_form.th_price_per_unit') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 w-20">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 w-20">
                             {{ __('order_form.th_currency') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[140px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 min-w-[140px]">
                             {{ __('order_form.th_notes') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
-                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-500 min-w-[100px]">
+                        <th class="py-2.5 px-2 text-start text-xs font-semibold text-slate-700 min-w-[100px]">
                             {{ __('order_form.th_files') }}<br>
                             <span class="font-normal text-slate-400">{{ __('order_form.optional') }}</span>
                         </th>
