@@ -126,6 +126,32 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 
 ---
 
+## Paste & Open Buttons
+
+**Goal:** All layouts should show Paste/Open where it fits the UI. Use Cards layout as the placement reference.
+
+**Behavior:**
+- **URL field:** Paste | Open. Paste fills from clipboard. Open opens URL in new tab, or Google search if not a URL. Empty URL + Open → toast: `order_form.no_link_to_open`.
+- **Other fields (Color, Size, Qty, Price, Notes):** Paste only.
+- **Currency:** No Paste (layout spacer for alignment only).
+- **Translations:** `order_form.paste`, `order_form.pasted`, `order_form.open`, `order_form.opened_search`, `order_form.no_link_to_open`.
+
+**Placement (same as Cards):** Inline after label and optional text — `label (اختياري) لصق | فتح` for URL, `label (اختياري) لصق` for others. Use `text-[11px] text-slate-400` for secondary styling. No `justify-between`; inline flow only.
+
+**Per layout:**
+
+| Layout | Uses `_item-fields`? | Paste/Open |
+|--------|---------------------|------------|
+| Cards | Yes | ✅ Pass `showUrlPasteOpen => true` |
+| Wizard | Yes | Pass `showUrlPasteOpen => true` |
+| Cart Inline | Yes | Pass `showUrlPasteOpen => true` |
+| Hybrid (mobile) | Yes | Pass `showUrlPasteOpen => true` |
+| Table | No (custom cells) | Deferred — refactor to `_item-fields` first, or add compact variant later |
+| Cart | No (custom form) | Deferred — different data model (`currentItem`); add when refactored |
+| Cart Next | No (custom form) | Deferred — same as Cart |
+
+---
+
 ## Shared Partials (use @include)
 - `livewire.partials._order-login-modal` — identical login modal across all layouts
 - `livewire.partials._order-tips` — identical tips/hints box across all layouts

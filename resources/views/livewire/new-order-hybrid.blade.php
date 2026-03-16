@@ -66,16 +66,15 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
-    class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-hidden"
+    class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-y-hidden overflow-x-auto"
     style="height: calc(100vh - 56px);"
 >
 
 {{-- Toast container --}}
 <div x-ref="toasts" id="toast-container"></div>
 
-<div class="max-w-6xl mx-auto px-3 py-5 pb-28 flex flex-col flex-1 min-h-0 overflow-hidden">
-    {{-- Fixed: header, tips, draft — no scroll --}}
-    <div class="shrink-0">
+<div class="max-w-6xl mx-auto px-3 py-5 pb-28">
+
     {{-- Page header --}}
     <div class="flex flex-nowrap items-center justify-between gap-2 mb-5">
         <span class="shrink-0 text-lg font-bold text-slate-800 leading-tight">
@@ -93,7 +92,6 @@
             {{ __('order.dev_add_5_test_items') }}
         </button>
         @endif
-    </div>
     </div>
 
     {{-- Edit mode banner --}}
@@ -129,11 +127,10 @@
             </button>
         </div>
     </div>
-    </div>{{-- /shrink-0: header, tips, draft --}}
 
-    {{-- Table container — flex-1 so it scrolls when many items --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div class="overflow-x-auto overflow-y-auto min-h-0 flex-1" x-ref="tableScrollContainer">
+    {{-- Table container — horizontal scroll on all screen sizes --}}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="overflow-x-auto" x-ref="tableScrollContainer">
             <table class="w-full min-w-[860px] border-collapse text-sm">
                 <thead class="sticky top-0 z-20 shadow-sm">
                     <tr class="bg-primary-200/90 border-b border-primary-400">
@@ -401,15 +398,12 @@
                                                         :aria-label="'{{ __('order_form.remove') }}'"
                                                         @click.stop="removeFile(idx, fi)">&times;</button>
                                             </div>
-    </div>
                                             <template x-if="f.uploadProgress !== null && f.uploadProgress !== undefined">
                                                 <div class="w-8 h-0.5 bg-slate-100 rounded-sm overflow-hidden">
                                                     <div class="h-full bg-slate-400 rounded-sm transition-[width] duration-200" :style="'width:' + f.uploadProgress + '%'"></div>
                                                 </div>
-    </div>
                                             </template>
                                         </div>
-    </div>
                                     </template>
                                     <template x-if="(item._files || []).length < maxImagesPerItem && totalFileCount() < maxImagesPerOrder">
                                         <span class="inline-flex">
@@ -425,7 +419,6 @@
                                         </span>
                                     </template>
                                 </div>
-    </div>
                             </td>
 
                         </tr>
@@ -433,7 +426,6 @@
                 </tbody>
             </table>
         </div>
-    </div>
 
         {{-- Add row button — full width, under table --}}
         <div class="border-t border-slate-100 px-3 py-2.5">
@@ -446,8 +438,6 @@
                 {{ __('order_form.add_product') }}
             </button>
         </div>
-    </div>
-    </div>
     </div>
 
     {{-- General notes — under table --}}
@@ -465,7 +455,6 @@
             </button>
             @endif
         </div>
-    </div>
         <textarea
             x-model="orderNotes"
             @input.debounce.500ms="saveDraft()"
@@ -485,7 +474,6 @@
               x-text="productCountText()"></span>
         <span class="text-stone-400 font-normal text-[0.7rem] whitespace-nowrap"
               x-text="totalText()"></span>
-    </div>
     </div>
     <button type="button"
             @click="submitOrder()"
@@ -602,7 +590,6 @@
             </button>
             @endif
         </div>
-    </div>
 
         {{-- Edit mode banner --}}
         @if ($editingOrderId)
@@ -636,9 +623,7 @@
                     {{ __('order_form.draft_start_fresh') }}
                 </button>
             </div>
-    </div>
         </div>
-    </div>
 
         {{-- Cards list --}}
         <div id="items-container" class="flex flex-col gap-2.5">
@@ -658,14 +643,12 @@
                         <span class="text-sm font-semibold text-slate-700"
                               x-text="itemHeaderLabel(idx)"></span>
                     </div>
-    </div>
                     <div class="flex-1 min-w-0 flex justify-center">
                         <span class="text-xs font-medium text-slate-500 truncate max-w-[12ch]"
                               x-show="!item._expanded"
                               x-text="itemHeaderDomain(idx)"
                               x-cloak></span>
                     </div>
-    </div>
                     <div class="flex items-center gap-1.5 shrink-0" @click.stop>
                         <button type="button"
                                 @click="toggleItem(idx)"
@@ -684,9 +667,7 @@
                             </svg>
                         </button>
                     </div>
-    </div>
                 </div>
-    </div>
 
                 {{-- Card body — expanded fields --}}
                 <div x-show="item._expanded"
@@ -700,12 +681,9 @@
                      class="p-3 grid grid-cols-6 gap-x-3 gap-y-2.5">
                     @include('livewire.partials._item-fields')
                 </div>
-    </div>
             </div>
-    </div>
             </template>
         </div>
-    </div>
 
         {{-- Add product button --}}
         <button type="button"
@@ -732,7 +710,6 @@
                 </button>
                 @endif
             </div>
-    </div>
             <textarea
                 x-model="orderNotes"
                 @input.debounce.500ms="saveDraft()"
@@ -743,7 +720,6 @@
         </section>
 
     </div>
-    </div>
 
     {{-- Fixed submit footer (mobile) --}}
     <div class="order-summary-card">
@@ -753,7 +729,6 @@
             <span class="text-stone-400 font-normal text-[0.7rem] whitespace-nowrap"
                   x-text="totalText()"></span>
         </div>
-    </div>
         <button type="button"
                 @click="submitOrder()"
                 :disabled="submitting"
@@ -765,7 +740,6 @@
             @endif
             <span x-show="submitting" x-cloak>{{ __('order_form.submitting') }}...</span>
         </button>
-    </div>
     </div>
 
     {{-- Image zoom modal (mobile) --}}
@@ -784,7 +758,6 @@
                 @click="closeZoom()"
                 aria-label="{{ __('Close') }}">&times;</button>
         <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
-    </div>
     </div>
 
     {{-- Login modal (mobile) --}}
