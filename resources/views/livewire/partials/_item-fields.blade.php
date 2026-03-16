@@ -16,12 +16,12 @@
 @endphp
 <div class="order-cell-url col-span-6" :data-item-idx="idx" data-field="url">
     @if ($showUrlPasteOpen)
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+    <div class="flex flex-wrap items-center gap-2 mb-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
         <span class="text-xs text-slate-500 font-medium">
             {{ __('order_form.th_url') }}
             <span class="order-field-optional">{{ __('order_form.optional') }}</span>
         </span>
-        <div class="flex gap-2 items-center text-[11px] text-slate-400 shrink-0">
+        <span class="text-[11px] text-slate-400">
             <button type="button" @click="doPasteForItem(idx, $event)"
                 :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'url' ? pastedLabel : pasteLabel"
                 class="hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
@@ -33,7 +33,7 @@
                 class="hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
                 <span x-text="openFeedbackIdx === idx ? (openFeedbackLabel || openedLabel) : openLabel"></span>
             </button>
-        </div>
+        </span>
     </div>
     @else
     <span class="block text-xs text-slate-500 mb-0.5 font-medium">
@@ -80,10 +80,24 @@
 
 {{-- Color — half width --}}
 <div class="order-cell-col col-span-3" :data-item-idx="idx" data-field="color">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
+        <span class="text-xs text-slate-500 font-medium">
+            {{ __('order_form.th_color') }}
+            <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+        </span>
+        <button type="button" @click="doPasteForField(idx, 'color', $event)"
+            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"
+            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
+            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"></span>
+        </button>
+    </div>
+    @else
     <span class="block text-xs text-slate-500 mb-0.5 font-medium">
         {{ __('order_form.th_color') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
+    @endif
     <textarea
         x-model="item.color"
         @blur="saveDraft()"
@@ -118,21 +132,12 @@
             $el.classList.toggle('overflow-hidden', !o);
         "
     ></textarea>
-    @if ($showUrlPasteOpen)
-    <div class="flex justify-end mt-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
-        <button type="button" @click="doPasteForField(idx, 'color', $event)"
-            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"
-            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
-            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"></span>
-        </button>
-    </div>
-    @endif
 </div>
 
 {{-- Size — half width --}}
 <div class="order-cell-siz col-span-3" :data-item-idx="idx" data-field="size">
     @if ($showUrlPasteOpen)
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-0.5">
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
         <span class="text-xs text-slate-500 font-medium">
             {{ __('order_form.th_size') }}
             <span class="order-field-optional">{{ __('order_form.optional') }}</span>
@@ -188,12 +193,24 @@
 {{-- Qty + Price + Currency — inline row, full width; children are flex inside --}}
 <div class="order-cell-qty-prc-cur col-span-6 flex flex-nowrap items-end gap-2">
 <div class="order-cell-qty min-w-0 flex-1" :data-item-idx="idx" data-field="qty">
-    <div class="min-h-[2rem] flex items-center mb-0.5">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
         <span class="text-xs text-slate-500 font-medium">
             {{ __('order_form.th_qty') }}
             <span class="order-field-optional">{{ __('order_form.optional') }}</span>
         </span>
+        <button type="button" @click="doPasteForField(idx, 'qty', $event)"
+            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'qty' ? pastedLabel : pasteLabel"
+            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
+            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'qty' ? pastedLabel : pasteLabel"></span>
+        </button>
     </div>
+    @else
+    <span class="block text-xs text-slate-500 mb-0.5 font-medium">
+        {{ __('order_form.th_qty') }}
+        <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+    </span>
+    @endif
     <input
         type="text"
         x-model="item.qty"
@@ -208,10 +225,24 @@
 
 {{-- Price --}}
 <div class="order-cell-prc min-w-0 flex-1" :data-item-idx="idx" data-field="price">
-    <span class="block text-xs text-slate-500 mb-0.5 font-medium min-h-[33px] flex items-center">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
+        <span class="text-xs text-slate-500 font-medium">
+            {{ __('order_form.th_price_per_unit') }}
+            <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+        </span>
+        <button type="button" @click="doPasteForField(idx, 'price', $event)"
+            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"
+            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
+            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"></span>
+        </button>
+    </div>
+    @else
+    <span class="block text-xs text-slate-500 mb-0.5 font-medium">
         {{ __('order_form.th_price_per_unit') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
+    @endif
     <input
         type="text"
         x-model="item.price"
@@ -221,35 +252,51 @@
         placeholder="{{ __('placeholder.amount') }}"
         class="order-form-input w-full px-3 py-2 min-w-[4ch] border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
     >
-    @if ($showUrlPasteOpen)
-    <div class="flex justify-end mt-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
-        <button type="button" @click="doPasteForField(idx, 'price', $event)"
-            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"
-            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
-            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"></span>
-        </button>
-    </div>
-    @endif
 </div>
 
-{{-- Currency --}}
+{{-- Currency — same label structure as Qty/Price, Paste hidden for layout parity --}}
 <div class="order-cell-cur min-w-0 flex-1 min-w-[5rem]">
-    <div class="min-h-[2rem] flex items-center mb-0.5">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
         <span class="text-xs text-slate-500 font-medium">
             {{ __('order_form.th_currency') }}
             <span class="order-field-optional">{{ __('order_form.optional') }}</span>
         </span>
+        <button type="button" tabindex="-1" aria-hidden="true"
+            class="text-[11px] text-slate-400 py-2 -my-1 min-w-[2.5rem] pointer-events-none select-none" style="opacity:0;visibility:hidden;">
+            <span aria-hidden="true">&#8203;</span>
+        </button>
     </div>
+    @else
+    <span class="block text-xs text-slate-500 mb-0.5 font-medium">
+        {{ __('order_form.th_currency') }}
+        <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+    </span>
+    @endif
     @include('livewire.partials._currency-dropdown')
 </div>
 </div>{{-- /order-cell-qty-prc-cur --}}
 
 {{-- Notes — full width --}}
 <div class="order-cell-not col-span-6" :data-item-idx="idx" data-field="notes">
+    @if ($showUrlPasteOpen)
+    <div class="flex flex-wrap items-center gap-2 mb-0.5">
+        <span class="text-xs text-slate-500 font-medium">
+            {{ __('order_form.th_notes') }}
+            <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+        </span>
+        <button type="button" @click="doPasteForField(idx, 'notes', $event)"
+            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"
+            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
+            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"></span>
+        </button>
+    </div>
+    @else
     <span class="block text-xs text-slate-500 mb-0.5 font-medium">
         {{ __('order_form.th_notes') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
+    @endif
     <textarea
         x-model="item.notes"
         @blur="saveDraft()"
@@ -285,15 +332,6 @@
             $el.classList.toggle('overflow-hidden', !o);
         "
     ></textarea>
-    @if ($showUrlPasteOpen)
-    <div class="flex justify-end mt-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
-        <button type="button" @click="doPasteForField(idx, 'notes', $event)"
-            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"
-            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
-            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"></span>
-        </button>
-    </div>
-    @endif
 </div>
 
 {{-- Files — full width --}}
