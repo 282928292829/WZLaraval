@@ -39,43 +39,86 @@ function newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLogge
         submitting: false,
         openCurrencyRow: null,
         pasteFeedbackIdx: null,
+        pasteFeedbackField: null,
         openFeedbackIdx: null,
+        openFeedbackLabel: null,
         pasteLabel: @js(__('order_form.paste')),
         pastedLabel: @js(__('order_form.pasted')),
         openLabel: @js(__('order_form.open')),
         openedLabel: @js(__('order_form.opened')),
+        openedSearchLabel: @js(__('order_form.opened_search')),
         pasteFailedMsg: @js(__('order_form.paste_failed')),
-        doPasteForItem(idx, ev) {
+        clipboardEmptyMsg: @js(__('order_form.clipboard_empty')),
+        pasteTooLongMsg: @js(__('order_form.paste_too_long')),
+        notAUrlMsg: @js(__('order_form.not_a_url')),
+        noLinkToOpenMsg: @js(__('order_form.no_link_to_open')),
+        doPasteForItem(idx, ev) { this.doPasteForField(idx, 'url', ev); },
+        doPasteForField(idx, field, ev) {
             if (!navigator.clipboard?.readText) {
-                this.focusUrlAndNotify(idx, ev);
+                this.focusFieldAndNotify(idx, field, ev);
                 return;
             }
+            const maxLen = (field === 'qty' || field === 'price') ? 50 : 2000;
             navigator.clipboard.readText().then(t => {
-                this.items[idx].url = t;
+                const i = Number(idx);
+                if (!this.items[i]) return;
+                const text = String(t);
+                if (!text.trim()) {
+                    this.showNotify('error', this.clipboardEmptyMsg);
+                    return;
+                }
+                const trimmed = text.length > maxLen ? text.slice(0, maxLen) : text;
+                if (text.length > maxLen) {
+                    this.showNotify('error', this.pasteTooLongMsg);
+                }
+                this.items[i][field] = trimmed;
                 this.calcTotals();
                 this.saveDraft();
-                const block = ev?.target?.closest?.('.order-cell-url');
-                if (block) {
-                    const ta = block.querySelector('textarea');
-                    if (ta) ta.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                this.pasteFeedbackIdx = idx;
-                setTimeout(() => { this.pasteFeedbackIdx = null; }, 1500);
+                this.$nextTick(() => {
+                    requestAnimationFrame(() => {
+                        const block = document.querySelector(`[data-item-idx="${i}"][data-field="${field}"]`);
+                        if (block) {
+                            const el = block.querySelector('textarea, input');
+                            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                });
+                this.pasteFeedbackIdx = i;
+                this.pasteFeedbackField = field;
+                setTimeout(() => { this.pasteFeedbackIdx = null; this.pasteFeedbackField = null; }, 1500);
             }).catch(() => {
-                this.focusUrlAndNotify(idx, ev);
+                this.focusFieldAndNotify(idx, field, ev);
             });
         },
-        focusUrlAndNotify(idx, ev) {
-            const block = ev?.target?.closest?.('.order-cell-url');
-            const ta = block?.querySelector('textarea');
-            if (ta) ta.focus();
+        focusFieldAndNotify(idx, field, ev) {
+            const block = ev?.target?.closest?.('[data-field]') || document.querySelector(`[data-item-idx="${idx}"][data-field="${field}"]`);
+            if (block) {
+                const el = block.querySelector('textarea, input');
+                if (el) el.focus();
+            }
             this.showNotify('error', this.pasteFailedMsg);
         },
         doOpenForItem(idx) {
             const v = (this.items[idx]?.url || '').trim();
-            if (!v) return;
+            if (!v) {
+                this.showNotify('error', this.noLinkToOpenMsg);
+                return;
+            }
             const url = v.startsWith('http') ? v : 'https://' + v;
-            window.open(url, '_blank');
+            let isUrl = false;
+            try {
+                const parsed = new URL(url);
+                const host = (parsed.hostname || '').toLowerCase();
+                if (host && (host.includes('.') || host === 'localhost') && !host.includes(' ')) {
+                    isUrl = true;
+                }
+            } catch {}
+            if (isUrl) {
+                window.open(url, '_blank');
+            } else {
+                window.open('https://www.google.com/search?q=' + encodeURIComponent(v), '_blank');
+            }
+            this.openFeedbackLabel = isUrl ? this.openedLabel : this.openedSearchLabel;
             this.openFeedbackIdx = idx;
             setTimeout(() => { this.openFeedbackIdx = null; }, 1500);
         },
