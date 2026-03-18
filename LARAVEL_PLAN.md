@@ -17,7 +17,6 @@ isProject: false
 - **Mobile-first:** 95% of users on mobile — all customer-facing pages designed mobile-first, desktop secondary. Filament admin is desktop-first.
 - **Rewrite all templates from scratch** — no copy/paste from WordPress, build clean Laravel/Livewire components.
 - **PWA features:** Offline support, service worker, app manifest, performance optimizations (lazy loading, code splitting).
-- **Feature audit:** Before building each feature, AI audits the corresponding source in the new WordPress site (`pwa3/app/public/`) to capture all behavior, edge cases, and micro-interactions — no features missed.
 - **AI behavior:** When blocked or uncertain, ask the owner before guessing or hallucinating a solution.
 
 ## Local Environment
@@ -101,21 +100,11 @@ Key design constraints:
 
 Three most complex pages, built first — **rewrite all templates from scratch, no WordPress copy/paste**:
 
-`**/new-order**` — Livewire component, Option 1 only (built). Options 2 and 3 deferred — do not build unless explicitly requested.
-
-**Option 1: Responsive (mobile cards, desktop table)** ✅ Built
-
-- Mobile: card-based, stacked
-- Desktop: flex row (all fields in one line, column headers above)
-- Admin sets site-wide default layout in Filament settings
-
-**Option 2: Cart system** — deferred
-
-**Option 3: Cards everywhere** — deferred
+`**/new-order**` — Livewire component. **All 7 layouts built:** Cards, Table, Hybrid, Wizard, Cart, Cart Inline, Cart Next. Admin sets site-wide default in Filament settings. See `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md`.
 
 **Fields are identical regardless of layout** — URL/text, qty, color, size, notes, image upload (1 per product), currency dropdown.
 
-**All options include:**
+**All layouts include:**
 
 - Paste product URLs or text (text displays as-is, not converted to links)
 - Per-product fields: qty, color, size, notes, image upload (1 per product, 10 max on form), currency dropdown
@@ -270,12 +259,4 @@ Manual SSH deployment (no Forge/Ploi):
 
 ## Current Task
 
-**Completed:** Dashboard removed, orders as hub. Cards new-order layout built (`new-order-cards.blade.php`). Old customer-built layouts (numbered 1–4) deleted — only `new-order.blade.php` kept as temporary logic reference.
-
-**In progress:** Building 5 new Claude-built order form layouts. Cards is done. Remaining:
-- Table (`/new-order-table`) — not built yet → **start here**
-- Hybrid (`/new-order-hybrid`) — not built yet
-- Wizard (`/new-order-wizard`) — old file exists, delete and rebuild from scratch
-- Cart (`/new-order-cart`) — old file exists, delete and rebuild from scratch
-
-**Next session:** Read `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md` then build Table layout first.
+**Completed:** Dashboard removed, orders as hub. All 7 new-order layouts built (Cards, Table, Hybrid, Wizard, Cart, Cart Inline, Cart Next). Legacy `new-order.blade.php` removed; unknown layout keys fall back to Hybrid.

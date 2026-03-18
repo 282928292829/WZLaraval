@@ -681,7 +681,7 @@
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0"
                      class="p-3 grid grid-cols-6 gap-x-3 gap-y-2.5">
-                    @include('livewire.partials._item-fields')
+                    @include('livewire.partials._item-fields', ['showUrlPasteOpen' => true])
                 </div>
             </div>
             </template>

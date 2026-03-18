@@ -162,7 +162,7 @@
                      x-transition:enter-start="opacity-0 translate-x-2"
                      x-transition:enter-end="opacity-100 translate-x-0"
                      class="p-4 grid grid-cols-6 gap-x-3 gap-y-2.5">
-                    @include('livewire.partials._item-fields')
+                    @include('livewire.partials._item-fields', ['showUrlPasteOpen' => true])
                 </div>
             </template>
         </div>

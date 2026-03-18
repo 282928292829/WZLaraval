@@ -28,7 +28,6 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 ## AI Behavior
 - Read `LARAVEL_PLAN.md` before making any changes in a new session
 - Before editing new-order layout code, read `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md`
-- Before building any feature, audit the corresponding source in the new WordPress site to capture all behavior and edge cases
 - When blocked or uncertain, ask the owner — never guess or hallucinate a solution
 - Do not create new base folders or change dependencies without approval
 - Commit after every feature with small, atomic commits
