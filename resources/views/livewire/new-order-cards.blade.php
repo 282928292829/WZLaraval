@@ -61,6 +61,7 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom(); if (showDraftPrompt) { showDraftPrompt = false; }"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    @user-logged-in.window="isLoggedIn = true"
     class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
 >
 
@@ -188,6 +189,7 @@
 
     {{-- Add product button --}}
     <button type="button"
+            id="add-product"
             @click="addProduct()"
             class="w-full mt-3 min-h-[44px] py-3 inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary-600 bg-white border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50 transition-all">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -231,6 +233,7 @@
               x-text="totalText()"></span>
     </div>
     <button type="button"
+            id="submit-order"
             @click="submitOrder()"
             :disabled="submitting"
             class="shrink-0 min-w-[120px] max-w-[180px] w-auto inline-flex items-center justify-center py-3 px-4 rounded-md font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:pointer-events-none">

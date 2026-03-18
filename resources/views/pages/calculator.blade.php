@@ -131,7 +131,7 @@
 
                 {{-- Commission --}}
                 <div class="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
-                    <span class="text-sm text-gray-600 font-medium">{{ __('calc.wasetzon_commission', ['site_name' => $site_name ?? config('app.name')]) }}</span>
+                    <span class="text-sm text-gray-600 font-medium">{{ __('calc.wasetzon_commission', ['site_name' => Setting::siteName(app()->getLocale())]) }}</span>
                     <span class="flex items-center gap-1.5 font-bold text-primary-600 text-base" dir="ltr">
                         <span x-show="hasValue" class="text-xs text-gray-400 font-normal font-arabic">{{ __('calc.sar_currency') }}</span>
                         <span x-text="hasValue ? formatNum(commission) : '{{ __('calc.enter_amount_to_calc') }}'"

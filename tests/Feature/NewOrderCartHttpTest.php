@@ -154,3 +154,55 @@ test('new-order-cart-next route renders Bersonal-style drawer layout', function 
     $response->assertSee('newOrderFormCartNext', false);
     $response->assertSee('Checkout', false);
 });
+
+test('all layouts include user-logged-in event listener for attach-after-login fix', function (): void {
+    $routes = [
+        'new-order-table' => '@user-logged-in.window="isLoggedIn = true"',
+        'new-order-cards' => '@user-logged-in.window="isLoggedIn = true"',
+        'new-order-hybrid' => '@user-logged-in.window="isLoggedIn = true"',
+        'new-order-wizard' => '@user-logged-in.window="isLoggedIn = true"',
+        'new-order-cart-inline' => '@user-logged-in.window="isLoggedIn = true"',
+        'new-order-cart' => '@user-logged-in.window="attachBlocked = false"',
+        'new-order-cart-next' => '@user-logged-in.window="attachBlocked = false"',
+    ];
+
+    foreach ($routes as $routeName => $expectedHtml) {
+        $response = $this->get(route($routeName));
+        $response->assertOk();
+        $response->assertSee($expectedHtml, false);
+    }
+});
+
+test('loginFromModal for attach reason dispatches user-logged-in event', function (): void {
+    $user = User::factory()->create([
+        'email' => 'attach-test@example.com',
+        'password' => bcrypt('password123'),
+    ]);
+    $user->assignRole('customer');
+
+    Livewire::test(NewOrder::class)
+        ->set('loginModalReason', 'attach')
+        ->set('modalEmail', 'attach-test@example.com')
+        ->set('modalPassword', 'password123')
+        ->call('loginFromModal')
+        ->assertSet('showLoginModal', false)
+        ->assertDispatched('user-logged-in');
+});
+
+test('registerFromModal for attach reason dispatches user-logged-in event', function (): void {
+    Livewire::test(NewOrder::class)
+        ->set('loginModalReason', 'attach')
+        ->set('modalEmail', 'new-user-attach@example.com')
+        ->set('modalPassword', 'password123')
+        ->call('checkModalEmail')
+        ->assertSet('modalStep', 'register');
+
+    Livewire::test(NewOrder::class)
+        ->set('loginModalReason', 'attach')
+        ->set('modalEmail', 'new-user-attach@example.com')
+        ->set('modalPassword', 'password123')
+        ->set('modalStep', 'register')
+        ->call('registerFromModal')
+        ->assertSet('showLoginModal', false)
+        ->assertDispatched('user-logged-in');
+});

@@ -66,6 +66,7 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    @user-logged-in.window="isLoggedIn = true"
     class="bg-white text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-y-hidden overflow-x-auto"
     style="height: calc(100vh - 56px);"
 >
@@ -569,6 +570,7 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom(); if (showDraftPrompt) { showDraftPrompt = false; }"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    @user-logged-in.window="isLoggedIn = true"
     class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen">
     <div x-ref="toasts" id="toast-container-hybrid-mobile"></div>
     <div class="max-w-2xl mx-auto px-4 py-5 pb-28">

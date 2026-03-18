@@ -1021,7 +1021,7 @@ class NewOrder extends Component
     {
         $hasPrices = $order->subtotal > 0;
 
-        $siteName = Setting::get('site_name') ?: config('app.name');
+        $siteName = Setting::siteName(app()->getLocale());
         $whatsapp = Setting::get('whatsapp', '');
         $whatsappDisplay = $whatsapp ?: '-';
         $companyName = Setting::get('payment_company_name') ?: $siteName;
@@ -1160,6 +1160,7 @@ class NewOrder extends Component
             $this->modalPassword = '';
             if ($this->loginModalReason === 'attach') {
                 $this->loginModalReason = 'submit';
+                $this->dispatch('user-logged-in');
 
                 return;
             }
@@ -1198,6 +1199,7 @@ class NewOrder extends Component
         $this->modalPassword = '';
         if ($this->loginModalReason === 'attach') {
             $this->loginModalReason = 'submit';
+            $this->dispatch('user-logged-in');
 
             return;
         }
@@ -1454,7 +1456,7 @@ class NewOrder extends Component
             'cart' => 'livewire.new-order-cart',
             'cart-inline' => 'livewire.new-order-cart-inline',
             'cart-next' => 'livewire.new-order-cart-next',
-            default => 'livewire.new-order',
+            default => 'livewire.new-order-hybrid',
         };
 
         $view = view($viewName)

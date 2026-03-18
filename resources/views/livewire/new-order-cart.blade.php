@@ -8,12 +8,14 @@
 
 <div class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
      data-guest="{{ $isGuest ? 'true' : 'false' }}"
-     x-data="newOrderFormCart()"
+     :data-attach-blocked="attachBlocked"
+     x-data="newOrderFormCart({{ $isGuest ? 'true' : 'false' }})"
      x-init="initCartDraft()"
      @notify.window="showNotify($event.detail.type, $event.detail.message)"
      @cart-emptied.window="cartOpen = false"
      @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)"
      @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+     @user-logged-in.window="attachBlocked = false"
      @keydown.escape.window="if (showDraftPrompt) { showDraftPrompt = false; }">
     <div x-ref="toasts" id="toast-container-cart"></div>
 
@@ -120,7 +122,7 @@
                         <div class="flex items-center gap-3">
                             <input type="file" id="new-order-cart-file-input" wire:model="currentItemFiles" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" {{ ($maxImagesPerItem ?? 1) > 1 ? 'multiple' : '' }} @change="fileName = $event.target.files.length ? ($event.target.files.length > 1 ? $event.target.files.length + ' files' : $event.target.files[0].name) : ''">
                             <label for="new-order-cart-file-input"
-                                   @if ($isGuest) @click.prevent="$wire.openLoginModalForAttach()" @endif
+                                   @click="if ($root.dataset.attachBlocked === 'true') { $event.preventDefault(); $wire.openLoginModalForAttach(); }"
                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                 {{ __('order_form.choose_file') }}
@@ -309,8 +311,9 @@
 
 @push('scripts')
 <script>
-function newOrderFormCart() {
+function newOrderFormCart(attachBlocked = false) {
     return {
+        attachBlocked: !!attachBlocked,
         cartOpen: false,
         sidebarHighlight: false,
         showDraftPrompt: false,

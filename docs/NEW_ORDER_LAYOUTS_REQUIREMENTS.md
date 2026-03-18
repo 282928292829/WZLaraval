@@ -7,7 +7,7 @@ Also read: `LARAVEL_PLAN.md`, `.cursor/rules/wasetzon.mdc`
 ---
 
 ## Current State (Overview)
-All 7 layouts exist. The admin chooses which one customers see at `/new-order` via Filament settings. Direct routes (`/new-order-cards`, `/new-order-cart-next`, etc.) always show that specific layout. Legacy `new-order.blade.php` is used only when the resolved layout key doesn't match one of the 7.
+All 7 layouts exist. The admin chooses which one customers see at `/new-order` via Filament settings. Direct routes (`/new-order-cards`, `/new-order-cart-next`, etc.) always show that specific layout. Unknown layout keys fall back to Hybrid.
 
 ---
 
@@ -33,7 +33,7 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 
 ---
 
-### Layouts (7 + legacy)
+### Layouts (7)
 
 | Layout | URL | Notes |
 |--------|-----|-------|
@@ -44,7 +44,6 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 | Cart | `/new-order-cart` | Sidebar/bottom-sheet cart |
 | Cart Inline | `/new-order-cart-inline` | Inline cart variant |
 | Cart Next | `/new-order-cart-next` | Drawer, inline edit, image thumbnails (primary cart) |
-| (legacy) | `/new-order` | Fallback when resolved layout doesn't match above |
 
 ---
 
@@ -79,9 +78,9 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 ### Layout 2 — Hybrid
 - Breakpoint: `md` (768px) — table on desktop, cards on mobile
 - Mobile: collapsible cards (same behavior as Cards layout)
-- Logic reference: `new-order.blade.php` — for field/logic understanding only, not UI
+- Logic: `NewOrder.php` and `_item-fields.blade.php` for field config and behavior
 
-### Layout 3 — Cards ✅ Done
+### Layout 3 — Cards
 - Each item = one card
 - Collapsed card must fit without scroll; expanded card may scroll on small viewports if needed
 - Adding a new item collapses the previous card
@@ -161,7 +160,7 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 
 ## Design Direction
 - Fresh design — cleaner, neutral grays, more modern
-- Do NOT copy the old `new-order.blade.php` look — design from scratch
+- Design from scratch — use Cards layout as the visual reference
 - Keep brand primary (orange) for CTAs only; use neutral grays for cards
 - Typography: smaller, lighter labels; bolder values
 - Less "form", more "chat-like" — one thing at a time where possible
@@ -176,5 +175,8 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 ---
 
 ## Admin Control
+
 - Admin switches the active layout from Filament settings panel
 - All 7 layouts remain available — admin picks which one customers see at `/new-order`
+
+For E2E testing instructions, see `docs/E2E_TESTING.md`.

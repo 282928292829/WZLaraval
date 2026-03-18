@@ -61,6 +61,7 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom(); if (showDraftPrompt) { showDraftPrompt = false; } if (cartSheetOpen) { cartSheetOpen = false; }"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    @user-logged-in.window="isLoggedIn = true"
     class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen w-full overflow-x-hidden"
 >
 

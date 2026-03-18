@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'http://wasetzonlaraval.test';
+// baseURL comes from playwright.config.ts (PLAYWRIGHT_BASE_URL or wasetzonlaraval.test)
 const VIEWPORTS = {
   desktop: { width: 1280, height: 720 },
   mobile: { width: 375, height: 667 },
@@ -13,7 +13,7 @@ test.describe('New Order Page - Visual & UX Audit', () => {
       test.beforeEach(async ({ page, context }) => {
         await context.clearCookies();
         await page.setViewportSize(size);
-        await page.goto(`${BASE_URL}/new-order`, { waitUntil: 'networkidle' });
+        await page.goto('/new-order-cards', { waitUntil: 'networkidle' });
         await page.waitForTimeout(1500);
       });
 
@@ -38,7 +38,7 @@ test.describe('New Order Page - Visual & UX Audit', () => {
       });
 
       test(`Add product button clickable - ${viewportName}`, async ({ page }) => {
-        const addBtn = page.getByRole('button', { name: /add|إضافة/i }).first();
+        const addBtn = page.locator('#add-product');
         await expect(addBtn).toBeVisible();
         const box = await addBtn.boundingBox();
         expect(box).toBeTruthy();
@@ -90,17 +90,17 @@ test.describe('New Order Page - Visual & UX Audit', () => {
       });
 
       test(`Attach button clickable - ${viewportName}`, async ({ page }) => {
-        // On mobile, attach is inside collapsed card — expand first, then target visible attach in cards
+        // Cards layout: attach is in #items-container. Expand card on mobile first.
         const attachText = /attach|إضافة صورة|إرفاق/i;
         let attachBtn;
         if (viewportName === 'mobile') {
           const showEditBtn = page.getByRole('button', { name: /show|edit|عرض|تعديل|hide|إخفاء/i }).first();
-          await showEditBtn.click();
-          await page.waitForTimeout(500);
-          attachBtn = page.locator('#items-container span').filter({ hasText: attachText }).first();
-        } else {
-          attachBtn = page.locator('div.hidden.lg\\:block span').filter({ hasText: attachText }).first();
+          if (await showEditBtn.isVisible().catch(() => false)) {
+            await showEditBtn.click();
+            await page.waitForTimeout(500);
+          }
         }
+        attachBtn = page.locator('#items-container label, #items-container span').filter({ hasText: attachText }).first();
         await expect(attachBtn).toBeVisible({ timeout: 5000 });
         const box = await attachBtn.boundingBox();
         expect(box).toBeTruthy();
@@ -119,4 +119,24 @@ test.describe('New Order Page - Visual & UX Audit', () => {
       });
     });
   }
+
+  test.describe('isLoggedIn attach fix - user-logged-in listener', () => {
+    const layoutUrls = [
+      '/new-order-table',
+      '/new-order-cards',
+      '/new-order-hybrid',
+      '/new-order-wizard',
+      '/new-order-cart-inline',
+      '/new-order-cart',
+      '/new-order-cart-next',
+    ];
+
+    for (const path of layoutUrls) {
+      test(`${path} renders user-logged-in event listener`, async ({ page }) => {
+        await page.goto(path, { waitUntil: 'networkidle' });
+        const html = await page.content();
+        expect(html).toContain('user-logged-in');
+      });
+    }
+  });
 });

@@ -53,6 +53,24 @@ class Setting extends Model
     }
 
     /**
+     * Get locale-aware site name for use in translations (:site_name).
+     * Returns site_name_ar when locale is 'ar' (if set), else site_name.
+     */
+    public static function siteName(?string $locale = null): string
+    {
+        $locale = $locale ?? app()->getLocale();
+
+        if ($locale === 'ar') {
+            $ar = static::get('site_name_ar');
+            if (filled($ar)) {
+                return (string) $ar;
+            }
+        }
+
+        return (string) (static::get('site_name') ?: config('app.name'));
+    }
+
+    /**
      * Get the public URL for a favicon.
      * Site: custom or default icon. Admin: custom, else site favicon, else solid orange circle.
      */

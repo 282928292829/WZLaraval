@@ -9,13 +9,15 @@
 
 <div class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] min-h-screen"
      data-guest="{{ $isGuest ? 'true' : 'false' }}"
-     x-data="newOrderFormCartNext({{ ($requireTerms ?? true) ? 'true' : 'false' }})"
+     :data-attach-blocked="attachBlocked"
+     x-data="newOrderFormCartNext({{ ($requireTerms ?? true) ? 'true' : 'false' }}, {{ $isGuest ? 'true' : 'false' }})"
      x-init="initCartDraft()"
      @notify.window="showNotify($event.detail.type, $event.detail.message)"
      @cart-item-added.window="isShaking = true; setTimeout(() => isShaking = false, 500)"
      @cart-emptied.window="cartOpen = false"
      @save-cart-draft.window="saveCartDraftToStorage($event.detail.items, $event.detail.notes)"
      @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+     @user-logged-in.window="attachBlocked = false"
      @zoom-image.window="zoomedImage = $event.detail"
      @keydown.escape.window="if (zoomedImage) { zoomedImage = null; } else if (showDraftPrompt) { showDraftPrompt = false; } else if (showClearConfirm) { showClearConfirm = false; } else if (cartOpen) { cartOpen = false; }">
     <div x-ref="toasts" id="toast-container-cart-next"></div>
@@ -117,7 +119,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <input type="file" x-ref="fileInput" id="new-order-cart-next-file-input" wire:model="currentItemFiles" accept="{{ implode(',', $allowedMimeTypes ?? allowed_upload_mime_types()) }}" class="sr-only" {{ ($maxImagesPerItem ?? 1) > 1 ? 'multiple' : '' }} @change="onFilesChange($event)">
                     <label for="new-order-cart-next-file-input"
-                           @if ($isGuest) @click.prevent="$wire.openLoginModalForAttach()" @endif
+                           @click="if ($root.dataset.attachBlocked === 'true') { $event.preventDefault(); $wire.openLoginModalForAttach(); }"
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer bg-primary-50 text-primary-600 hover:bg-primary-100 border border-primary-200 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                         {{ __('order_form.choose_file') }}
@@ -449,8 +451,9 @@ function cartNextFilePreviews() {
         }
     };
 }
-function newOrderFormCartNext(requireTerms = true) {
+function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
     return {
+        attachBlocked: !!attachBlocked,
         cartOpen: false,
         editingIndex: null,
         termsAccepted: false,

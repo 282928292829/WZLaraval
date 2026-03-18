@@ -9,6 +9,10 @@ class SettingsSeeder extends Seeder
 {
     public function run(): void
     {
+        // ── General (branding, site name) ──────────────────────────────────────
+        Setting::set('site_name', 'Wasetzon', 'string', 'general');
+        Setting::set('site_name_ar', 'وسيط زون', 'string', 'general');
+
         // ── Contact / Footer ──────────────────────────────────────────────────
         Setting::set('whatsapp', '966556063500', 'string', 'contact');
         Setting::set('contact_email', 'info@wasetzon.com', 'string', 'contact');
@@ -153,7 +157,7 @@ class SettingsSeeder extends Seeder
         ], 'json', 'orders');
 
         // ── Order form layout (hybrid, table, cards, wizard, cart) ──
-        Setting::set('order_new_layout', 'cards', 'string', 'orders');
+        Setting::set('order_new_layout', 'hybrid', 'string', 'orders');
 
         // ── Order form dev helpers ────────────────────────────────────────────
         Setting::set('order_form_show_add_test_items', true, 'boolean', 'orders');

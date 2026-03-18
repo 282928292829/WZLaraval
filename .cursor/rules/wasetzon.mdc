@@ -20,16 +20,14 @@ alwaysApply: true
 
 Update each session for handoff.
 
-- **Last completed:** Cards layout built (`new-order-cards.blade.php`). Old customer-built layouts (numbered 1–4) deleted — `new-order.blade.php` kept as temporary logic reference only.
-- **Next:** Build Table layout (`new-order-table.blade.php`) — see `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md` for full spec and build order.
-- **Other open items:** After Table → Hybrid → Wizard (rebuild) → Cart (rebuild) → delete `new-order.blade.php` → set Cards as default fallback in render switch.
+- **Layouts:** All 7 built (Cards, Table, Hybrid, Wizard, Cart, Cart Inline, Cart Next). Legacy deleted; unknown layout keys fall back to Hybrid. More layouts may be added in future.
 
 ## Stack
 Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie Permission, MySQL 8, Redis
 
 ## AI Behavior
 - Read `LARAVEL_PLAN.md` before making any changes in a new session
-- Before editing new-order layout code (Table/Cart/Cards/Wizard), read `docs/ORDER_LAYOUTS.md`
+- Before editing new-order layout code, read `docs/NEW_ORDER_LAYOUTS_REQUIREMENTS.md`
 - Before building any feature, audit the corresponding source in the new WordPress site to capture all behavior and edge cases
 - When blocked or uncertain, ask the owner — never guess or hallucinate a solution
 - Do not create new base folders or change dependencies without approval
@@ -71,6 +69,6 @@ Laravel 12, Breeze, Livewire 3, Alpine.js, Tailwind CSS v4, Filament 4, Spatie P
 - **File storage:** Laravel `Storage` facade, local disk, driver set in `.env`
 - **Mobile-first:** all customer-facing pages; Filament admin is desktop-first
 - **No-scroll forms:** sign-in, sign-up, and each new-order item row must fit on screen without scrolling on mobile — compact layout, submit action always visible without scrolling
-- **New-order layout:** Table (table on desktop, cards on mobile) is site default; Cart, Cards, Wizard also available; admin sets via Filament settings
-- **Templates:** all rewritten from scratch — no WordPress copy/paste
+- **New-order layout:** 7 layouts (Cards, Table, Hybrid, Wizard, Cart, Cart Inline, Cart Next); admin sets via Filament settings; unknown keys fall back to Hybrid; owner may add more layouts later using AI
+- **Templates:** all rewritten from scratch
 - **Default menus:** header/footer menus, submenus, login/signup buttons seeded from new WordPress site at Phase 1

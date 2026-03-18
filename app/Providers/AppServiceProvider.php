@@ -19,9 +19,9 @@ class AppServiceProvider extends ServiceProvider
             $event->extendSocialite('apple', \SocialiteProviders\Apple\Provider::class);
         });
 
-        // Share site_name for multi-site string replacements in views
+        // Share locale-aware site_name for string replacements in views (:site_name placeholder)
         try {
-            View::share('site_name', Setting::get('site_name') ?: config('app.name'));
+            View::share('site_name', Setting::siteName());
         } catch (\Throwable $e) {
             View::share('site_name', config('app.name'));
         }

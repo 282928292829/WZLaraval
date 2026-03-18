@@ -177,7 +177,7 @@ class OrderSettingsPage extends Page
             'order_edit_click_window_minutes' => '10',
             'order_edit_resubmit_window_minutes' => '10',
             'order_edit_window_minutes' => '10',
-            'order_new_layout' => 'cards',
+            'order_new_layout' => 'hybrid',
             'order_form_show_add_test_items' => false,
             'order_form_show_reset_all' => true,
             'order_form_require_terms' => true,
@@ -579,7 +579,7 @@ class OrderSettingsPage extends Page
                                     ->schema([
                                         Select::make('order_new_layout')
                                             ->label(__('New-Order Form Layout'))
-                                            ->default('cards')
+                                            ->default('hybrid')
                                             ->options([
                                                 'hybrid' => '1. '.__('order_layout.hybrid'),
                                                 'table' => '2. '.__('order_layout.table'),

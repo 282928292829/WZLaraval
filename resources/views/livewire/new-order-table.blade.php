@@ -64,6 +64,7 @@
     @zoom-image.window="zoomedImage = $event.detail"
     @keydown.escape.window="closeZoom()"
     @open-login-modal-attach.window="$wire.openLoginModalForAttach()"
+    @user-logged-in.window="isLoggedIn = true"
     class="bg-slate-50 text-slate-800 font-[family-name:var(--font-family-arabic)] flex flex-col overflow-hidden"
     style="height: calc(100dvh - 56px);"
 >
