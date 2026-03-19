@@ -1,6 +1,6 @@
 <?php
 
-use App\Livewire\NewOrder;
+use App\Livewire\NewOrderCart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Setting;
@@ -19,14 +19,14 @@ beforeEach(function (): void {
 });
 
 test('cart layout renders new-order-cart view', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
-    $component->assertSeeLivewire(NewOrder::class);
+    $component->assertSeeLivewire(NewOrderCart::class);
     $component->assertViewIs('livewire.new-order-cart');
 });
 
 test('addToCart accepts empty URL and all empty fields', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('currentItem', [
         'url' => '',
@@ -44,7 +44,7 @@ test('addToCart accepts empty URL and all empty fields', function (): void {
 });
 
 test('addToCart adds item when URL provided', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('currentItem', [
         'url' => 'https://amazon.com/dp/B0TEST',
@@ -67,7 +67,7 @@ test('addToCart adds item when URL provided', function (): void {
 });
 
 test('addToCart adds item when price provided', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('currentItem', [
         'url' => '',
@@ -85,7 +85,7 @@ test('addToCart adds item when price provided', function (): void {
 });
 
 test('addToCart clears form after adding', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('currentItem', [
         'url' => 'https://example.com/item',
@@ -110,7 +110,7 @@ test('addToCart clears form after adding', function (): void {
 });
 
 test('removeItem removes from cart', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('items', [
         ['url' => 'https://a.com', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '', 'currency' => 'USD', 'notes' => ''],
@@ -123,7 +123,7 @@ test('removeItem removes from cart', function (): void {
 });
 
 test('editCartItem moves item back to form', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('items', [
         ['url' => 'https://edit.com', 'qty' => '2', 'color' => 'green', 'size' => 'S', 'price' => '10', 'currency' => 'GBP', 'notes' => 'Edit me'],
@@ -140,7 +140,7 @@ test('editCartItem moves item back to form', function (): void {
 });
 
 test('addToCart rejects negative price', function (): void {
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
 
     $component->set('currentItem', [
         'url' => '',
@@ -159,7 +159,7 @@ test('addToCart rejects negative price', function (): void {
 test('addToCart respects max products limit', function (): void {
     Setting::set('max_products_per_order', '2', 'integer', 'orders');
 
-    $component = Livewire::test(NewOrder::class);
+    $component = Livewire::test(NewOrderCart::class);
     $component->set('items', [
         ['url' => 'https://a.com', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '', 'currency' => 'USD', 'notes' => ''],
         ['url' => 'https://b.com', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '', 'currency' => 'USD', 'notes' => ''],
@@ -180,7 +180,7 @@ test('addToCart respects max products limit', function (): void {
 });
 
 test('product_url pre-fills currentItem when layout is cart', function (): void {
-    $component = Livewire::test(NewOrder::class, ['product_url' => 'https://amazon.com/dp/XYZ']);
+    $component = Livewire::test(NewOrderCart::class, ['product_url' => 'https://amazon.com/dp/XYZ']);
 
     expect($component->get('items'))->toBeEmpty();
     expect($component->get('currentItem.url'))->toBe('https://amazon.com/dp/XYZ');
@@ -202,7 +202,7 @@ test('duplicate_from pre-fills items when layout is cart', function (): void {
     ]);
 
     $component = Livewire::actingAs($user)
-        ->test(NewOrder::class, ['duplicate_from' => $order->id]);
+        ->test(NewOrderCart::class, ['duplicate_from' => $order->id]);
 
     expect($component->get('orderNotes'))->toBe('Dup notes');
     expect($component->get('items'))->toHaveCount(1);
@@ -219,7 +219,7 @@ test('submitOrder creates order from cart when user is logged in', function (): 
     $user->assignRole('customer');
 
     $component = Livewire::actingAs($user)
-        ->test(NewOrder::class)
+        ->test(NewOrderCart::class)
         ->set('items', [
             ['url' => 'https://cart-test.com/p1', 'qty' => '2', 'color' => 'black', 'size' => 'M', 'price' => '25', 'currency' => 'USD', 'notes' => 'Cart item 1'],
         ])
@@ -242,7 +242,7 @@ test('submitOrder creates order from cart when user is logged in', function (): 
 });
 
 test('submitOrder prompts login modal when guest', function (): void {
-    $component = Livewire::test(NewOrder::class)
+    $component = Livewire::test(NewOrderCart::class)
         ->set('items', [
             ['url' => 'https://guest.com/item', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '10', 'currency' => 'USD', 'notes' => ''],
         ])
@@ -255,7 +255,7 @@ test('submitOrder prompts login modal when guest', function (): void {
 test('getCartSummary returns correct subtotal and commission', function (): void {
     Setting::set('exchange_rates', ['rates' => ['USD' => ['final' => 3.75], 'SAR' => ['final' => 1]]], 'json', 'orders');
 
-    $component = Livewire::test(NewOrder::class)
+    $component = Livewire::test(NewOrderCart::class)
         ->set('items', [
             ['url' => 'https://a.com', 'qty' => '2', 'color' => '', 'size' => '', 'price' => '50', 'currency' => 'USD', 'notes' => ''],
         ]);

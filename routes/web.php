@@ -8,6 +8,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DevController;
 use App\Http\Controllers\GoController;
 use App\Http\Controllers\InboxController;
+use App\Http\Controllers\NewOrderController;
 use App\Http\Controllers\OrderCommentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderMergeController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\NewOrder;
+use App\Livewire\NewOrderCart;
 use Illuminate\Support\Facades\Route;
 
 Route::match(['get', 'post'], '/language/{locale}', function (string $locale) {
@@ -78,7 +80,7 @@ Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:5,15')
     ->name('contact.store');
 
-Route::get('/new-order', NewOrder::class)
+Route::get('/new-order', NewOrderController::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order');
 
@@ -99,7 +101,7 @@ Route::get('/new-order-wizard', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-wizard');
 
-Route::get('/new-order-cart', NewOrder::class)
+Route::get('/new-order-cart', NewOrderCart::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-cart');
 
@@ -107,7 +109,7 @@ Route::get('/new-order-cart-inline', NewOrder::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-cart-inline');
 
-Route::get('/new-order-cart-next', NewOrder::class)
+Route::get('/new-order-cart-next', NewOrderCart::class)
     ->middleware('role.throttle:new-order')
     ->name('new-order-cart-next');
 

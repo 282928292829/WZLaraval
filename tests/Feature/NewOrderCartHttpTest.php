@@ -2,6 +2,7 @@
 
 use App\Livewire\GuestLoginModal;
 use App\Livewire\NewOrder;
+use App\Livewire\NewOrderCart;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +18,7 @@ beforeEach(function (): void {
 test('guest submit order opens login modal without redirect', function (): void {
     $this->get(route('new-order'));
 
-    Livewire::test(NewOrder::class)
+    Livewire::test(NewOrderCart::class)
         ->set('items', [
             ['url' => 'https://example.com/p1', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '10', 'currency' => 'USD', 'notes' => ''],
         ])
@@ -28,7 +29,7 @@ test('guest submit order opens login modal without redirect', function (): void 
 });
 
 test('guest cart layout loadGuestDraftFromStorage loads items when empty', function (): void {
-    $guestComponent = Livewire::test(NewOrder::class);
+    $guestComponent = Livewire::test(NewOrderCart::class);
     $guestComponent->call('loadGuestDraftFromStorage', [
         ['url' => 'https://test.com', 'qty' => '2', 'color' => 'red', 'size' => 'L', 'price' => '25', 'currency' => 'USD', 'notes' => 'test'],
     ], 'Please ship fast');
@@ -42,7 +43,7 @@ test('guest cart layout loadGuestDraftFromStorage loads items when empty', funct
 
 test('guest cart layout loadGuestDraftFromStorage is no-op when logged in', function (): void {
     $user = User::factory()->create();
-    Livewire::actingAs($user)->test(NewOrder::class)
+    Livewire::actingAs($user)->test(NewOrderCart::class)
         ->call('loadGuestDraftFromStorage', [
             ['url' => 'https://test.com', 'qty' => '1', 'color' => '', 'size' => '', 'price' => '', 'currency' => 'USD', 'notes' => ''],
         ], 'notes')
@@ -92,7 +93,7 @@ test('new-order-cart route renders cart layout with form sidebar and bottom-shee
 });
 
 test('addToCart adds item to cart', function (): void {
-    Livewire::test(NewOrder::class)
+    Livewire::test(NewOrderCart::class)
         ->set('activeLayout', 'cart')
         ->set('currentItem', [
             'url' => 'https://example.com/product',
