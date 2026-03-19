@@ -38,12 +38,12 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 ## STATUS (AI updates this section after each phase)
 
 **Last updated by:** AI — 2026-03-19
-**Current phase:** Phase 2
-**Completed phases:** Phase 1
+**Current phase:** Phase 3
+**Completed phases:** Phase 1, Phase 2
 
 ### Phase completion log
 - [x] Phase 1 — Paste/Open on all 7 layouts *(Cards ✅, Wizard ✅, Cart Inline ✅, Hybrid ✅, Table ✅, Cart ✅, Cart Next ✅)*
-- [ ] Phase 2 — GuestLoginModal Livewire component
+- [x] Phase 2 — GuestLoginModal Livewire component ✅
 - [ ] Phase 3 — OrderItemFileHelper trait
 - [ ] Phase 4 — OrderSubmissionService
 - [ ] Phase 5 — NewOrderCart split
@@ -52,11 +52,16 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 
 ### Notes from last session
 - Branch: `refactor/new-order`
-- Phase 1 complete — commit `eb85ea4`
-- Created `resources/views/livewire/partials/_url-paste-open.blade.php` (accepts `$mode='items'|'current'`)
-- Table: URL `<td>` gets `:data-item-idx="idx"` + `data-field="url"` + partial (items mode); other `<td>`s get `data-field` + `:data-item-idx` for future paste support
-- Cart + Cart Next: URL label restructured to flex row with partial (current mode); `doPasteCurrentItem` / `doOpenCurrentItem` + labels added to their Alpine objects
-- 29 NewOrder tests pass; 5 pre-existing failures in unrelated tests (HourlyOrderRateLimit, OrderEditFlow, OrderItemFilesUpload) — not caused by Phase 1
+- Phase 2 complete — commit `158e7c5`
+- Created `app/Livewire/GuestLoginModal.php` — moves all 9 modal properties and 7 modal methods out of NewOrder
+- Created `resources/views/livewire/guest-login-modal.blade.php` — markup moved from `_order-login-modal.blade.php`
+- `GuestLoginModal` listens for `open-login-modal` browser event via `#[On('open-login-modal')]`; emits `user-logged-in` with `reason` payload on success
+- `NewOrder::submitOrder()` dispatches `open-login-modal` (reason=submit) instead of setting showLoginModal directly
+- `NewOrder::openLoginModalForAttach()` dispatches `open-login-modal` (reason=attach)
+- `NewOrder` has `#[On('user-logged-in')]` handler — calls `submitOrder()` when reason=submit
+- All 7 layout blades: `@include('livewire.partials._order-login-modal')` → `@livewire('guest-login-modal')` (Hybrid had 2 includes; consolidated to 1)
+- Tests updated: `NewOrderCartHttpTest` and `NewOrderCartLayoutTest` — `assertSet('showLoginModal', true)` → `assertDispatched('open-login-modal')`; modal method tests moved to `GuestLoginModal::class`
+- 29 NewOrder tests pass; 5 pre-existing failures unchanged (HourlyOrderRateLimit, OrderEditFlow ×3, OrderItemFilesUpload)
 
 ---
 
