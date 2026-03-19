@@ -38,8 +38,8 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 ## STATUS (AI updates this section after each phase)
 
 **Last updated by:** AI — 2026-03-19
-**Current phase:** Phase 6
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
+**Current phase:** Phase 7
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
 
 ### Phase completion log
 - [x] Phase 1 — Paste/Open on all 7 layouts *(Cards ✅, Wizard ✅, Cart Inline ✅, Hybrid ✅, Table ✅, Cart ✅, Cart Next ✅)*
@@ -47,10 +47,19 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 - [x] Phase 3 — OrderItemFileHelper trait ✅
 - [x] Phase 4 — OrderSubmissionService ✅
 - [x] Phase 5 — NewOrderCart split ✅
-- [ ] Phase 6 — OrderController split
+- [x] Phase 6 — OrderController split ✅
 - [ ] Phase 7 — Cleanup
 
 ### Notes from last session
+- Phase 6 complete — OrderController split
+- Created `OrderInvoiceController`: generateInvoice, invoiceSettings, buildInvoiceExtra, buildInvoiceLinesForLocale, buildInvoicePdf, resolveInvoiceFilename, resolveInvoiceNumber, sanitizeFilename, sanitizeFilenamePart, resolveInvoiceCommentMessage
+- Created `OrderExportController`: exportCsv, exportExcel
+- Routes: POST /orders/{order}/invoice → OrderInvoiceController, GET /orders/{order}/export-excel → OrderExportController
+- OrderController::allOrders delegates CSV export to OrderExportController when ?export=csv
+- invoiceDefaultsForOrder retained in OrderController (used by show())
+- 28 Order tests pass; 5 pre-existing failures unchanged
+
+### Notes from previous session
 - Branch: `refactor/new-order`
 - Phase 2 complete — commit `158e7c5`
 - Created `app/Livewire/GuestLoginModal.php` — moves all 9 modal properties and 7 modal methods out of NewOrder

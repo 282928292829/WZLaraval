@@ -11,6 +11,8 @@ use App\Http\Controllers\InboxController;
 use App\Http\Controllers\NewOrderController;
 use App\Http\Controllers\OrderCommentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderExportController;
+use App\Http\Controllers\OrderInvoiceController;
 use App\Http\Controllers\OrderMergeController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PageController;
@@ -133,7 +135,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{order}/status', [OrderStatusController::class, 'update'])->name('orders.status.update');
     Route::post('/orders/{order}/mark-paid', [OrderStatusController::class, 'markPaid'])->name('orders.mark-paid');
     Route::post('/orders/{order}/prices', [OrderController::class, 'updatePrices'])->name('orders.prices.update');
-    Route::post('/orders/{order}/invoice', [OrderController::class, 'generateInvoice'])->name('orders.invoice.generate');
+    Route::post('/orders/{order}/invoice', [OrderInvoiceController::class, 'generateInvoice'])->name('orders.invoice.generate');
     Route::post('/orders/{order}/merge', OrderMergeController::class)->name('orders.merge');
     Route::post('/orders/{order}/comments/{commentId}/notify', [OrderCommentController::class, 'sendNotification'])->name('orders.comments.notify');
     Route::post('/orders/{order}/comments/{commentId}/log-whatsapp', [OrderCommentController::class, 'logWhatsAppSend'])->name('orders.comments.log-whatsapp');
@@ -154,7 +156,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/orders/{order}/staff-notes', [OrderController::class, 'updateStaffNotes'])->name('orders.staff-notes.update');
     Route::delete('/orders/{order}/product-image', [OrderController::class, 'deleteProductImage'])->name('orders.product-image.delete');
     Route::post('/orders/{order}/items/{itemId}/files', [OrderController::class, 'storeItemFiles'])->name('orders.items.files.store');
-    Route::get('/orders/{order}/export-excel', [OrderController::class, 'exportExcel'])->name('orders.export-excel');
+    Route::get('/orders/{order}/export-excel', [OrderExportController::class, 'exportExcel'])->name('orders.export-excel');
 });
 
 Route::middleware('auth')->group(function () {
