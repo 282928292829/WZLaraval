@@ -16,6 +16,7 @@ document.addEventListener('alpine:init', () => {
         id: config.id,
         body: config.body ?? '',
         orderId: config.orderId,
+        orderSlug: config.orderSlug ?? '',
         orderNumber: config.orderNumber ?? '',
         author: config.author ?? '',
         createdAt: config.createdAt ?? '',
@@ -42,6 +43,7 @@ document.addEventListener('alpine:init', () => {
         attachSuccess: config.attachSuccess ?? 'File attached',
         attachError: config.attachError ?? 'Failed to attach file',
         attachLimitExceeded: config.attachLimitExceeded ?? 'Maximum files per comment.',
+        markReadUrl: config.markReadUrl ?? '',
         toggle() {
             if (this.$store.commentExpanded.id === this.id) {
                 this.$store.commentExpanded.id = null;
@@ -49,6 +51,19 @@ document.addEventListener('alpine:init', () => {
                 this.editErrorMsg = null;
             } else {
                 this.$store.commentExpanded.id = this.id;
+                if (this.markReadUrl) {
+                    const token = document.querySelector('meta[name=csrf-token]')?.content;
+                    fetch(this.markReadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token || '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ comment_ids: [this.id] }),
+                    }).catch(() => {});
+                }
             }
         },
         startEdit() {
@@ -146,6 +161,99 @@ document.addEventListener('alpine:init', () => {
             }
         },
     }));
+
+    /**
+     * orderNotify — Shared toast notification for Cart and Cart Next layouts.
+     * Spread into component: ...orderNotifyMixin({ closeLabel: 'Close' })
+     */
+    window.orderNotifyMixin = (config = {}) => {
+        const closeLabel = config.closeLabel || 'Close';
+        return {
+            showNotify(type, msg, duration) {
+                const c = this.$refs?.toasts;
+                if (!c) return;
+                const t = document.createElement('div');
+                t.className = `toast ${type}`;
+                const icon = type === 'error'
+                    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
+                    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981;flex-shrink:0"><path d="M20 6L9 17l-5-5"/></svg>';
+                const dur = duration ?? (type === 'error' ? 4000 : 700);
+                t.innerHTML = `${icon}<span style="flex:1">${msg}</span><button type="button" class="toast-close" aria-label="${closeLabel}">×</button>`;
+                c.appendChild(t);
+                const closeToast = () => {
+                    t.style.animation = 'toastOut 0.4s ease forwards';
+                    setTimeout(() => t.remove(), 400);
+                };
+                t.querySelector('.toast-close').addEventListener('click', (e) => { e.stopPropagation(); closeToast(); });
+                t.addEventListener('click', closeToast);
+                setTimeout(() => { if (t.parentElement) closeToast(); }, dur);
+            },
+        };
+    };
+
+    /**
+     * orderDraftMixin — Shared peekDraft/restoreDraft for Table, Cart, Cart Next.
+     * Spread into component: ...orderDraftMixin({ restoreVia: 'items'|'wire', draftRestoredMsg: '...' })
+     */
+    window.orderDraftMixin = (opts = {}) => {
+        const restoreVia = opts.restoreVia || 'items';
+        const draftRestoredMsg = opts.draftRestoredMsg || 'Draft restored';
+        return {
+            peekDraft() {
+                try {
+                    let raw = localStorage.getItem('wz_order_form_draft');
+                    let notes = localStorage.getItem('wz_order_form_notes');
+                    if (!raw && localStorage.getItem('wz_opus46_draft')) {
+                        raw = localStorage.getItem('wz_opus46_draft');
+                        notes = localStorage.getItem('wz_opus46_notes');
+                    }
+                    if (!raw) return null;
+                    const data = JSON.parse(raw);
+                    if (!Array.isArray(data) || data.length === 0) return null;
+                    const hasMeaningfulContent = data.some(d =>
+                        (d.url || '').trim() || (d.color || '').trim() ||
+                        (d.size || '').trim() || (d.notes || '').trim() ||
+                        (parseFloat(d.price) > 0)
+                    );
+                    if (!hasMeaningfulContent) return null;
+                    return { items: data, notes: notes || '' };
+                } catch {
+                    return null;
+                }
+            },
+            restoreDraft() {
+                if (!this.pendingDraftItems) {
+                    this.showDraftPrompt = false;
+                    return;
+                }
+                if (restoreVia === 'wire') {
+                    this.$wire.loadGuestDraftFromStorage(this.pendingDraftItems, this.pendingDraftNotes || '');
+                } else {
+                    const defaultCurrency = this.defaultCurrency || 'USD';
+                    this.items = this.pendingDraftItems.map((d) => ({
+                        _id: Math.random().toString(36).slice(2),
+                        url: d.url || '',
+                        qty: d.qty || '1',
+                        color: d.color || '',
+                        size: d.size || '',
+                        price: d.price || '',
+                        currency: d.currency || defaultCurrency,
+                        notes: d.notes || '',
+                        _expanded: true,
+                        _focused: false,
+                        _showOptional: false,
+                        _files: [],
+                    }));
+                    this.orderNotes = this.pendingDraftNotes || '';
+                    if (typeof this.calcTotals === 'function') this.calcTotals();
+                }
+                this.pendingDraftItems = null;
+                this.pendingDraftNotes = '';
+                this.showDraftPrompt = false;
+                this.showNotify('success', draftRestoredMsg);
+            },
+        };
+    };
 
     window.Alpine.data('orderDesignForm', (config = {}) => {
         const count = config.initialCount ?? 1;

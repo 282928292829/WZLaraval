@@ -25,7 +25,7 @@
     <div class="max-w-2xl mx-auto p-4 pb-24">
         <div class="flex flex-nowrap items-center justify-between gap-3 mb-5">
             <div>
-                <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('Create new order') }}</h1>
+                <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('order_form.create_new_order') }}</h1>
             </div>
             @if ($showAddTestItems ?? false)
             <button type="button" wire:click="addFiveTestItems" class="shrink-0 text-xs text-slate-400 underline bg-transparent border-none cursor-pointer p-0 font-inherit hover:text-red-500 transition-colors">{{ __('order.dev_add_5_test_items') }}</button>
@@ -458,7 +458,11 @@ function cartNextFilePreviews() {
     };
 }
 function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
+    const orderNotify = (typeof window.orderNotifyMixin === 'function') ? window.orderNotifyMixin({ closeLabel: @js(__('Close')) }) : {};
+    const orderDraft = (typeof window.orderDraftMixin === 'function') ? window.orderDraftMixin({ restoreVia: 'wire', draftRestoredMsg: @js(__('order_form.draft_restored')) }) : {};
     return {
+        ...orderNotify,
+        ...orderDraft,
         attachBlocked: !!attachBlocked,
         cartOpen: false,
         editingIndex: null,
@@ -532,37 +536,6 @@ function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
             this.showNotify('success', @js(__('order_form.cart_cleared')));
         },
 
-        peekDraft() {
-            try {
-                let raw = localStorage.getItem('wz_order_form_draft');
-                let notes = localStorage.getItem('wz_order_form_notes');
-                if (!raw && localStorage.getItem('wz_opus46_draft')) {
-                    raw = localStorage.getItem('wz_opus46_draft');
-                    notes = localStorage.getItem('wz_opus46_notes');
-                }
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (!Array.isArray(data) || data.length === 0) return null;
-                const hasMeaningfulContent = data.some(d =>
-                    (d.url || '').trim() || (d.color || '').trim() ||
-                    (d.size || '').trim() || (d.notes || '').trim() ||
-                    (parseFloat(d.price) > 0)
-                );
-                if (!hasMeaningfulContent) return null;
-                return { items: data, notes: notes || '' };
-            } catch { return null; }
-        },
-        restoreDraft() {
-            if (!this.pendingDraftItems) {
-                this.showDraftPrompt = false;
-                return;
-            }
-            this.$wire.loadGuestDraftFromStorage(this.pendingDraftItems, this.pendingDraftNotes || '');
-            this.pendingDraftItems = null;
-            this.pendingDraftNotes = '';
-            this.showDraftPrompt = false;
-            this.showNotify('success', @js(__('order_form.draft_restored')));
-        },
         discardDraft() {
             try {
                 localStorage.removeItem('wz_order_form_draft');

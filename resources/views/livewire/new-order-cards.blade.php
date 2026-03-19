@@ -76,7 +76,7 @@
             @if ($editingOrderId)
                 {{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}
             @else
-                {{ __('Create new order') }}
+                {{ __('order_form.create_new_order') }}
             @endif
         </span>
         <span class="flex-1 min-w-0 text-xs text-slate-400 text-center truncate" x-show="filledCount > 0" x-text="productCountText()" x-cloak></span>

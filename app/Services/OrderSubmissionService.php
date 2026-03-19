@@ -15,7 +15,6 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserActivityLog;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class OrderSubmissionService
 {
@@ -196,10 +195,6 @@ class OrderSubmissionService
         }
 
         $this->insertSystemComment($createdOrder);
-
-        if (config('app.env') === 'local') {
-            $this->insertDevComments($createdOrder);
-        }
 
         Activity::create([
             'type' => 'new_order',
@@ -448,68 +443,5 @@ class OrderSubmissionService
             'body' => $body,
             'is_system' => true,
         ]);
-    }
-
-    private function insertDevComments(Order $order): void
-    {
-        $customer = $order->user;
-        $staff = User::staff()->first() ?? $customer;
-
-        $messages = [
-            'Hi, I just placed this order. Please confirm you received it.',
-            'Order received! We will start processing within 24 hours.',
-            'Can you check if these items are in stock?',
-            'All items are in stock. We will proceed with the purchase.',
-            'I need this by next week if possible.',
-            'We will do our best to meet your deadline.',
-            'Please use the exact colors I specified.',
-            'Noted on the colors. We will match exactly.',
-            'Is there any discount available for bulk order?',
-            'Let me check with the team and get back to you.',
-            'I added one more item - the blue one. Thanks!',
-            'Got it! The blue item has been added.',
-            'When will you start processing?',
-            'Processing has started. You will get updates soon.',
-            'I sent the payment via bank transfer. Reference: TXN123.',
-            'Payment received. Thank you! Order is now confirmed.',
-            'Can you combine shipping with my previous order?',
-            'We can combine shipping. I will merge the orders.',
-            'Please pack carefully - these are fragile.',
-            'We use premium packaging for fragile items.',
-        ];
-
-        $withImage = [4, 8, 12, 16, 20];
-        $png = base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            true
-        );
-
-        for ($i = 0; $i < 20; $i++) {
-            $isCustomer = ($i % 2) === 0;
-            $author = $isCustomer ? $customer : $staff;
-            $body = $messages[$i % count($messages)];
-
-            $comment = OrderComment::create([
-                'order_id' => $order->id,
-                'user_id' => $author->id,
-                'body' => $body,
-                'is_internal' => false,
-            ]);
-
-            if (in_array($i + 1, $withImage, true) && $png !== false) {
-                $path = "orders/{$order->id}/comment-{$comment->id}-".uniqid().'.png';
-                Storage::disk('public')->put($path, $png);
-                OrderFile::create([
-                    'order_id' => $order->id,
-                    'user_id' => $author->id,
-                    'comment_id' => $comment->id,
-                    'path' => $path,
-                    'original_name' => 'attachment.png',
-                    'mime_type' => 'image/png',
-                    'size' => 100,
-                    'type' => 'comment',
-                ]);
-            }
-        }
     }
 }

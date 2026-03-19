@@ -48,9 +48,16 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 - [x] Phase 4 — OrderSubmissionService ✅
 - [x] Phase 5 — NewOrderCart split ✅
 - [x] Phase 6 — OrderController split ✅
-- [ ] Phase 7 — Cleanup
+- [x] Phase 7 — Cleanup ✅
 
 ### Notes from last session
+- Phase 7 complete — Cleanup
+- `insertDevComments` moved to `php artisan orders:seed-dev-comments {order}` (local only). Removed from OrderSubmissionService.
+- Added `order_form.create_new_order` to lang files; replaced `__('Create new order')` with `__('order_form.create_new_order')` in Table, Cart, Cart Next, Cards, Hybrid, Cart Inline.
+- Extracted `orderNotifyMixin` and `orderDraftMixin` to `resources/js/app.js`. Cart and Cart Next spread orderNotifyMixin; Table, Cart, Cart Next spread orderDraftMixin. Removed duplicate showNotify, peekDraft, restoreDraft from those layouts.
+- 29 NewOrder tests pass. Full suite hit memory limit (pre-existing).
+
+### Notes from previous session
 - Phase 6 complete — OrderController split
 - Created `OrderInvoiceController`: generateInvoice, invoiceSettings, buildInvoiceExtra, buildInvoiceLinesForLocale, buildInvoicePdf, resolveInvoiceFilename, resolveInvoiceNumber, sanitizeFilename, sanitizeFilenamePart, resolveInvoiceCommentMessage
 - Created `OrderExportController`: exportCsv, exportExcel

@@ -25,7 +25,7 @@
             <div class="max-w-2xl mx-auto">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-5 relative z-10">
                     <div>
-                        <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('Create new order') }}</h1>
+                        <h1 class="text-lg md:text-xl font-bold text-slate-800 m-0">{{ __('order_form.create_new_order') }}</h1>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                     @if ($showAddTestItems ?? false)
@@ -318,7 +318,11 @@
 @push('scripts')
 <script>
 function newOrderFormCart(attachBlocked = false) {
+    const orderNotify = (typeof window.orderNotifyMixin === 'function') ? window.orderNotifyMixin({ closeLabel: @js(__('Close')) }) : {};
+    const orderDraft = (typeof window.orderDraftMixin === 'function') ? window.orderDraftMixin({ restoreVia: 'wire', draftRestoredMsg: @js(__('order_form.draft_restored')) }) : {};
     return {
+        ...orderNotify,
+        ...orderDraft,
         attachBlocked: !!attachBlocked,
         cartOpen: false,
         sidebarHighlight: false,
@@ -381,37 +385,6 @@ function newOrderFormCart(attachBlocked = false) {
                 setTimeout(() => { this.sidebarHighlight = false; }, 1200);
             }
         },
-        peekDraft() {
-            try {
-                let raw = localStorage.getItem('wz_order_form_draft');
-                let notes = localStorage.getItem('wz_order_form_notes');
-                if (!raw && localStorage.getItem('wz_opus46_draft')) {
-                    raw = localStorage.getItem('wz_opus46_draft');
-                    notes = localStorage.getItem('wz_opus46_notes');
-                }
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (!Array.isArray(data) || data.length === 0) return null;
-                const hasMeaningfulContent = data.some(d =>
-                    (d.url || '').trim() || (d.color || '').trim() ||
-                    (d.size || '').trim() || (d.notes || '').trim() ||
-                    (parseFloat(d.price) > 0)
-                );
-                if (!hasMeaningfulContent) return null;
-                return { items: data, notes: notes || '' };
-            } catch { return null; }
-        },
-        restoreDraft() {
-            if (!this.pendingDraftItems) {
-                this.showDraftPrompt = false;
-                return;
-            }
-            this.$wire.loadGuestDraftFromStorage(this.pendingDraftItems, this.pendingDraftNotes || '');
-            this.pendingDraftItems = null;
-            this.pendingDraftNotes = '';
-            this.showDraftPrompt = false;
-            this.showNotify('success', @js(__('order_form.draft_restored')));
-        },
         discardDraft() {
             try {
                 localStorage.removeItem('wz_order_form_draft');
@@ -444,26 +417,6 @@ function newOrderFormCart(attachBlocked = false) {
                 }
             } catch (_) {}
         },
-        showNotify(type, msg, duration) {
-            const c = this.$refs.toasts;
-            if (!c) return;
-            const t = document.createElement('div');
-            t.className = `toast ${type}`;
-            const icon = type === 'error'
-                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
-                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981;flex-shrink:0"><path d="M20 6L9 17l-5-5"/></svg>';
-            const dur = duration ?? (type === 'error' ? 4000 : 700);
-            const closeLabel = @js(__('Close'));
-            t.innerHTML = `${icon}<span style="flex:1">${msg}</span><button type="button" class="toast-close" aria-label="${closeLabel}">×</button>`;
-            c.appendChild(t);
-            const closeToast = () => {
-                t.style.animation = 'toastOut 0.4s ease forwards';
-                setTimeout(() => t.remove(), 400);
-            };
-            t.querySelector('.toast-close').addEventListener('click', (e) => { e.stopPropagation(); closeToast(); });
-            t.addEventListener('click', closeToast);
-            setTimeout(() => { if (t.parentElement) closeToast(); }, dur);
-        }
     };
 }
 </script>

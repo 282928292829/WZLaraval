@@ -81,7 +81,7 @@
             @if ($editingOrderId)
                 {{ __('orders.edit_order_title', ['number' => $editingOrderNumber]) }}
             @else
-                {{ __('Create new order') }}
+                {{ __('order_form.create_new_order') }}
             @endif
         </span>
         <span class="flex-1 min-w-0 text-xs text-slate-400 text-center truncate"
@@ -531,8 +531,10 @@
 
 <script>
 function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes) {
+    const orderDraft = (typeof window.orderDraftMixin === 'function') ? window.orderDraftMixin({ restoreVia: 'items', draftRestoredMsg: @js(__('order_form.draft_restored')) }) : {};
     return {
         ...newOrderForm(rates, currencyList, maxProducts, defaultCurrency, isLoggedIn, commissionSettings, initialItems, initialOrderNotes, maxImagesPerItem, maxImagesPerOrder, msgMaxPerItem, msgMaxOrder, testOptions, allowedMimeTypes, maxFileSizeBytes),
+        ...orderDraft,
 
         // Table-specific state
         showDraftPrompt: false,
@@ -628,52 +630,6 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
                 rows.push(this.emptyItem());
             }
             return rows;
-        },
-
-        // Read draft without loading it — only return if it has real content
-        peekDraft() {
-            try {
-                let raw = localStorage.getItem('wz_order_form_draft');
-                let notes = localStorage.getItem('wz_order_form_notes');
-                if (!raw && localStorage.getItem('wz_opus46_draft')) {
-                    raw = localStorage.getItem('wz_opus46_draft');
-                    notes = localStorage.getItem('wz_opus46_notes');
-                    localStorage.removeItem('wz_opus46_draft');
-                    localStorage.removeItem('wz_opus46_notes');
-                    if (raw) localStorage.setItem('wz_order_form_draft', raw);
-                    if (notes) localStorage.setItem('wz_order_form_notes', notes);
-                }
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (!Array.isArray(data) || data.length === 0) return null;
-                const hasMeaningfulContent = data.some(d =>
-                    (d.url || '').trim() || (d.color || '').trim() ||
-                    (d.size || '').trim() || (d.notes || '').trim() ||
-                    (parseFloat(d.price) > 0)
-                );
-                if (!hasMeaningfulContent) return null;
-                return { items: data, notes: notes || '' };
-            } catch {
-                return null;
-            }
-        },
-
-        restoreDraft() {
-            if (!this.pendingDraftItems) { this.showDraftPrompt = false; return; }
-            this.items = this.pendingDraftItems.map((d) => ({
-                _id: Math.random().toString(36).slice(2),
-                url: d.url || '', qty: d.qty || '1', color: d.color || '',
-                size: d.size || '', price: d.price || '',
-                currency: d.currency || this.defaultCurrency, notes: d.notes || '',
-                _expanded: true, _focused: false, _showOptional: false,
-                _files: []
-            }));
-            this.orderNotes = this.pendingDraftNotes || '';
-            this.pendingDraftItems = null;
-            this.pendingDraftNotes = '';
-            this.showDraftPrompt = false;
-            this.calcTotals();
-            this.showNotify('success', @js(__('order_form.draft_restored')));
         },
 
         discardDraft() {
