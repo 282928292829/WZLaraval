@@ -206,7 +206,7 @@
                             {{-- URL --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="url">
                                 <div class="relative">
-                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-start ps-1.5 pointer-events-none">
                                         <span class="bg-white px-1 flex items-center gap-1 pointer-events-auto">
                                             <button type="button"
                                                     @click="doPasteForItem(idx, $event)"
@@ -217,8 +217,9 @@
                                             <span class="text-slate-300 text-[10px] leading-none">|</span>
                                             <button type="button"
                                                     @click="doOpenForItem(idx)"
+                                                    :disabled="!(item.url || '').trim()"
                                                     :aria-label="openFeedbackIdx === idx ? openFeedbackLabel : openLabel"
-                                                    class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                                    class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none">
                                                 <span x-text="openFeedbackIdx === idx ? (openFeedbackLabel || openedLabel) : openLabel"></span>
                                             </button>
                                         </span>
@@ -277,7 +278,7 @@
                             {{-- Color --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="color">
                                 <div class="relative">
-                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-start ps-1.5 pointer-events-none">
                                         <button type="button" @click="doPasteForField(idx, 'color', $event)"
                                             :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"
                                             class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
@@ -324,7 +325,7 @@
                             {{-- Size --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="size">
                                 <div class="relative">
-                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-start ps-1.5 pointer-events-none">
                                         <button type="button" @click="doPasteForField(idx, 'size', $event)"
                                             :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'size' ? pastedLabel : pasteLabel"
                                             class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
@@ -371,7 +372,7 @@
                             {{-- Price --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="price">
                                 <div class="relative">
-                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-start ps-1.5 pointer-events-none">
                                         <button type="button" @click="doPasteForField(idx, 'price', $event)"
                                             :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"
                                             class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
@@ -398,7 +399,7 @@
                             {{-- Notes --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="notes">
                                 <div class="relative">
-                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-start ps-1.5 pointer-events-none">
                                         <button type="button" @click="doPasteForField(idx, 'notes', $event)"
                                             :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"
                                             class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
