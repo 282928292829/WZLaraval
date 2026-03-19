@@ -108,6 +108,8 @@
     "automation.trigger_type": "Trigger",
     "automation.triggered": "Triggered :count comment(s).",
     "automation.triggered_count": "Triggered",
+    "comments.date": "Date",
+    "comments.hour": "Hour",
     "image_cleanup.action": "Action",
     "image_cleanup.action_compress": "Compress",
     "image_cleanup.action_delete": "Delete",

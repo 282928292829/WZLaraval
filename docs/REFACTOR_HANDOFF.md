@@ -38,14 +38,14 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 ## STATUS (AI updates this section after each phase)
 
 **Last updated by:** AI — 2026-03-19
-**Current phase:** Phase 3
-**Completed phases:** Phase 1, Phase 2
+**Current phase:** Phase 5
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4
 
 ### Phase completion log
 - [x] Phase 1 — Paste/Open on all 7 layouts *(Cards ✅, Wizard ✅, Cart Inline ✅, Hybrid ✅, Table ✅, Cart ✅, Cart Next ✅)*
 - [x] Phase 2 — GuestLoginModal Livewire component ✅
-- [ ] Phase 3 — OrderItemFileHelper trait
-- [ ] Phase 4 — OrderSubmissionService
+- [x] Phase 3 — OrderItemFileHelper trait ✅
+- [x] Phase 4 — OrderSubmissionService ✅
 - [ ] Phase 5 — NewOrderCart split
 - [ ] Phase 6 — OrderController split
 - [ ] Phase 7 — Cleanup

@@ -110,6 +110,8 @@
     "automation.trigger_type": "المحفّز",
     "automation.triggered": "تم تفعيل :count تعليق(ًا).",
     "automation.triggered_count": "تم التفعيل",
+    "comments.date": "التاريخ",
+    "comments.hour": "الساعة",
     "image_cleanup.action": "الإجراء",
     "image_cleanup.action_compress": "ضغط",
     "image_cleanup.action_delete": "حذف",

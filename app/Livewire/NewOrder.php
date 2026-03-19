@@ -2,21 +2,14 @@
 
 namespace App\Livewire;
 
-use App\Models\Activity;
-use App\Models\AdCampaign;
+use App\DTOs\OrderSubmissionData;
+use App\Livewire\Concerns\HandlesOrderItemFiles;
 use App\Models\Order;
-use App\Models\OrderComment;
-use App\Models\OrderFile;
-use App\Models\OrderItem;
-use App\Models\OrderTimeline;
 use App\Models\Setting;
 use App\Models\User;
-use App\Models\UserActivityLog;
 use App\Services\CommissionCalculator;
-use App\Services\ImageConversionService;
+use App\Services\OrderSubmissionService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -25,6 +18,7 @@ use Livewire\WithFileUploads;
 #[Layout('layouts.order-focused')]
 class NewOrder extends Component
 {
+    use HandlesOrderItemFiles;
     use WithFileUploads;
 
     public array $items = [];
@@ -492,123 +486,6 @@ class NewOrder extends Component
         $this->dispatch('save-cart-draft', items: $this->items, notes: $this->orderNotes);
     }
 
-    public function removeItemFile(int $itemIndex, int $fileIndex): void
-    {
-        $files = $this->itemFiles[$itemIndex] ?? null;
-        if ($files === null) {
-            return;
-        }
-        $arr = is_array($files) ? array_values($files) : ($files ? [$files] : []);
-        array_splice($arr, $fileIndex, 1);
-        $this->itemFiles[$itemIndex] = $arr;
-    }
-
-    public function shiftFileIndex(int $removedIndex): void
-    {
-        $shifted = [];
-        foreach ($this->itemFiles as $idx => $files) {
-            if ($idx === $removedIndex) {
-                continue;
-            }
-            $newIdx = $idx > $removedIndex ? $idx - 1 : $idx;
-            $shifted[$newIdx] = is_array($files) ? array_values($files) : ($files ? [$files] : []);
-        }
-        $this->itemFiles = $shifted;
-    }
-
-    /**
-     * Normalize itemFiles to array-of-arrays. Ensures each item has [file, ...].
-     */
-    private function normalizeItemFiles(): array
-    {
-        $normalized = [];
-        foreach ($this->itemFiles as $idx => $files) {
-            if (is_array($files)) {
-                $normalized[$idx] = array_values(array_filter($files));
-            } elseif ($files) {
-                $normalized[$idx] = [$files];
-            } else {
-                $normalized[$idx] = [];
-            }
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * Get preview data for an item's attached files (for cart drawer thumbnails).
-     *
-     * @return array<int, array{url: string|null, type: 'img'|'pdf'|'other'}>
-     */
-    public function getItemFilePreviews(int $itemIndex): array
-    {
-        $normalized = $this->normalizeItemFiles();
-        $files = $normalized[$itemIndex] ?? [];
-
-        $previews = [];
-        $maxDataUrlBytes = 2 * 1024 * 1024; // 2MB cap for base64 fallback
-
-        foreach ($files as $file) {
-            if (! is_object($file)) {
-                continue;
-            }
-            $mime = $file->getMimeType() ?? '';
-            $type = str_starts_with($mime, 'image/') ? 'img' : (str_contains($mime, 'pdf') ? 'pdf' : 'other');
-
-            $url = null;
-
-            // Try Livewire temporaryUrl first (works with S3, etc.)
-            if (method_exists($file, 'temporaryUrl')) {
-                try {
-                    if (method_exists($file, 'hasTemporaryUrl') && $file->hasTemporaryUrl()) {
-                        $url = $file->temporaryUrl();
-                    } elseif (! method_exists($file, 'hasTemporaryUrl')) {
-                        $url = $file->temporaryUrl();
-                    }
-                } catch (\Throwable) {
-                    // temporaryUrl may fail on local disk
-                }
-            }
-
-            // Fallback for images when temporaryUrl fails (e.g. local disk)
-            if (! $url && $type === 'img') {
-                $path = $file->getRealPath();
-                if ($path && is_readable($path) && filesize($path) <= $maxDataUrlBytes) {
-                    $data = base64_encode((string) file_get_contents($path));
-                    $url = 'data:'.($mime ?: 'image/png').';base64,'.$data;
-                }
-            }
-
-            $previews[] = ['url' => $url, 'type' => $type];
-        }
-
-        return $previews;
-    }
-
-    /**
-     * Count total files and check per-item / per-order limits.
-     *
-     * @return array{valid: bool, per_item_violation: ?int, total: int}
-     */
-    private function checkFileLimits(): array
-    {
-        $normalized = $this->normalizeItemFiles();
-        $total = 0;
-        $perItemViolation = null;
-
-        foreach ($normalized as $idx => $files) {
-            $count = count($files);
-            $total += $count;
-            if ($count > $this->maxImagesPerItem) {
-                $perItemViolation = $idx;
-            }
-        }
-
-        $valid = $total <= $this->maxImagesPerOrder && $perItemViolation === null;
-
-        return ['valid' => $valid, 'per_item_violation' => $perItemViolation, 'total' => $total];
-    }
-
     // -------------------------------------------------------------------------
     // Order submission — real database writes
     // -------------------------------------------------------------------------
@@ -622,62 +499,6 @@ class NewOrder extends Component
         }
 
         $user = Auth::user();
-        $isStaff = $user->isStaffOrAbove();
-
-        // Per-hour limit
-        $hourlyLimit = $isStaff
-            ? (int) Setting::get('orders_per_hour_admin', 50)
-            : (int) Setting::get('orders_per_hour_customer', 30);
-
-        if ($hourlyLimit > 0) {
-            $hourlyCount = Order::where('user_id', $user->id)
-                ->where('created_at', '>=', now()->subHour())
-                ->count();
-
-            if ($hourlyCount >= $hourlyLimit) {
-                $this->dispatch('notify', type: 'error',
-                    message: __('order.rate_limit_exceeded', ['max' => $hourlyLimit]));
-
-                return;
-            }
-        }
-
-        // Per-day limit
-        $dayLimit = $isStaff
-            ? (int) Setting::get('orders_per_day_staff', 100)
-            : (int) Setting::get('orders_per_day_customer', 200);
-
-        if ($dayLimit > 0) {
-            $todayCount = Order::where('user_id', $user->id)
-                ->whereDate('created_at', today())
-                ->count();
-
-            if ($todayCount >= $dayLimit) {
-                $this->dispatch('notify', type: 'error',
-                    message: __('order.daily_limit_reached', ['max' => $dayLimit]));
-
-                return;
-            }
-        }
-
-        // Per-month limit
-        $monthLimit = $isStaff
-            ? (int) Setting::get('orders_per_month_admin', 1000)
-            : (int) Setting::get('orders_per_month_customer', 500);
-
-        if ($monthLimit > 0) {
-            $monthCount = Order::where('user_id', $user->id)
-                ->where('created_at', '>=', now()->startOfMonth())
-                ->count();
-
-            if ($monthCount >= $monthLimit) {
-                $this->dispatch('notify', type: 'error',
-                    message: __('order.monthly_limit_reached', ['max' => $monthLimit]));
-
-                return;
-            }
-        }
-
         $this->validate($this->validationRules());
 
         $itemsWithOriginalIndex = [];
@@ -700,410 +521,40 @@ class NewOrder extends Component
             return;
         }
 
-        // Edit flow: update existing order
-        if ($this->editingOrderId) {
-            $this->submitOrderEdit($itemsWithOriginalIndex);
-
-            return;
-        }
-
-        $createdOrder = null;
-
-        DB::transaction(function () use ($itemsWithOriginalIndex, &$createdOrder) {
-            $rates = $this->exchangeRates;
-
-            $defaultAddress = Auth::user()
-                ->addresses()
-                ->where('is_default', true)
-                ->first();
-
-            $addressSnapshot = $defaultAddress
-                ? $defaultAddress->only([
-                    'id', 'label', 'recipient_name', 'phone',
-                    'country', 'city', 'address',
-                ])
-                : null;
-
-            $order = Order::create([
-                'order_number' => $this->generateOrderNumber(),
-                'user_id' => Auth::id(),
-                'status' => 'pending',
-                'layout_option' => Setting::get('order_new_layout', config('order.default_layout')),
-                'notes' => trim($this->orderNotes) ?: null,
-                'shipping_address_id' => $defaultAddress?->id,
-                'shipping_address_snapshot' => $addressSnapshot,
-                'subtotal' => 0,
-                'total_amount' => 0,
-                'currency' => 'SAR',
-                'can_edit_until' => null,
-            ]);
-
-            $rawSubtotal = 0;
-
-            foreach ($itemsWithOriginalIndex as $sortOrder => $entry) {
-                $item = $entry['data'];
-                $origIndex = $entry['orig'];
-
-                $price = is_numeric($item['price']) ? (float) $item['price'] : null;
-                $qty = max(1, (int) ($item['qty'] ?: 1));
-                $curr = $item['currency'] ?? 'USD';
-                $rate = $rates[$curr] ?? 0;
-
-                if ($price && $rate > 0) {
-                    $rawSubtotal += $price * $qty * $rate;
-                }
-
-                $orderItem = OrderItem::create([
-                    'order_id' => $order->id,
-                    'url' => $item['url'],
-                    'is_url' => safe_item_url($item['url'] ?? '') !== null,
-                    'qty' => $qty,
-                    'color' => $item['color'] ?: null,
-                    'size' => $item['size'] ?: null,
-                    'notes' => $item['notes'] ?: null,
-                    'currency' => $curr,
-                    'unit_price' => $price,
-                    'sort_order' => $sortOrder,
-                ]);
-
-                $files = $this->normalizeItemFiles()[$origIndex] ?? [];
-                $firstPath = null;
-                foreach ($files as $file) {
-                    if (! $file) {
-                        continue;
-                    }
-                    $stored = app(ImageConversionService::class)->storeForDisplay($file, "orders/{$order->id}", 'public');
-                    if ($firstPath === null) {
-                        $firstPath = $stored['path'];
-                        $orderItem->update(['image_path' => $stored['path']]);
-                    }
-                    OrderFile::create([
-                        'order_id' => $order->id,
-                        'order_item_id' => $orderItem->id,
-                        'user_id' => Auth::id(),
-                        'path' => $stored['path'],
-                        'original_name' => $stored['original_name'],
-                        'mime_type' => $stored['mime_type'],
-                        'size' => $stored['size'],
-                        'type' => 'product_image',
-                    ]);
-                }
-            }
-
-            $commission = CommissionCalculator::calculate($rawSubtotal);
-
-            $order->update([
-                'subtotal' => round($rawSubtotal, 2),
-                'total_amount' => round($rawSubtotal + $commission, 2),
-            ]);
-
-            OrderTimeline::create([
-                'order_id' => $order->id,
-                'user_id' => Auth::id(),
-                'type' => 'status_change',
-                'status_to' => 'pending',
-            ]);
-
-            $createdOrder = $order;
-        });
-
-        if ($createdOrder) {
-            $this->insertSystemComment($createdOrder);
-
-            if (app()->environment('local')) {
-                $this->insertDevComments($createdOrder);
-            }
-
-            Activity::create([
-                'type' => 'new_order',
-                'subject_type' => Order::class,
-                'subject_id' => $createdOrder->id,
-                'causer_id' => Auth::id(),
-                'data' => [
-                    'order_number' => $createdOrder->order_number,
-                    'note' => null,
-                ],
-                'created_at' => now(),
-            ]);
-
-            // Increment campaign order count if the user was attributed to a campaign
-            $campaignId = Auth::user()?->ad_campaign_id;
-            if ($campaignId) {
-                AdCampaign::where('id', $campaignId)->increment('order_count');
-            }
-
-            UserActivityLog::fromRequest(request(), [
-                'user_id' => Auth::id(),
-                'subject_type' => Order::class,
-                'subject_id' => $createdOrder->id,
-                'event' => 'order_created',
-                'properties' => [
-                    'order_number' => $createdOrder->order_number,
-                    'total_amount' => $createdOrder->total_amount,
-                ],
-            ]);
-
-            // Redirect: success page (first N orders) or direct to order page
-            $enabled = (bool) Setting::get('order_success_screen_enabled', true);
-            $threshold = max(0, (int) Setting::get('order_success_screen_threshold', 10));
-            $totalOrders = Order::where('user_id', Auth::id())->count();
-
-            $showSuccessPage = $enabled && $totalOrders <= $threshold;
-
-            if ($showSuccessPage) {
-                $this->redirectRoute('orders.success', $createdOrder);
-            } else {
-                session()->flash('order_created', true);
-                session()->flash('success', __('order.created_successfully', [
-                    'number' => $createdOrder->order_number,
-                ]));
-                $this->redirectRoute('orders.show', $createdOrder);
-            }
-        }
-    }
-
-    /**
-     * Update existing order (edit flow). Validates resubmit window, rejects empty items.
-     */
-    private function submitOrderEdit(array $itemsWithOriginalIndex): void
-    {
-        $order = Order::with('items')->find($this->editingOrderId);
-
-        if (! $order || $order->user_id !== Auth::id()) {
-            $this->dispatch('notify', type: 'error', message: __('orders.edit_forbidden'));
-
-            return;
-        }
-
-        if ($order->is_paid) {
-            $this->dispatch('notify', type: 'error', message: __('orders.edit_already_paid'));
-
-            return;
-        }
-
-        if ($order->can_edit_until === null || now()->gte($order->can_edit_until)) {
-            $this->dispatch('notify', type: 'error', message: __('orders.edit_resubmit_window_expired'));
-
-            return;
-        }
-
-        if (empty($itemsWithOriginalIndex)) {
-            $this->dispatch('notify', type: 'error', message: __('orders.edit_empty_items_rejected'));
-
-            return;
-        }
-
-        $limits = $this->checkFileLimits();
-        if (! $limits['valid']) {
-            if ($limits['per_item_violation'] !== null) {
-                $this->dispatch('notify', type: 'error',
-                    message: __('order_form.max_per_item_exceeded', ['max' => $this->maxImagesPerItem]));
-            } else {
-                $this->dispatch('notify', type: 'error',
-                    message: __('order.max_images_per_order_blocked', ['max' => $this->maxImagesPerOrder]));
-            }
-
-            return;
-        }
-
-        $rates = $this->exchangeRates;
-
-        DB::transaction(function () use ($order, $itemsWithOriginalIndex, $rates) {
-            $order->items()->delete();
-
-            $rawSubtotal = 0;
-
-            foreach ($itemsWithOriginalIndex as $sortOrder => $entry) {
-                $item = $entry['data'];
-                $origIndex = $entry['orig'];
-
-                $price = is_numeric($item['price']) ? (float) $item['price'] : null;
-                $qty = max(1, (int) ($item['qty'] ?: 1));
-                $curr = $item['currency'] ?? 'USD';
-                $rate = $rates[$curr] ?? 0;
-
-                if ($price && $rate > 0) {
-                    $rawSubtotal += $price * $qty * $rate;
-                }
-
-                $orderItem = OrderItem::create([
-                    'order_id' => $order->id,
-                    'url' => $item['url'],
-                    'is_url' => safe_item_url($item['url'] ?? '') !== null,
-                    'qty' => $qty,
-                    'color' => $item['color'] ?: null,
-                    'size' => $item['size'] ?: null,
-                    'notes' => $item['notes'] ?: null,
-                    'currency' => $curr,
-                    'unit_price' => $price,
-                    'sort_order' => $sortOrder,
-                ]);
-
-                $files = $this->normalizeItemFiles()[$origIndex] ?? [];
-                $firstPath = null;
-                foreach ($files as $file) {
-                    if (! $file) {
-                        continue;
-                    }
-                    $stored = app(ImageConversionService::class)->storeForDisplay($file, "orders/{$order->id}", 'public');
-                    if ($firstPath === null) {
-                        $firstPath = $stored['path'];
-                        $orderItem->update(['image_path' => $stored['path']]);
-                    }
-                    OrderFile::create([
-                        'order_id' => $order->id,
-                        'order_item_id' => $orderItem->id,
-                        'user_id' => Auth::id(),
-                        'path' => $stored['path'],
-                        'original_name' => $stored['original_name'],
-                        'mime_type' => $stored['mime_type'],
-                        'size' => $stored['size'],
-                        'type' => 'product_image',
-                    ]);
-                }
-            }
-
-            $commission = CommissionCalculator::calculate($rawSubtotal);
-
-            $order->update([
-                'notes' => trim($this->orderNotes) ?: null,
-                'subtotal' => round($rawSubtotal, 2),
-                'total_amount' => round($rawSubtotal + $commission, 2),
-                'can_edit_until' => null,
-            ]);
-
-            OrderTimeline::create([
-                'order_id' => $order->id,
-                'user_id' => Auth::id(),
-                'type' => 'note',
-                'body' => __('orders.timeline_items_edited'),
-            ]);
-
-            OrderComment::create([
-                'order_id' => $order->id,
-                'user_id' => null,
-                'body' => __('orders.edit_system_comment'),
-                'is_system' => true,
-            ]);
-        });
-
-        session()->flash('success', __('orders.edit_saved_successfully', ['number' => $order->order_number]));
-        $this->redirect(route('orders.show', $order));
-    }
-
-    /**
-     * Insert the automatic system comment immediately after order creation,
-     * mirroring WordPress behaviour: if prices were provided, show the
-     * calculated breakdown; otherwise tell the customer we'll calculate later.
-     */
-    private function insertSystemComment(Order $order): void
-    {
-        $hasPrices = $order->subtotal > 0;
-
-        $siteName = Setting::siteName(app()->getLocale());
-        $whatsapp = Setting::get('whatsapp', '');
-        $whatsappDisplay = $whatsapp ?: '-';
-        $companyName = Setting::get('payment_company_name') ?: $siteName;
-        $baseUrl = rtrim(config('app.url'), '/');
-
-        $replacements = [
-            'subtotal' => number_format($order->subtotal, 0, '.', ','),
-            'commission' => number_format(max(0, $order->total_amount - $order->subtotal), 0, '.', ','),
-            'total' => number_format($order->total_amount, 0, '.', ','),
-            'site_name' => $siteName,
-            'whatsapp' => $whatsappDisplay,
-            'company_name' => $companyName,
-            'payment_url' => $baseUrl.'/payment-methods',
-            'terms_url' => $baseUrl.'/terms-and-conditions',
-            'faq_url' => $baseUrl.'/faq',
-            'shipping_url' => $baseUrl.'/shipping-calculator',
-        ];
-
-        if ($hasPrices) {
-            $template = Setting::get('auto_comment_with_price', '');
-            $body = $template !== ''
-                ? str_replace(array_map(fn ($k) => ':'.$k, array_keys($replacements)), array_values($replacements), $template)
-                : __('orders.auto_comment_with_price', $replacements);
-        } else {
-            $template = Setting::get('auto_comment_no_price', '');
-            $body = $template !== ''
-                ? str_replace(array_map(fn ($k) => ':'.$k, array_keys($replacements)), array_values($replacements), $template)
-                : __('orders.auto_comment_no_price', ['whatsapp' => $whatsappDisplay]);
-        }
-
-        OrderComment::create([
-            'order_id' => $order->id,
-            'user_id' => null,
-            'body' => $body,
-            'is_system' => true,
-        ]);
-    }
-
-    /**
-     * Dev only: add 20 back-and-forth comments with images on some (every 4th).
-     * Used for packing-order testing.
-     */
-    private function insertDevComments(Order $order): void
-    {
-        $customer = $order->user;
-        $staff = User::staff()->first() ?? $customer;
-
-        $messages = [
-            'Hi, I just placed this order. Please confirm you received it.',
-            'Order received! We will start processing within 24 hours.',
-            'Can you check if these items are in stock?',
-            'All items are in stock. We will proceed with the purchase.',
-            'I need this by next week if possible.',
-            'We will do our best to meet your deadline.',
-            'Please use the exact colors I specified.',
-            'Noted on the colors. We will match exactly.',
-            'Is there any discount available for bulk order?',
-            'Let me check with the team and get back to you.',
-            'I added one more item - the blue one. Thanks!',
-            'Got it! The blue item has been added.',
-            'When will you start processing?',
-            'Processing has started. You will get updates soon.',
-            'I sent the payment via bank transfer. Reference: TXN123.',
-            'Payment received. Thank you! Order is now confirmed.',
-            'Can you combine shipping with my previous order?',
-            'We can combine shipping. I will merge the orders.',
-            'Please pack carefully - these are fragile.',
-            'We use premium packaging for fragile items.',
-        ];
-
-        $withImage = [4, 8, 12, 16, 20];
-        $png = base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            true
+        $normalizedFiles = $this->normalizeItemFiles();
+        $data = new OrderSubmissionData(
+            userId: $user->id,
+            isStaff: $user->isStaffOrAbove(),
+            items: $itemsWithOriginalIndex,
+            orderNotes: $this->orderNotes,
+            normalizedFiles: $normalizedFiles,
+            exchangeRates: $this->exchangeRates,
+            maxImagesPerItem: $this->maxImagesPerItem,
+            maxImagesPerOrder: $this->maxImagesPerOrder,
+            editingOrderId: $this->editingOrderId,
+            duplicateFrom: $this->duplicateFrom,
+            productUrl: $this->productUrl,
+            activeLayout: $this->activeLayout,
+            request: request(),
         );
 
-        for ($i = 0; $i < 20; $i++) {
-            $isCustomer = ($i % 2) === 0;
-            $author = $isCustomer ? $customer : $staff;
-            $body = $messages[$i % count($messages)];
+        $result = app(OrderSubmissionService::class)->submit($data);
 
-            $comment = OrderComment::create([
-                'order_id' => $order->id,
-                'user_id' => $author->id,
-                'body' => $body,
-                'is_internal' => false,
-            ]);
-
-            if (in_array($i + 1, $withImage, true) && $png !== false) {
-                $path = "orders/{$order->id}/comment-{$comment->id}-".uniqid().'.png';
-                Storage::disk('public')->put($path, $png);
-                OrderFile::create([
-                    'order_id' => $order->id,
-                    'user_id' => $author->id,
-                    'comment_id' => $comment->id,
-                    'path' => $path,
-                    'original_name' => 'attachment.png',
-                    'mime_type' => 'image/png',
-                    'size' => 100,
-                    'type' => 'comment',
-                ]);
+        if (! $result->success) {
+            if ($result->errorType === 'notify') {
+                $this->dispatch('notify', type: 'error', message: $result->errorMessage);
+            } else {
+                session()->flash('error', $result->errorMessage);
+                $this->redirect($result->redirectUrl ?? route('orders.index'));
             }
+
+            return;
         }
+
+        foreach ($result->sessionFlashes as $key => $value) {
+            session()->flash($key, $value);
+        }
+        $this->redirect($result->redirectUrl);
     }
 
     // -------------------------------------------------------------------------
@@ -1138,24 +589,6 @@ class NewOrder extends Component
             'currency' => $currency,
             'notes' => '',
         ];
-    }
-
-    private function generateOrderNumber(): string
-    {
-        $query = Order::query()->lockForUpdate();
-
-        if (DB::getDriverName() === 'mysql') {
-            $max = (int) $query
-                ->whereRaw("order_number REGEXP '^[0-9]+$'")
-                ->max(DB::raw('CAST(order_number AS UNSIGNED)'));
-        } else {
-            // SQLite-compatible fallback (used in tests)
-            $max = (int) $query
-                ->whereRaw("order_number GLOB '[0-9]*'")
-                ->max(DB::raw('CAST(order_number AS INTEGER)'));
-        }
-
-        return (string) ($max + 1);
     }
 
     private function validationRules(): array
