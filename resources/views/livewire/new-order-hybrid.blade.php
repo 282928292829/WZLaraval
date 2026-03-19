@@ -130,8 +130,8 @@
     </div>
 
     {{-- Table container — horizontal scroll on all screen sizes --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div class="overflow-x-auto" x-ref="tableScrollContainer">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm relative">
+        <div class="overflow-x-auto" x-ref="tableScrollContainer" @scroll="updateScrollHint()">
             <table class="w-full min-w-[860px] border-collapse text-sm">
                 <thead class="sticky top-0 z-20 shadow-sm">
                     <tr class="bg-primary-200/90 border-b border-primary-400">
@@ -507,8 +507,6 @@
     <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
 </div>
 
-{{-- Login modal --}}
-@include('livewire.partials._order-login-modal')
 
 </div>
 </div>
@@ -762,8 +760,8 @@
         <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
     </div>
 
-    {{-- Login modal (mobile) --}}
-    @include('livewire.partials._order-login-modal')
+    {{-- Login modal --}}
+    @livewire('guest-login-modal')
 
 </div>
 
@@ -788,6 +786,7 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
         showDraftPrompt: false,
         pendingDraftItems: null,
         pendingDraftNotes: '',
+        showScrollHintRight: false,
 
         // Override init() — show draft prompt instead of silently restoring
         init() {
@@ -818,6 +817,9 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
             }
 
             this.calcTotals();
+
+            this.$nextTick(() => { this.updateScrollHint(); });
+            window.addEventListener('resize', () => this.updateScrollHint());
 
             window.addEventListener('beforeunload', (e) => {
                 if (this.submitting || !this.hasUnsavedData()) return;

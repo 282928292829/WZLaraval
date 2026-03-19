@@ -20,14 +20,50 @@
 
 <div class="max-w-4xl mx-auto px-4 py-5 sm:py-6 space-y-4">
 
+    {{-- localStorage: restore/clear/save filter state (runs on load) --}}
+    <script>
+    (function() {
+        var KEY_OPEN = 'wasetzon_comments_filter_open';
+        var KEY_FILTERS = 'wasetzon_comments_last_filters';
+        var FILTER_KEYS = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit'];
+        try {
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('cleared')) {
+                localStorage.removeItem(KEY_FILTERS);
+                params.delete('cleared');
+                var qs = params.toString();
+                var url = window.location.pathname + (qs ? '?' + qs : '');
+                window.history.replaceState({}, '', url);
+            } else {
+                var hasFilters = FILTER_KEYS.some(function(k) { return params.has(k); });
+                if (hasFilters) {
+                    var obj = {};
+                    FILTER_KEYS.forEach(function(k) {
+                        if (params.has(k)) obj[k] = params.get(k);
+                    });
+                    localStorage.setItem(KEY_FILTERS, JSON.stringify(obj));
+                } else {
+                    var stored = localStorage.getItem(KEY_FILTERS);
+                    if (stored) {
+                        var parsed = JSON.parse(stored);
+                        var qs = Object.keys(parsed).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(parsed[k]); }).join('&');
+                        if (qs) window.location.replace(window.location.pathname + '?' + qs);
+                    }
+                }
+            }
+        } catch (e) {}
+    })();
+    </script>
+
     {{-- Filter form --}}
     @php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit']; @endphp
-    <div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }">
+    <div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }"
+         x-init="try { var s = localStorage.getItem('wasetzon_comments_filter_open'); if (s !== null && !{{ request()->hasAny($filterKeys) ? 'true' : 'false' }}) open = s === 'true'; } catch(e){}; $watch('open', function(v){ try { localStorage.setItem('wasetzon_comments_filter_open', v); } catch(e){} })">
         <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold text-gray-700">
                 {{ __('orders.filters') }}
                 @if (request()->hasAny($filterKeys))
-                    <span class="font-normal text-gray-500">· <a href="{{ $clearFiltersUrl }}" class="text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a></span>
+                    <span class="font-normal text-gray-500">· <a href="{{ route('comments.index') }}?cleared=1" class="text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a></span>
                 @endif
             </h2>
             <button type="button" @click="open = !open"
@@ -125,7 +161,7 @@
             </div>
             <div class="px-4 pb-4 flex gap-2">
                 <button type="submit" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_apply') }}</button>
-                <a href="{{ $clearFiltersUrl }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_reset') }}</a>
+                <a href="{{ route('comments.index') }}?cleared=1" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_reset') }}</a>
             </div>
         </form>
     </div>

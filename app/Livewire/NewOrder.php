@@ -16,9 +16,9 @@ use App\Services\CommissionCalculator;
 use App\Services\ImageConversionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -67,26 +67,6 @@ class NewOrder extends Component
 
     /** Cart layout: files for the current item being added (supports multiple when max_images_per_item > 1) */
     public $currentItemFiles = [];
-
-    // Guest login modal
-    public bool $showLoginModal = false;
-
-    /** 'submit' | 'attach' — controls modal copy and post-login action */
-    public string $loginModalReason = 'submit';
-
-    public string $modalStep = 'email';
-
-    public string $modalEmail = '';
-
-    public string $modalPassword = '';
-
-    public string $modalName = '';
-
-    public string $modalPhone = '';
-
-    public string $modalError = '';
-
-    public string $modalSuccess = '';
 
     public function mount(?int $duplicate_from = null, ?int $edit = null, string $product_url = ''): void
     {
@@ -636,8 +616,7 @@ class NewOrder extends Component
     public function submitOrder(): void
     {
         if (! Auth::check()) {
-            $this->loginModalReason = 'submit';
-            $this->showLoginModal = true;
+            $this->dispatch('open-login-modal', reason: 'submit');
 
             return;
         }
@@ -1131,122 +1110,17 @@ class NewOrder extends Component
     // Guest login modal actions
     // -------------------------------------------------------------------------
 
-    public function checkModalEmail(): void
-    {
-        $this->resetValidation('modalEmail');
-        $this->modalError = '';
-        $this->modalSuccess = '';
-
-        $this->validate(['modalEmail' => 'required|email'], [], ['modalEmail' => __('Email')]);
-
-        $exists = User::where('email', $this->modalEmail)->exists();
-        $this->modalStep = $exists ? 'login' : 'register';
-    }
-
-    public function loginFromModal(): void
-    {
-        $this->modalError = '';
-
-        $this->validate([
-            'modalEmail' => 'required|email',
-            'modalPassword' => 'required',
-        ], [], [
-            'modalEmail' => __('Email'),
-            'modalPassword' => __('Password'),
-        ]);
-
-        if (Auth::attempt(['email' => $this->modalEmail, 'password' => $this->modalPassword], true)) {
-            $this->showLoginModal = false;
-            $this->modalPassword = '';
-            if ($this->loginModalReason === 'attach') {
-                $this->loginModalReason = 'submit';
-                $this->dispatch('user-logged-in');
-
-                return;
-            }
-            $this->submitOrder();
-        } else {
-            $this->modalError = __('auth.failed');
-        }
-    }
-
-    public function registerFromModal(): void
-    {
-        $this->modalError = '';
-
-        $this->validate([
-            'modalEmail' => 'required|email|unique:users,email',
-            'modalPassword' => 'required|min:4',
-        ], [], [
-            'modalEmail' => __('Email'),
-            'modalPassword' => __('Password'),
-        ]);
-
-        $name = strstr($this->modalEmail, '@', true) ?: 'Customer';
-        $name = trim($name) !== '' ? $name : 'Customer';
-
-        $user = User::create([
-            'name' => $name,
-            'email' => $this->modalEmail,
-            'phone' => null,
-            'password' => bcrypt($this->modalPassword),
-        ]);
-
-        $user->assignRole('customer');
-        Auth::login($user, true);
-
-        $this->showLoginModal = false;
-        $this->modalPassword = '';
-        if ($this->loginModalReason === 'attach') {
-            $this->loginModalReason = 'submit';
-            $this->dispatch('user-logged-in');
-
-            return;
-        }
-        $this->submitOrder();
-    }
-
-    public function sendModalResetLink(): void
-    {
-        $this->modalError = '';
-        $this->modalSuccess = '';
-
-        $this->validate(['modalEmail' => 'required|email'], [], ['modalEmail' => __('Email')]);
-
-        $status = Password::sendResetLink(['email' => $this->modalEmail]);
-
-        if ($status === Password::RESET_LINK_SENT) {
-            $this->modalSuccess = __('order_form.reset_link_sent');
-        } else {
-            $this->modalError = __('passwords.user');
-        }
-    }
-
-    public function setModalStep(string $step): void
-    {
-        $this->modalStep = $step;
-        $this->modalError = '';
-        $this->modalSuccess = '';
-    }
-
     public function openLoginModalForAttach(): void
     {
-        $this->loginModalReason = 'attach';
-        $this->showLoginModal = true;
-        $this->modalStep = 'email';
-        $this->modalError = '';
-        $this->modalSuccess = '';
+        $this->dispatch('open-login-modal', reason: 'attach');
     }
 
-    public function closeModal(): void
+    #[On('user-logged-in')]
+    public function handleUserLoggedIn(string $reason = 'submit'): void
     {
-        $this->showLoginModal = false;
-        $this->loginModalReason = 'submit';
-        $this->modalStep = 'email';
-        $this->modalEmail = '';
-        $this->modalPassword = '';
-        $this->modalError = '';
-        $this->modalSuccess = '';
+        if ($reason === 'submit') {
+            $this->submitOrder();
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\GuestLoginModal;
 use App\Livewire\NewOrder;
 use App\Models\Setting;
 use App\Models\User;
@@ -22,7 +23,7 @@ test('guest submit order opens login modal without redirect', function (): void 
         ])
         ->set('itemFiles', [[]])
         ->call('submitOrder')
-        ->assertSet('showLoginModal', true)
+        ->assertDispatched('open-login-modal')
         ->assertNoRedirect();
 });
 
@@ -180,7 +181,7 @@ test('loginFromModal for attach reason dispatches user-logged-in event', functio
     ]);
     $user->assignRole('customer');
 
-    Livewire::test(NewOrder::class)
+    Livewire::test(GuestLoginModal::class)
         ->set('loginModalReason', 'attach')
         ->set('modalEmail', 'attach-test@example.com')
         ->set('modalPassword', 'password123')
@@ -190,14 +191,14 @@ test('loginFromModal for attach reason dispatches user-logged-in event', functio
 });
 
 test('registerFromModal for attach reason dispatches user-logged-in event', function (): void {
-    Livewire::test(NewOrder::class)
+    Livewire::test(GuestLoginModal::class)
         ->set('loginModalReason', 'attach')
         ->set('modalEmail', 'new-user-attach@example.com')
         ->set('modalPassword', 'password123')
         ->call('checkModalEmail')
         ->assertSet('modalStep', 'register');
 
-    Livewire::test(NewOrder::class)
+    Livewire::test(GuestLoginModal::class)
         ->set('loginModalReason', 'attach')
         ->set('modalEmail', 'new-user-attach@example.com')
         ->set('modalPassword', 'password123')

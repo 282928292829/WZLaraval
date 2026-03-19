@@ -265,7 +265,7 @@
 </div>
 
 {{-- Login modal --}}
-@include('livewire.partials._order-login-modal')
+@livewire('guest-login-modal')
 
 </div>
 </div>

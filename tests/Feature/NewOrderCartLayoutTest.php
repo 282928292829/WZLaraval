@@ -248,7 +248,7 @@ test('submitOrder prompts login modal when guest', function (): void {
         ])
         ->call('submitOrder');
 
-    $component->assertSet('showLoginModal', true);
+    $component->assertDispatched('open-login-modal');
     expect(Order::count())->toBe(0);
 });
 

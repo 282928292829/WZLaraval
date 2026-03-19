@@ -321,8 +321,8 @@
     <img :src="zoomedImage" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" @click.stop alt="">
 </div>
 
-{{-- Login modal — must be inside x-data for Alpine/Livewire scope --}}
-@include('livewire.partials._order-login-modal')
+{{-- Login modal --}}
+@livewire('guest-login-modal')
 
 </div>
 </div>

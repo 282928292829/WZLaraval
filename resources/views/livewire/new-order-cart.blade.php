@@ -312,7 +312,7 @@
     </button>
     @endif
 </div>
-    @include('livewire.partials._order-login-modal')
+    @livewire('guest-login-modal')
 </div>
 
 @push('scripts')
