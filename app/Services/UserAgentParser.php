@@ -19,12 +19,12 @@ class UserAgentParser
     public function parse(): array
     {
         return [
-            'browser'         => $this->browser(),
+            'browser' => $this->browser(),
             'browser_version' => $this->browserVersion(),
-            'device'          => $this->deviceType(),
-            'device_model'    => $this->deviceModel(),
-            'os'              => $this->os(),
-            'os_version'      => $this->osVersion(),
+            'device' => $this->deviceType(),
+            'device_model' => $this->deviceModel(),
+            'os' => $this->os(),
+            'os_version' => $this->osVersion(),
         ];
     }
 
@@ -68,19 +68,19 @@ class UserAgentParser
 
     public function browserVersion(): string
     {
-        $ua      = $this->ua;
+        $ua = $this->ua;
         $browser = $this->browser();
 
         $patterns = [
-            'Edge'            => '/(?:Edg|Edge)\/(\S+)/',
-            'Opera'           => '/(?:OPR|Opera)\/(\S+)/',
+            'Edge' => '/(?:Edg|Edge)\/(\S+)/',
+            'Opera' => '/(?:OPR|Opera)\/(\S+)/',
             'Samsung Browser' => '/SamsungBrowser\/(\S+)/',
-            'UC Browser'      => '/UCBrowser\/(\S+)/',
-            'Yandex'          => '/YaBrowser\/(\S+)/',
-            'Chrome'          => '/Chrome\/(\S+)/',
-            'Chromium'        => '/Chromium\/(\S+)/',
-            'Firefox'         => '/(?:Firefox|FxiOS)\/(\S+)/',
-            'Safari'          => '/Version\/(\S+)/',
+            'UC Browser' => '/UCBrowser\/(\S+)/',
+            'Yandex' => '/YaBrowser\/(\S+)/',
+            'Chrome' => '/Chrome\/(\S+)/',
+            'Chromium' => '/Chromium\/(\S+)/',
+            'Firefox' => '/(?:Firefox|FxiOS)\/(\S+)/',
+            'Safari' => '/Version\/(\S+)/',
             'Internet Explorer' => '/(?:MSIE |rv:)(\S+)/',
         ];
 
@@ -99,10 +99,10 @@ class UserAgentParser
             return 'tablet';
         }
         if (
-            str_contains($ua, 'mobile')   ||
-            str_contains($ua, 'android')  ||
-            str_contains($ua, 'iphone')   ||
-            str_contains($ua, 'ipod')     ||
+            str_contains($ua, 'mobile') ||
+            str_contains($ua, 'android') ||
+            str_contains($ua, 'iphone') ||
+            str_contains($ua, 'ipod') ||
             str_contains($ua, 'blackberry') ||
             str_contains($ua, 'windows phone')
         ) {
@@ -121,6 +121,7 @@ class UserAgentParser
             if (preg_match('/iPhone(\d+),(\d+)/', $ua, $m)) {
                 return $this->iphoneModelFromIdentifier((int) $m[1], (int) $m[2]);
             }
+
             return 'iPhone';
         }
 
@@ -131,20 +132,20 @@ class UserAgentParser
 
         // Samsung Galaxy
         if (preg_match('/Samsung[- ]?(\w[\w ]+)/i', $ua, $m)) {
-            return 'Samsung ' . trim($m[1]);
+            return 'Samsung '.trim($m[1]);
         }
         if (preg_match('/SM-([A-Z0-9]+)/i', $ua, $m)) {
-            return 'Samsung SM-' . strtoupper($m[1]);
+            return 'Samsung SM-'.strtoupper($m[1]);
         }
 
         // Huawei
         if (preg_match('/(?:Huawei|HW[- ]?)([A-Z0-9\-]+)/i', $ua, $m)) {
-            return 'Huawei ' . strtoupper($m[1]);
+            return 'Huawei '.strtoupper($m[1]);
         }
 
         // Pixel
         if (preg_match('/Pixel (\d+[A-Za-z]*)/i', $ua, $m)) {
-            return 'Google Pixel ' . $m[1];
+            return 'Google Pixel '.$m[1];
         }
 
         // Generic Android device name
@@ -191,11 +192,11 @@ class UserAgentParser
 
         $patterns = [
             'Windows Phone' => '/Windows Phone ([\d.]+)/',
-            'Windows'       => '/Windows NT ([\d.]+)/',
-            'iOS'           => '/(?:iPhone|iPad) OS ([\d_]+)/',
-            'macOS'         => '/Mac OS X ([\d_.]+)/',
-            'Android'       => '/Android ([\d.]+)/',
-            'ChromeOS'      => '/CrOS \S+ ([\d.]+)/',
+            'Windows' => '/Windows NT ([\d.]+)/',
+            'iOS' => '/(?:iPhone|iPad) OS ([\d_]+)/',
+            'macOS' => '/Mac OS X ([\d_.]+)/',
+            'Android' => '/Android ([\d.]+)/',
+            'ChromeOS' => '/CrOS \S+ ([\d.]+)/',
         ];
 
         if (isset($patterns[$os]) && preg_match($patterns[$os], $ua, $m)) {
@@ -205,12 +206,12 @@ class UserAgentParser
             if ($os === 'Windows') {
                 $ver = match ($ver) {
                     '10.0' => '10/11',
-                    '6.3'  => '8.1',
-                    '6.2'  => '8',
-                    '6.1'  => '7',
-                    '6.0'  => 'Vista',
-                    '5.2'  => 'XP x64',
-                    '5.1'  => 'XP',
+                    '6.3' => '8.1',
+                    '6.2' => '8',
+                    '6.1' => '7',
+                    '6.0' => 'Vista',
+                    '5.2' => 'XP x64',
+                    '5.1' => 'XP',
                     default => $ver,
                 };
             }
@@ -229,33 +230,33 @@ class UserAgentParser
     {
         // Approximate mapping — covers most common models
         return match (true) {
-            $major === 14 && $minor <= 2  => 'iPhone 6',
-            $major === 14 && $minor <= 5  => 'iPhone 6 Plus',
-            $major === 15 && $minor <= 2  => 'iPhone 6s',
-            $major === 15 && $minor <= 4  => 'iPhone 6s Plus',
+            $major === 14 && $minor <= 2 => 'iPhone 6',
+            $major === 14 && $minor <= 5 => 'iPhone 6 Plus',
+            $major === 15 && $minor <= 2 => 'iPhone 6s',
+            $major === 15 && $minor <= 4 => 'iPhone 6s Plus',
             $major === 16 && $minor === 1 => 'iPhone SE (1st gen)',
-            $major === 16 && $minor <= 4  => 'iPhone 7',
-            $major === 16 && $minor <= 6  => 'iPhone 7 Plus',
-            $major === 17 && $minor <= 4  => 'iPhone 8',
-            $major === 17 && $minor <= 6  => 'iPhone 8 Plus',
-            $major === 10 && $minor <= 3  => 'iPhone X',
-            $major === 11 && $minor <= 2  => 'iPhone XS',
+            $major === 16 && $minor <= 4 => 'iPhone 7',
+            $major === 16 && $minor <= 6 => 'iPhone 7 Plus',
+            $major === 17 && $minor <= 4 => 'iPhone 8',
+            $major === 17 && $minor <= 6 => 'iPhone 8 Plus',
+            $major === 10 && $minor <= 3 => 'iPhone X',
+            $major === 11 && $minor <= 2 => 'iPhone XS',
             $major === 11 && $minor === 4 => 'iPhone XS Max',
             $major === 11 && $minor === 6 => 'iPhone XR',
-            $major === 12 && $minor <= 3  => 'iPhone 11 Pro',
-            $major === 12 && $minor <= 5  => 'iPhone 11 Pro Max',
+            $major === 12 && $minor <= 3 => 'iPhone 11 Pro',
+            $major === 12 && $minor <= 5 => 'iPhone 11 Pro Max',
             $major === 12 && $minor === 8 => 'iPhone SE (2nd gen)',
-            $major === 13 && $minor <= 2  => 'iPhone 12 mini',
-            $major === 13 && $minor <= 4  => 'iPhone 12',
-            $major === 13 && $minor <= 6  => 'iPhone 12 Pro',
-            $major === 14 && $minor <= 8  => 'iPhone 12 Pro Max',
+            $major === 13 && $minor <= 2 => 'iPhone 12 mini',
+            $major === 13 && $minor <= 4 => 'iPhone 12',
+            $major === 13 && $minor <= 6 => 'iPhone 12 Pro',
+            $major === 14 && $minor <= 8 => 'iPhone 12 Pro Max',
             $major === 13 && $minor === 8 => 'iPhone 13 mini',
-            $major === 14 && $minor <= 6  => 'iPhone 13',
-            $major === 14 && $minor <= 8  => 'iPhone 13 Pro',
-            $major === 15 && $minor <= 8  => 'iPhone 14',
-            $major === 16 && $minor <= 8  => 'iPhone 15',
-            $major === 17 && $minor <= 8  => 'iPhone 15 Pro',
-            default                       => "iPhone ({$major},{$minor})",
+            $major === 14 && $minor <= 6 => 'iPhone 13',
+            $major === 14 && $minor <= 8 => 'iPhone 13 Pro',
+            $major === 15 && $minor <= 8 => 'iPhone 14',
+            $major === 16 && $minor <= 8 => 'iPhone 15',
+            $major === 17 && $minor <= 8 => 'iPhone 15 Pro',
+            default => "iPhone ({$major},{$minor})",
         };
     }
 }

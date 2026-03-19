@@ -1,18 +1,47 @@
 <x-app-layout :minimal-footer="true">
 
+@php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread']; @endphp
 <div x-data="{}" @keydown.escape.window="$store.commentExpanded.id = null">
-{{-- Page header --}}
+<div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }"
+     x-init="try { var s = localStorage.getItem('wasetzon_comments_filter_open'); if (s !== null && !{{ request()->hasAny($filterKeys) ? 'true' : 'false' }}) open = s === 'true'; } catch(e){}; $watch('open', function(v){ try { localStorage.setItem('wasetzon_comments_filter_open', v); } catch(e){} })">
+{{-- Merged header: one row — title + count | clear + filter toggle — flex-wrap on mobile --}}
 <div class="bg-white border-b border-gray-100">
-    <div class="max-w-4xl mx-auto px-4 py-4 sm:py-5">
-        <div class="flex items-center gap-3 min-w-0">
-            <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
+    <div class="max-w-4xl mx-auto px-4 py-3 sm:py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                </div>
+                <div class="flex flex-col gap-0.5">
+                    <h1 class="text-base font-bold text-gray-900">{{ __('comments.title') }}</h1>
+                    <span class="text-xs text-gray-500 font-normal flex items-center gap-1.5">
+                        {{ __('comments.unread') }}: {{ $unreadCount }}
+                        @if ($unreadCount > 0)
+                            <form method="POST" action="{{ route('comments.mark-all-read') }}?{{ http_build_query(request()->query()) }}" class="inline" x-data="{ submitting: false }" @submit="submitting = true">
+                                @csrf
+                                <button type="submit" :disabled="submitting"
+                                        class="inline-flex p-0.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-1 focus:ring-gray-300"
+                                        title="{{ __('comments.mark_all_read') }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        @endif
+                    </span>
+                </div>
             </div>
-            <div class="min-w-0">
-                <h1 class="text-base font-bold text-gray-900">{{ __('comments.page_title') }}</h1>
-                <p class="text-xs text-gray-500 mt-0.5">{{ $comments->total() }} {{ __('Comments') }}</p>
+            <div class="flex items-center gap-2 shrink-0">
+                @if (request()->hasAny($filterKeys))
+                    <a href="{{ route('comments.index') }}?cleared=1" class="text-xs font-medium text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a>
+                @endif
+                <button type="button" @click="open = !open"
+                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+                    <template x-if="open"><span>{{ __('orders.filter_hide') }}</span></template>
+                    <template x-if="!open"><span>{{ __('orders.filter_show') }}</span></template>
+                </button>
             </div>
         </div>
     </div>
@@ -25,7 +54,7 @@
     (function() {
         var KEY_OPEN = 'wasetzon_comments_filter_open';
         var KEY_FILTERS = 'wasetzon_comments_last_filters';
-        var FILTER_KEYS = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit'];
+        var FILTER_KEYS = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread'];
         try {
             var params = new URLSearchParams(window.location.search);
             if (params.has('cleared')) {
@@ -55,27 +84,10 @@
     })();
     </script>
 
-    {{-- Filter form --}}
-    @php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit']; @endphp
-    <div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }"
-         x-init="try { var s = localStorage.getItem('wasetzon_comments_filter_open'); if (s !== null && !{{ request()->hasAny($filterKeys) ? 'true' : 'false' }}) open = s === 'true'; } catch(e){}; $watch('open', function(v){ try { localStorage.setItem('wasetzon_comments_filter_open', v); } catch(e){} })">
-        <div class="flex items-center justify-between gap-2">
-            <h2 class="text-sm font-semibold text-gray-700">
-                {{ __('orders.filters') }}
-                @if (request()->hasAny($filterKeys))
-                    <span class="font-normal text-gray-500">· <a href="{{ route('comments.index') }}?cleared=1" class="text-primary-500 hover:text-primary-600">{{ __('orders.filter_clear') }}</a></span>
-                @endif
-            </h2>
-            <button type="button" @click="open = !open"
-                    class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors shrink-0">
-                <template x-if="open"><span>{{ __('orders.filter_hide') }}</span></template>
-                <template x-if="!open"><span>{{ __('orders.filter_show') }}</span></template>
-            </button>
-        </div>
-
-        <form method="GET" action="{{ $formAction }}" x-show="open" x-cloak
-              class="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    {{-- Filter form (toggle in merged header above) --}}
+    <form method="GET" action="{{ $formAction }}" x-show="open" x-cloak
+          class="mt-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('orders.search_label') }}</label>
                     <input type="text" name="search" value="{{ request('search') }}"
@@ -88,6 +100,13 @@
                         <option value="" @selected(request('internal') === null)>{{ __('comments.internal_all') }}</option>
                         <option value="1" @selected(request('internal') === '1')>{{ __('comments.internal_only') }}</option>
                         <option value="0" @selected(request('internal') === '0')>{{ __('comments.internal_exclude') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.read_filter') }}</label>
+                    <select name="unread" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="" @selected(request('unread') !== '1')>{{ __('comments.read_all') }}</option>
+                        <option value="1" @selected(request('unread') === '1')>{{ __('comments.unread_only') }}</option>
                     </select>
                 </div>
                 <div>
@@ -164,7 +183,6 @@
                 <a href="{{ route('comments.index') }}?cleared=1" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition-colors">{{ __('orders.filter_reset') }}</a>
             </div>
         </form>
-    </div>
 
     {{-- Comments list --}}
     @if ($comments->isEmpty())
@@ -190,11 +208,12 @@
                          orderSlug: @js($comment->order?->order_number ?? (string) $comment->order_id),
                          orderNumber: @js($comment->order?->order_number ?? '#' . $comment->order_id),
                          author: @js($comment->user?->name ?? __('System')),
-                         createdAt: @js($comment->created_at->format('d M Y, H:i')),
+                         createdAt: @js(__('comments.date') . ': ' . $comment->created_at->format('d/m/Y') . ' ' . __('comments.hour') . ': ' . $comment->created_at->format('H:i')),
                          isoCreatedAt: @js($comment->created_at->toIso8601String()),
                          isInternal: {{ $comment->is_internal ? 'true' : 'false' }},
                          trashed: {{ $comment->trashed() ? 'true' : 'false' }},
                          canEdit: {{ $canEdit ? 'true' : 'false' }},
+                         markReadUrl: @js(route('orders.comments.mark-read', $comment->order)),
                          updateUrl: @js(route('orders.comments.update', [$comment->order_id, $comment->id])),
                          bodyRequired: @js(__('orders.comment_body_required')),
                          editSuccess: @js(__('comments.edit_success')),
@@ -210,25 +229,22 @@
                          attachLimitExceeded: @js(__('comments.attach_limit_exceeded'))
                      })">
                     <div class="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors" @click="toggle()">
-                        <div class="flex flex-wrap items-start justify-between gap-2">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
-                                    @php $orderSlug = $comment->order?->order_number ?? $comment->order_id; @endphp
-                                    <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" @click.stop>
-                                        {{ $comment->order?->order_number ?? '#' . $comment->order_id }}
-                                    </a>
-                                    <span>·</span>
-                                    <span x-text="author"></span>
-                                    <span>·</span>
-                                    <time :datetime="isoCreatedAt" x-text="createdAt"></time>
-                                    @if ($comment->is_internal)
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">{{ __('orders.internal_note') }}</span>
-                                    @endif
-                                    @if ($comment->trashed())
-                                        <span class="text-red-500">{{ __('Deleted') }}</span>
-                                    @endif
-                                </div>
-                                <p class="text-sm text-gray-800 leading-relaxed line-clamp-3" dir="auto" x-text="body"></p>
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
+                                @php $orderSlug = $comment->order?->order_number ?? $comment->order_id; @endphp
+                                <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700 shrink-0" @click.stop>
+                                    {{ $comment->order?->order_number ?? '#' . $comment->order_id }}
+                                </a>
+                                <span class="shrink-0">·</span>
+                                <span x-text="author" class="shrink-0"></span>
+                                <span class="shrink-0">·</span>
+                                <time :datetime="isoCreatedAt" x-text="createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="shrink-0"></time>
+                                @if ($comment->is_internal)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 shrink-0">{{ __('orders.internal_note') }}</span>
+                                @endif
+                                @if ($comment->trashed())
+                                    <span class="text-red-500 shrink-0">{{ __('Deleted') }}</span>
+                                @endif
                             </div>
                             <div class="flex items-center gap-2 shrink-0" @click.stop>
                                 <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer"
@@ -247,6 +263,7 @@
                                 </a>
                             </div>
                         </div>
+                        <p class="text-sm text-gray-800 leading-relaxed line-clamp-3 text-start w-full" dir="auto" x-text="body"></p>
                     </div>
 
                     {{-- Inline expanded: full body + edit --}}
@@ -257,11 +274,11 @@
                         <div class="px-4 py-4 bg-gray-50/50">
                             <div x-show="!editing">
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
-                                    <a :href="'{{ url('/orders') }}/' + orderSlug" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
+                                    <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
                                     <span>·</span>
                                     <span x-text="author"></span>
                                     <span>·</span>
-                                    <time :datetime="isoCreatedAt" x-text="createdAt"></time>
+                                    <time :datetime="isoCreatedAt" x-text="createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"></time>
                                 </div>
                                 <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dir="auto" x-text="body"></p>
 
@@ -305,14 +322,14 @@
                                 </template>
 
                                 <div class="flex flex-wrap gap-2 mt-4">
-                                    <a :href="'{{ url('/orders') }}/' + orderSlug" target="_blank" rel="noopener noreferrer"
+                                    <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" @click.stop
                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
                                         {{ __('comments.open_order') }}
                                     </a>
-                                    <a :href="'{{ url('/orders') }}/' + orderSlug + '#comment-' + id" target="_blank" rel="noopener noreferrer"
+                                    <a href="{{ route('orders.show', $orderSlug) }}#comment-{{ $comment->id }}" target="_blank" rel="noopener noreferrer" @click.stop
                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -361,6 +378,7 @@
         @endif
     @endif
 
+</div>
 </div>
 </div>
 </x-app-layout>

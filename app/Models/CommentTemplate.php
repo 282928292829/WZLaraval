@@ -15,17 +15,17 @@ class CommentTemplate extends Model
     ];
 
     protected $casts = [
-        'is_active'   => 'boolean',
+        'is_active' => 'boolean',
         'usage_count' => 'integer',
-        'sort_order'  => 'integer',
+        'sort_order' => 'integer',
     ];
 
     /** Active templates ordered by usage then sort_order. */
     public function scopeActive($query)
     {
         return $query->where('is_active', true)
-                     ->orderByDesc('usage_count')
-                     ->orderBy('sort_order');
+            ->orderByDesc('usage_count')
+            ->orderBy('sort_order');
     }
 
     public function incrementUsage(): void

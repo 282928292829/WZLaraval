@@ -89,10 +89,12 @@ class VerifyOrderComments extends Command
                 }
             }
             $this->newLine();
+
             return self::FAILURE;
         }
 
         $this->info("All {$checked} orders have matching comment counts.");
+
         return self::SUCCESS;
     }
 }

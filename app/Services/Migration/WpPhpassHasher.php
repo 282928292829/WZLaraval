@@ -83,13 +83,13 @@ class WpPhpassHasher
 
         do {
             $value = ord($input[$i++]);
-            $output .= $itoa64[$value & 0x3f];
+            $output .= $itoa64[$value & 0x3F];
 
             if ($i < $count) {
                 $value |= ord($input[$i]) << 8;
             }
 
-            $output .= $itoa64[($value >> 6) & 0x3f];
+            $output .= $itoa64[($value >> 6) & 0x3F];
 
             if ($i++ >= $count) {
                 break;
@@ -99,13 +99,13 @@ class WpPhpassHasher
                 $value |= ord($input[$i]) << 16;
             }
 
-            $output .= $itoa64[($value >> 12) & 0x3f];
+            $output .= $itoa64[($value >> 12) & 0x3F];
 
             if ($i++ >= $count) {
                 break;
             }
 
-            $output .= $itoa64[($value >> 18) & 0x3f];
+            $output .= $itoa64[($value >> 18) & 0x3F];
         } while ($i < $count);
 
         return $output;

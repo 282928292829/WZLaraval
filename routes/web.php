@@ -176,6 +176,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'can:view-all-orders'])->group(function () {
     Route::get('/comments', [CommentsController::class, 'index'])->name('comments.index');
+    Route::post('/comments/mark-all-read', [CommentsController::class, 'markAllRead'])->name('comments.mark-all-read');
     Route::get('/contact-submissions/{contactSubmission}', [ContactController::class, 'show'])->name('contact-submissions.show');
     Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
     Route::post('/inbox/mark-all-read', [InboxController::class, 'markAllRead'])->name('inbox.mark-all-read');

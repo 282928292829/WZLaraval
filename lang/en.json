@@ -210,6 +210,7 @@
     "comments.unread": "unread",
     "comments.all": "all",
     "comments.mark_all_read": "Mark all as read",
+    "comments.mark_all_read_done": "All comments marked as read",
     "comments.search_placeholder": "Comment, order number, or author...",
     "comments.read_filter": "Read status",
     "comments.read_all": "All",

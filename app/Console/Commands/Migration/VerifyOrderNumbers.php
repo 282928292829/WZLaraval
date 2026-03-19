@@ -48,6 +48,7 @@ class VerifyOrderNumbers extends Command
 
         $legacyOrders = $legacyOrders->map(function ($row) use ($orderIdMeta) {
             $row->order_id_meta = $orderIdMeta[(int) $row->wp_post_id] ?? null;
+
             return $row;
         });
 
@@ -146,6 +147,7 @@ class VerifyOrderNumbers extends Command
         $this->newLine();
         if (count($mismatches) === 0 && count($missingInLaravel) === 0) {
             $this->info("All {$total} orders match legacy 100%.");
+
             return self::SUCCESS;
         }
 
@@ -168,6 +170,7 @@ class VerifyOrderNumbers extends Command
             $existing = DB::table('orders')->where('order_number', $expected)->first();
             if ($existing && (int) $existing->wp_post_id !== $wpPostId) {
                 $this->error("  Cannot fix wp_post_id {$wpPostId}: target «{$expected}» already used by order id {$existing->id} (wp_post_id {$existing->wp_post_id})");
+
                 continue;
             }
             $updated = DB::table('orders')

@@ -109,7 +109,7 @@ class OrderSubmissionService
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => $data->userId,
                 'status' => 'pending',
-                'layout_option' => Setting::get('order_new_layout', config('order.default_layout')),
+                'layout_option' => (string) (Setting::get('order_new_layout') ?? config('order.default_layout') ?? 'table'),
                 'notes' => trim($data->orderNotes) !== '' ? trim($data->orderNotes) : null,
                 'shipping_address_id' => $defaultAddress?->id,
                 'shipping_address_snapshot' => $addressSnapshot,
@@ -285,6 +285,21 @@ class OrderSubmissionService
         }
 
         if (empty($data->items)) {
+            return new OrderSubmissionResult(
+                success: false,
+                errorMessage: __('orders.edit_empty_items_rejected'),
+                errorType: 'notify',
+            );
+        }
+
+        $hasMeaningfulItem = collect($data->items)->contains(function ($entry) {
+            $item = $entry['data'];
+            $url = trim($item['url'] ?? '');
+            $price = $item['price'] ?? null;
+
+            return $url !== '' || (is_numeric($price) && (float) $price > 0);
+        });
+        if (! $hasMeaningfulItem) {
             return new OrderSubmissionResult(
                 success: false,
                 errorMessage: __('orders.edit_empty_items_rejected'),

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class Testimonial extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'image_path',
         'name_ar',

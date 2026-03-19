@@ -32,8 +32,8 @@ class CreateTestOrdersWithStatus extends Command
                 ? "order_number REGEXP '^[0-9]+$'"
                 : "order_number GLOB '[0-9]*'")
             ->max(DB::raw(DB::getDriverName() === 'mysql'
-                ? "CAST(order_number AS UNSIGNED)"
-                : "CAST(order_number AS INTEGER)")) ?: 900000;
+                ? 'CAST(order_number AS UNSIGNED)'
+                : 'CAST(order_number AS INTEGER)')) ?: 900000;
 
         $created = 0;
         for ($i = 0; $i < $count; $i++) {

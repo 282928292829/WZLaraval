@@ -52,6 +52,45 @@ try {
 } catch (e) {}
 </script>
 @endif
+{{-- Mark comments as read when visible on order page (IntersectionObserver) --}}
+<script>
+(function() {
+    function init() {
+        var section = document.querySelector('.order-comments-section[data-mark-read-url]');
+        if (!section) return;
+        var url = section.getAttribute('data-mark-read-url');
+        var token = document.querySelector('meta[name=csrf-token]')?.content;
+        if (!url || !token) return;
+        var marked = new Set();
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var id = entry.target.getAttribute('data-comment-id');
+                if (!id || marked.has(id)) return;
+                marked.add(id);
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ comment_ids: [parseInt(id, 10)] })
+                }).catch(function() {});
+            });
+        }, { rootMargin: '0px', threshold: 0.25 });
+        section.querySelectorAll('.comment-item[data-comment-id]').forEach(function(el) {
+            observer.observe(el);
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
 @endpush
 
 @php

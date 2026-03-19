@@ -14,11 +14,12 @@ class FetchActivityGeoLocation implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 2;
+    public int $tries = 2;
+
     public int $timeout = 10;
 
     public function __construct(
-        private readonly int    $logId,
+        private readonly int $logId,
         private readonly string $ip,
     ) {}
 
@@ -34,7 +35,7 @@ class FetchActivityGeoLocation implements ShouldQueue
 
         $log->update([
             'country' => $geo['country'],
-            'city'    => $geo['city'],
+            'city' => $geo['city'],
         ]);
     }
 }

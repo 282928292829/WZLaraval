@@ -212,6 +212,7 @@
     "comments.unread": "غير مقروءة",
     "comments.all": "الكل",
     "comments.mark_all_read": "تعليم الكل كمقروء",
+    "comments.mark_all_read_done": "تم تعليم جميع التعليقات كمقروءة",
     "comments.search_placeholder": "نص التعليق، رقم الطلب، أو اسم الكاتب...",
     "comments.read_filter": "حالة القراءة",
     "comments.read_all": "الكل",

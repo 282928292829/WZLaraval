@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderComment;
+use App\Models\OrderCommentRead;
 use App\Models\Setting;
 use App\Services\OrderCommentFilterService;
 use Illuminate\Http\Request;
@@ -57,6 +58,14 @@ class CommentsController extends Controller
             $query->whereIn('order_id', $orderIdsSubquery);
         }
 
+        $unreadCount = auth()->id()
+            ? (clone $query)->whereDoesntHave('reads', fn ($r) => $r->where('user_id', auth()->id()))->count()
+            : 0;
+
+        if ($request->get('unread') === '1' && auth()->id()) {
+            $query->whereDoesntHave('reads', fn ($r) => $r->where('user_id', auth()->id()));
+        }
+
         $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
         $query->orderBy('created_at', $sort);
 
@@ -80,7 +89,69 @@ class CommentsController extends Controller
             'maxFilesPerComment',
             'maxFileSizeMb',
             'acceptFileTypes',
-            'statuses'
+            'statuses',
+            'unreadCount'
         ));
+    }
+
+    public function markAllRead(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $query = OrderComment::query()
+            ->when(auth()->user()?->isStaffOrAbove(), fn ($q) => $q->withTrashed());
+
+        if ($search = trim($request->get('search', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('body', 'like', "%{$search}%")
+                    ->orWhereHas('order', fn ($o) => $o->where('order_number', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+            });
+        }
+        if ($internal = $request->get('internal')) {
+            if ($internal === '1') {
+                $query->where('is_internal', true);
+            } elseif ($internal === '0') {
+                $query->where('is_internal', false);
+            }
+        }
+        if ($orderStatus = $request->get('order_status')) {
+            $query->whereHas('order', fn ($o) => $o->where('status', $orderStatus));
+        }
+        $dateRange = $request->get('date_range');
+        if ($dateRange === 'today') {
+            $query->whereDate('created_at', today());
+        } elseif ($dateRange === '7days') {
+            $query->where('created_at', '>=', now()->subDays(7));
+        }
+        $awaiting = $request->get('awaiting');
+        if (in_array($awaiting, \App\Services\OrderCommentFilterService::LAST_REPLY_VALUES, true)) {
+            $preset = $request->get('no_response_preset');
+            $customValue = $request->filled('no_response_value') ? (int) $request->get('no_response_value') : null;
+            $customUnit = $request->get('no_response_unit');
+            $orderIdsSubquery = OrderCommentFilterService::orderIdsAwaitingResponseSubquery(
+                $awaiting,
+                $preset === 'custom' ? 'custom' : $preset,
+                $customValue,
+                in_array($customUnit, ['hours', 'days'], true) ? $customUnit : null
+            );
+            $query->whereIn('order_id', $orderIdsSubquery);
+        }
+        if ($request->get('unread') === '1' && auth()->id()) {
+            $query->whereDoesntHave('reads', fn ($r) => $r->where('user_id', auth()->id()));
+        }
+        $query->orderBy('created_at', $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc');
+
+        $commentIds = $query->limit(5000)->pluck('id')->all();
+        $user = auth()->user();
+        if (! empty($commentIds) && $user) {
+            $now = now();
+            $rows = array_map(fn ($id) => [
+                'comment_id' => $id,
+                'user_id' => $user->id,
+                'read_at' => $now,
+            ], $commentIds);
+            OrderCommentRead::upsert($rows, ['comment_id', 'user_id'], ['read_at']);
+        }
+
+        return redirect()->route('comments.index', $request->query())->with('success', __('comments.mark_all_read_done'));
     }
 }

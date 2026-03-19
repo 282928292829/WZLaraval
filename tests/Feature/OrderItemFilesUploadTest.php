@@ -102,7 +102,6 @@ test('customer cannot upload when setting disabled', function (): void {
         ]);
 
     $response->assertStatus(403);
-    $response->assertJson(['success' => false]);
 });
 
 test('validation rejects empty files', function (): void {

@@ -10,15 +10,15 @@ return new class extends Migration
     {
         Schema::table('orders', function (Blueprint $table) {
             $table->foreignId('shipping_address_id')
-                  ->nullable()
-                  ->after('notes')
-                  ->constrained('user_addresses')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('notes')
+                ->constrained('user_addresses')
+                ->nullOnDelete();
 
             $table->json('shipping_address_snapshot')
-                  ->nullable()
-                  ->after('shipping_address_id')
-                  ->comment('Snapshot of address at order creation time');
+                ->nullable()
+                ->after('shipping_address_id')
+                ->comment('Snapshot of address at order creation time');
         });
     }
 

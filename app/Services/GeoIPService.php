@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class GeoIPService
 {
     private const API_URL = 'http://ip-api.com/json/';
+
     private const CACHE_TTL = 86400; // 24 hours in seconds
 
     /**
@@ -30,7 +31,7 @@ class GeoIPService
             return ['country' => '', 'city' => ''];
         }
 
-        $cacheKey = 'geoip:' . md5($ip);
+        $cacheKey = 'geoip:'.md5($ip);
 
         return cache()->remember($cacheKey, self::CACHE_TTL, function () use ($ip) {
             return $this->fetchFromApi($ip);
@@ -41,9 +42,9 @@ class GeoIPService
     {
         try {
             $response = Http::timeout(3)
-                ->get(self::API_URL . urlencode($ip), [
+                ->get(self::API_URL.urlencode($ip), [
                     'fields' => 'status,country,city',
-                    'lang'   => 'en',
+                    'lang' => 'en',
                 ]);
 
             if (! $response->successful()) {
@@ -58,11 +59,11 @@ class GeoIPService
 
             return [
                 'country' => $data['country'] ?? '',
-                'city'    => $data['city']    ?? '',
+                'city' => $data['city'] ?? '',
             ];
         } catch (\Throwable $e) {
             Log::warning('GeoIPService: lookup failed', [
-                'ip'    => $ip,
+                'ip' => $ip,
                 'error' => $e->getMessage(),
             ]);
 

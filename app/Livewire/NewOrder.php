@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\DTOs\OrderSubmissionData;
 use App\Livewire\Concerns\HandlesOrderItemFiles;
 use App\Livewire\Concerns\HasNewOrderBase;
-use App\Models\Order;
 use App\Models\Setting;
 use App\Services\CommissionCalculator;
 use App\Services\OrderSubmissionService;
@@ -63,13 +62,10 @@ class NewOrder extends Component
 
         $editId = $edit ?? (int) request()->query('edit', 0);
         if ($editId && Auth::check()) {
-            $order = Order::find($editId);
-            if ($order) {
-                $this->redirect(route('orders.show', $order));
-            }
+            $this->prefillFromEdit($editId);
         }
 
-        if ($duplicate_from && Auth::check()) {
+        if ($duplicate_from && Auth::check() && ! $this->editingOrderId) {
             $this->prefillFromDuplicate($duplicate_from);
         } elseif ($product_url !== '') {
             $this->productUrl = $product_url;
