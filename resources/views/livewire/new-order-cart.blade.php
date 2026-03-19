@@ -70,59 +70,10 @@
                 @endif
 
                 <form wire:submit="addToCart" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-5">
-                    {{-- Same field arrangement as Cards layout (grid-cols-6) for mobile parity --}}
-                    <div class="grid grid-cols-6 gap-x-3 gap-y-2.5">
-                        {{-- URL — full width --}}
-                        <div class="col-span-6">
-                            <div class="flex flex-wrap items-center gap-2 mb-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
-                                <span class="text-xs text-slate-500 font-medium">
-                                    {{ __('order_form.th_url') }}
-                                    <span class="order-field-optional">{{ __('order_form.optional') }}</span>
-                                </span>
-                                @include('livewire.partials._url-paste-open', ['mode' => 'current'])
-                            </div>
-                            <div dir="ltr">
-                                <input type="text" wire:model="currentItem.url" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left min-h-[2.5rem]" placeholder="{{ __('order_form.url_placeholder') }}" dir="ltr">
-                            </div>
-                        </div>
-                        {{-- Color — half, Size — half (same row on all screens, matching Cards) --}}
-                        <div class="col-span-3">
-                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_color') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.color" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]">
-                        </div>
-                        <div class="col-span-3">
-                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_size') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <input type="text" wire:model="currentItem.size" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]">
-                        </div>
-                        {{-- Qty + Price + Currency — inline row (same as Cards) --}}
-                        <div class="col-span-6 flex flex-nowrap items-end gap-2">
-                            <div class="min-w-0 flex-1">
-                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_qty') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                                <input type="text" wire:model="currentItem.qty" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="1" dir="ltr">
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_price_per_unit') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                                <input type="text" wire:model="currentItem.price" class="order-form-input w-full px-3 py-2 min-w-[4ch] border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="{{ __('placeholder.amount') }}" dir="ltr">
-                            </div>
-                            <div x-data="{ open: false }" class="relative min-w-0 flex-1 min-w-[5rem]">
-                                <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_currency') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                                <button type="button" @click="open = !open" class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
-                                    <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
-                                    <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                </button>
-                                <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
-                                    @foreach ($currencies ?? [] as $code => $data)
-                                    <button type="button" data-code="{{ $code }}" @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }} — {{ $data['label'] ?? $code }}</button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                        {{-- Notes — full width --}}
-                        <div class="col-span-6">
-                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_notes') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
-                            <textarea wire:model="currentItem.notes" rows="2" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white resize-y focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]" placeholder="{{ __('order_form.notes_placeholder') }}"></textarea>
-                        </div>
-                    </div>
+                    @include('livewire.partials._current-item-fields', [
+                        'labelClass' => 'text-xs text-slate-500 font-medium',
+                        'inputPy'    => 'py-2',
+                    ])
                     <div class="mb-4" x-data="{ fileName: '' }">
                         <label class="block text-sm font-semibold text-slate-800 mb-1">{{ __('order_form.th_files') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
                         <div class="flex items-center gap-3">
@@ -332,24 +283,35 @@ function newOrderFormCart(attachBlocked = false) {
         tipsOpen: false,
         tipsHidden: false,
         currentItemPasteFeedback: null,
+        currentItemPasteField: null,
         noLinkToOpenMsg: @js(__('order_form.no_link_to_open')),
+        clipboardEmptyMsg: @js(__('order_form.clipboard_empty')),
+        pasteFailedMsg: @js(__('order_form.paste_failed')),
+        pasteTooLongMsg: @js(__('order_form.paste_too_long')),
         pasteLabel: @js(__('order_form.paste')),
         pastedLabel: @js(__('order_form.pasted')),
         openLabel: @js(__('order_form.open')),
         openedLabel: @js(__('order_form.opened')),
-        doPasteCurrentItem(ev) {
+        doPasteCurrentItem(ev) { this.doPasteCurrentItemField('url', ev); },
+        doPasteCurrentItemField(field, ev) {
             if (!navigator.clipboard?.readText) {
+                this.showNotify('error', this.pasteFailedMsg);
                 return;
             }
+            const maxLen = (field === 'qty' || field === 'price') ? 50 : 2000;
             navigator.clipboard.readText().then(t => {
-                const text = t.trim();
-                if (!text) {
+                const text = String(t);
+                if (!text.trim()) {
+                    this.showNotify('error', this.clipboardEmptyMsg);
                     return;
                 }
-                this.$wire.set('currentItem.url', text.slice(0, 2000));
+                const trimmed = text.length > maxLen ? text.slice(0, maxLen) : text;
+                if (text.length > maxLen) this.showNotify('error', this.pasteTooLongMsg);
+                this.$wire.set('currentItem.' + field, trimmed);
                 this.currentItemPasteFeedback = 'pasted';
-                setTimeout(() => { this.currentItemPasteFeedback = null; }, 1500);
-            }).catch(() => {});
+                this.currentItemPasteField = field;
+                setTimeout(() => { this.currentItemPasteFeedback = null; this.currentItemPasteField = null; }, 1500);
+            }).catch(() => { this.showNotify('error', this.pasteFailedMsg); });
         },
         doOpenCurrentItem() {
             const v = (this.$wire.get('currentItem.url') || '').trim();

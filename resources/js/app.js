@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
         orderNumber: config.orderNumber ?? '',
         author: config.author ?? '',
         createdAt: config.createdAt ?? '',
+        createdAtRelative: config.createdAtRelative ?? '',
         isoCreatedAt: config.isoCreatedAt ?? '',
         isInternal: config.isInternal ?? false,
         trashed: config.trashed ?? false,
@@ -44,6 +45,16 @@ document.addEventListener('alpine:init', () => {
         attachError: config.attachError ?? 'Failed to attach file',
         attachLimitExceeded: config.attachLimitExceeded ?? 'Maximum files per comment.',
         markReadUrl: config.markReadUrl ?? '',
+        storeUrl: config.storeUrl ?? '',
+        isStaff: config.isStaff ?? false,
+        replyPlaceholder: config.replyPlaceholder ?? 'Write a reply...',
+        replyLabel: config.replyLabel ?? 'Reply',
+        replyInternalLabel: config.replyInternalLabel ?? 'Internal note',
+        replySuccess: config.replySuccess ?? 'Comment posted',
+        replyBody: '',
+        replyInternal: false,
+        replying: false,
+        replyErrorMsg: null,
         toggle() {
             if (this.$store.commentExpanded.id === this.id) {
                 this.$store.commentExpanded.id = null;
@@ -82,13 +93,14 @@ document.addEventListener('alpine:init', () => {
             }
             this.saving = true;
             this.editErrorMsg = null;
+            const token = document.querySelector('meta[name=csrf-token]')?.content;
             try {
                 const res = await fetch(this.updateUrl, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-CSRF-TOKEN': token || '',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify({ body: String(this.editBody).trim() }),
@@ -137,9 +149,10 @@ document.addEventListener('alpine:init', () => {
             }
             this.attaching = true;
             this.attachErrorMsg = null;
+            const token = document.querySelector('meta[name=csrf-token]')?.content;
             const formData = new FormData();
             for (const f of fileList) formData.append('files[]', f);
-            formData.append('_token', this.csrfToken);
+            formData.append('_token', token || '');
             try {
                 const res = await fetch(this.attachUrl, {
                     method: 'POST',
@@ -158,6 +171,46 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.attaching = false;
                 input.value = '';
+            }
+        },
+        async submitReply() {
+            const body = String(this.replyBody || '').trim();
+            this.replyErrorMsg = null;
+            if (!body) {
+                this.replyErrorMsg = this.bodyRequired;
+                return;
+            }
+            if (!this.storeUrl) {
+                this.replyErrorMsg = this.editError;
+                return;
+            }
+            const token = document.querySelector('meta[name=csrf-token]')?.content;
+            this.replying = true;
+            this.replyErrorMsg = null;
+            try {
+                const formData = new FormData();
+                formData.append('body', body);
+                formData.append('_token', token || '');
+                if (this.isStaff && this.replyInternal) {
+                    formData.append('is_internal', '1');
+                }
+                const res = await fetch(this.storeUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    this.replyBody = '';
+                    this.replyInternal = false;
+                    this.showToast(this.replySuccess, 'success');
+                } else {
+                    this.replyErrorMsg = data.message ?? data.errors?.body?.[0] ?? this.editError;
+                }
+            } catch {
+                this.replyErrorMsg = this.editError;
+            } finally {
+                this.replying = false;
             }
         },
     }));

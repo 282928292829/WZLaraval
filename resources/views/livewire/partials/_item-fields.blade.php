@@ -193,24 +193,10 @@
 {{-- Qty + Price + Currency — inline row, full width; children are flex inside --}}
 <div class="order-cell-qty-prc-cur col-span-6 flex flex-nowrap items-end gap-2">
 <div class="order-cell-qty min-w-0 flex-1" :data-item-idx="idx" data-field="qty">
-    @if ($showUrlPasteOpen)
-    <div class="flex flex-wrap items-center gap-2 mb-0.5">
-        <span class="text-xs text-slate-500 font-medium">
-            {{ __('order_form.th_qty') }}
-            <span class="order-field-optional">{{ __('order_form.optional') }}</span>
-        </span>
-        <button type="button" @click="doPasteForField(idx, 'qty', $event)"
-            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'qty' ? pastedLabel : pasteLabel"
-            class="text-[11px] text-slate-400 hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
-            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'qty' ? pastedLabel : pasteLabel"></span>
-        </button>
-    </div>
-    @else
     <span class="block text-xs text-slate-500 mb-0.5 font-medium">
         {{ __('order_form.th_qty') }}
         <span class="order-field-optional">{{ __('order_form.optional') }}</span>
     </span>
-    @endif
     <input
         type="text"
         x-model="item.qty"

@@ -205,11 +205,26 @@
 
                             {{-- URL --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="url">
-                                <div class="flex items-center mb-0.5">
-                                    @include('livewire.partials._url-paste-open', ['mode' => 'items'])
-                                </div>
-                                <textarea
-                                    x-model="item.url"
+                                <div class="relative">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                        <span class="bg-white px-1 flex items-center gap-1 pointer-events-auto">
+                                            <button type="button"
+                                                    @click="doPasteForItem(idx, $event)"
+                                                    :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'url' ? pastedLabel : pasteLabel"
+                                                    class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                                <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'url' ? pastedLabel : pasteLabel"></span>
+                                            </button>
+                                            <span class="text-slate-300 text-[10px] leading-none">|</span>
+                                            <button type="button"
+                                                    @click="doOpenForItem(idx)"
+                                                    :aria-label="openFeedbackIdx === idx ? openFeedbackLabel : openLabel"
+                                                    class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                                <span x-text="openFeedbackIdx === idx ? (openFeedbackLabel || openedLabel) : openLabel"></span>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <textarea
+                                        x-model="item.url"
                                     @blur="calcTotals(); saveDraft()"
                                     :placeholder="idx === 0 ? '{{ __('order_form.url_placeholder') }}' : ''"
                                     rows="1"
@@ -243,6 +258,7 @@
                                         $el.classList.toggle('overflow-hidden', !o);
                                     "
                                 ></textarea>
+                                </div>
                             </td>
 
                             {{-- Qty --}}
@@ -260,8 +276,16 @@
 
                             {{-- Color --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="color">
-                                <textarea
-                                    x-model="item.color"
+                                <div class="relative">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                        <button type="button" @click="doPasteForField(idx, 'color', $event)"
+                                            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"
+                                            class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'color' ? pastedLabel : pasteLabel"></span>
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        x-model="item.color"
                                     @blur="saveDraft()"
                                     rows="1"
                                     class="order-form-input w-full px-2.5 py-1.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 resize-none break-words overflow-hidden min-h-[2rem]"
@@ -294,12 +318,21 @@
                                         $el.classList.toggle('overflow-hidden', !o);
                                     "
                                 ></textarea>
+                                </div>
                             </td>
 
                             {{-- Size --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="size">
-                                <textarea
-                                    x-model="item.size"
+                                <div class="relative">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                        <button type="button" @click="doPasteForField(idx, 'size', $event)"
+                                            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'size' ? pastedLabel : pasteLabel"
+                                            class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'size' ? pastedLabel : pasteLabel"></span>
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        x-model="item.size"
                                     @blur="saveDraft()"
                                     rows="1"
                                     class="order-form-input w-full px-2.5 py-1.5 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 resize-none break-words overflow-hidden min-h-[2rem]"
@@ -332,19 +365,29 @@
                                         $el.classList.toggle('overflow-hidden', !o);
                                     "
                                 ></textarea>
+                                </div>
                             </td>
 
                             {{-- Price --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="price">
-                                <input
-                                    type="text"
-                                    x-model="item.price"
-                                    @input="convertArabicNums($event)"
-                                    @blur="calcTotals(); saveDraft()"
-                                    inputmode="decimal"
-                                    placeholder="{{ __('placeholder.amount') }}"
-                                    class="order-form-input w-full px-2.5 py-1.5 border border-primary-100 rounded-lg text-sm bg-white h-8 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
-                                >
+                                <div class="relative">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                        <button type="button" @click="doPasteForField(idx, 'price', $event)"
+                                            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"
+                                            class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'price' ? pastedLabel : pasteLabel"></span>
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        x-model="item.price"
+                                        @input="convertArabicNums($event)"
+                                        @blur="calcTotals(); saveDraft()"
+                                        inputmode="decimal"
+                                        placeholder="{{ __('placeholder.amount') }}"
+                                        class="order-form-input w-full px-2.5 py-1.5 border border-primary-100 rounded-lg text-sm bg-white h-8 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                                    >
+                                </div>
                             </td>
 
                             {{-- Currency --}}
@@ -354,8 +397,16 @@
 
                             {{-- Notes --}}
                             <td class="py-2 px-2" :data-item-idx="idx" data-field="notes">
-                                <textarea
-                                    x-model="item.notes"
+                                <div class="relative">
+                                    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
+                                        <button type="button" @click="doPasteForField(idx, 'notes', $event)"
+                                            :aria-label="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"
+                                            class="pointer-events-auto bg-white px-1 text-[10px] text-slate-400 hover:text-slate-600 hover:underline focus:outline-none leading-none whitespace-nowrap">
+                                            <span x-text="pasteFeedbackIdx === idx && pasteFeedbackField === 'notes' ? pastedLabel : pasteLabel"></span>
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        x-model="item.notes"
                                     @blur="saveDraft()"
                                     :placeholder="idx === 0 ? '{{ __('order_form.notes_placeholder') }}' : ''"
                                     rows="1"
@@ -389,6 +440,7 @@
                                         $el.classList.toggle('overflow-hidden', !o);
                                     "
                                 ></textarea>
+                                </div>
                             </td>
 
                             {{-- Files --}}

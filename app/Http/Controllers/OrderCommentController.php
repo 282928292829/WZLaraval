@@ -71,6 +71,15 @@ class OrderCommentController extends Controller
             ]);
         }
 
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('orders.comment_added'),
+                'comment_id' => $comment->id,
+                'comment_url' => route('orders.show', $order).'#comment-'.$comment->id,
+            ]);
+        }
+
         return redirect()->route('orders.show', $order)->with('success', __('orders.comment_added'));
     }
 

@@ -37,6 +37,21 @@ class CommentsController extends Controller
             $query->whereHas('order', fn ($o) => $o->where('status', $orderStatus));
         }
 
+        $authorType = $request->get('author_type');
+        if ($authorType === 'customer') {
+            $query->whereNotNull('user_id')
+                ->whereHas('order', fn ($o) => $o->whereColumn('orders.user_id', 'order_comments.user_id'));
+        } elseif ($authorType === 'staff') {
+            $query->where(function ($q): void {
+                $q->whereNull('user_id')
+                    ->orWhereHas('user', fn ($u) => $u->staff());
+            });
+        }
+
+        if ($request->get('has_attachment') === '1') {
+            $query->whereHas('files');
+        }
+
         $dateRange = $request->get('date_range');
         if ($dateRange === 'today') {
             $query->whereDate('created_at', today());
@@ -115,6 +130,19 @@ class CommentsController extends Controller
         }
         if ($orderStatus = $request->get('order_status')) {
             $query->whereHas('order', fn ($o) => $o->where('status', $orderStatus));
+        }
+        $authorType = $request->get('author_type');
+        if ($authorType === 'customer') {
+            $query->whereNotNull('user_id')
+                ->whereHas('order', fn ($o) => $o->whereColumn('orders.user_id', 'order_comments.user_id'));
+        } elseif ($authorType === 'staff') {
+            $query->where(function ($q): void {
+                $q->whereNull('user_id')
+                    ->orWhereHas('user', fn ($u) => $u->staff());
+            });
+        }
+        if ($request->get('has_attachment') === '1') {
+            $query->whereHas('files');
         }
         $dateRange = $request->get('date_range');
         if ($dateRange === 'today') {

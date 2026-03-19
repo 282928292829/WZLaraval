@@ -1,6 +1,6 @@
 <x-app-layout :minimal-footer="true">
 
-@php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread']; @endphp
+@php $filterKeys = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread','author_type','has_attachment']; @endphp
 <div x-data="{}" @keydown.escape.window="$store.commentExpanded.id = null">
 <div x-data="{ open: {{ request()->hasAny($filterKeys) ? 'true' : 'false' }}, customNoResponse: {{ request('no_response_preset') === 'custom' ? 'true' : 'false' }} }"
      x-init="try { var s = localStorage.getItem('wasetzon_comments_filter_open'); if (s !== null && !{{ request()->hasAny($filterKeys) ? 'true' : 'false' }}) open = s === 'true'; } catch(e){}; $watch('open', function(v){ try { localStorage.setItem('wasetzon_comments_filter_open', v); } catch(e){} })">
@@ -18,6 +18,8 @@
                     <h1 class="text-base font-bold text-gray-900">{{ __('comments.title') }}</h1>
                     <span class="text-xs text-gray-500 font-normal flex items-center gap-1.5">
                         {{ __('comments.unread') }}: {{ $unreadCount }}
+                        <span class="text-gray-400">·</span>
+                        {{ __('comments.total') }}: {{ $comments->total() }}
                         @if ($unreadCount > 0)
                             <form method="POST" action="{{ route('comments.mark-all-read') }}?{{ http_build_query(request()->query()) }}" class="inline" x-data="{ submitting: false }" @submit="submitting = true">
                                 @csrf
@@ -54,7 +56,7 @@
     (function() {
         var KEY_OPEN = 'wasetzon_comments_filter_open';
         var KEY_FILTERS = 'wasetzon_comments_last_filters';
-        var FILTER_KEYS = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread'];
+        var FILTER_KEYS = ['search','internal','sort','per_page','order_status','date_range','awaiting','no_response_preset','no_response_value','no_response_unit','unread','author_type','has_attachment'];
         try {
             var params = new URLSearchParams(window.location.search);
             if (params.has('cleared')) {
@@ -107,6 +109,21 @@
                     <select name="unread" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
                         <option value="" @selected(request('unread') !== '1')>{{ __('comments.read_all') }}</option>
                         <option value="1" @selected(request('unread') === '1')>{{ __('comments.unread_only') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.author_filter') }}</label>
+                    <select name="author_type" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="" @selected(request('author_type') === null)>{{ __('comments.author_all') }}</option>
+                        <option value="customer" @selected(request('author_type') === 'customer')>{{ __('comments.author_customer') }}</option>
+                        <option value="staff" @selected(request('author_type') === 'staff')>{{ __('comments.author_staff') }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">{{ __('comments.attachment_filter') }}</label>
+                    <select name="has_attachment" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none transition">
+                        <option value="" @selected(request('has_attachment') !== '1')>{{ __('comments.attachment_all') }}</option>
+                        <option value="1" @selected(request('has_attachment') === '1')>{{ __('comments.attachment_only') }}</option>
                     </select>
                 </div>
                 <div>
@@ -209,36 +226,48 @@
                          orderNumber: @js($comment->order?->order_number ?? '#' . $comment->order_id),
                          author: @js($comment->user?->name ?? __('System')),
                          createdAt: @js(__('comments.date') . ': ' . $comment->created_at->format('d/m/Y') . ' ' . __('comments.hour') . ': ' . $comment->created_at->format('H:i')),
+                         createdAtRelative: @js($comment->created_at->diffForHumans()),
                          isoCreatedAt: @js($comment->created_at->toIso8601String()),
                          isInternal: {{ $comment->is_internal ? 'true' : 'false' }},
                          trashed: {{ $comment->trashed() ? 'true' : 'false' }},
                          canEdit: {{ $canEdit ? 'true' : 'false' }},
-                         markReadUrl: @js(route('orders.comments.mark-read', $comment->order)),
-                         updateUrl: @js(route('orders.comments.update', [$comment->order_id, $comment->id])),
+                         markReadUrl: @js($comment->order ? route('orders.comments.mark-read', $comment->order) : ''),
+                         updateUrl: @js($comment->order ? route('orders.comments.update', [$comment->order, $comment->id]) : ''),
                          bodyRequired: @js(__('orders.comment_body_required')),
                          editSuccess: @js(__('comments.edit_success')),
                          editError: @js(__('comments.edit_error')),
                          savingText: @js(__('comments.saving')),
                          files: @js($comment->files->map(fn ($f) => ['id' => $f->id, 'url' => $f->url(), 'original_name' => $f->original_name, 'size' => $f->size, 'human_size' => $f->humanSize(), 'is_image' => $f->isImage()])->values()->all()),
-                         attachUrl: @js(route('orders.comments.attach-files', [$comment->order_id, $comment->id])),
+                         attachUrl: @js($comment->order ? route('orders.comments.attach-files', [$comment->order, $comment->id]) : ''),
                          maxFiles: {{ $maxFilesPerComment }},
                          maxFileSizeMb: {{ $maxFileSizeMb }},
                          acceptFileTypes: @js($acceptFileTypes),
                          attachSuccess: @js(__('comments.file_attached')),
                          attachError: @js(__('comments.edit_error')),
-                         attachLimitExceeded: @js(__('comments.attach_limit_exceeded'))
+                         attachLimitExceeded: @js(__('comments.attach_limit_exceeded')),
+                         storeUrl: @js($comment->order ? route('orders.comments.store', $comment->order) : ''),
+                         isStaff: {{ auth()->user()?->isStaffOrAbove() ? 'true' : 'false' }},
+                         replyPlaceholder: @js(__('comments.reply_placeholder')),
+                         replyLabel: @js(__('comments.reply')),
+                         replyInternalLabel: @js(__('comments.internal_checkbox')),
+                         replySuccess: @js(__('orders.comment_added'))
                      })">
                     <div class="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors" @click="toggle()">
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
-                                @php $orderSlug = $comment->order?->order_number ?? $comment->order_id; @endphp
+                                @php $orderSlug = $comment->order?->order_number; @endphp
+                                @if($orderSlug)
                                 <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700 shrink-0" @click.stop>
-                                    {{ $comment->order?->order_number ?? '#' . $comment->order_id }}
+                                    {{ $comment->order->order_number }}
                                 </a>
+                                @else
+                                <span class="font-medium text-gray-500 shrink-0">#{{ $comment->order_id }}</span>
+                                @endif
                                 <span class="shrink-0">·</span>
                                 <span x-text="author" class="shrink-0"></span>
                                 <span class="shrink-0">·</span>
-                                <time :datetime="isoCreatedAt" x-text="createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="shrink-0"></time>
+                                <span class="shrink-0" x-text="createdAtRelative + ' · ' + createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"></span>
+                                <time :datetime="isoCreatedAt" class="sr-only" x-text="createdAt"></time>
                                 @if ($comment->is_internal)
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 shrink-0">{{ __('orders.internal_note') }}</span>
                                 @endif
@@ -247,6 +276,7 @@
                                 @endif
                             </div>
                             <div class="flex items-center gap-2 shrink-0" @click.stop>
+                                @if($orderSlug)
                                 <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -261,6 +291,7 @@
                                     </svg>
                                     {{ __('comments.open_comment') }}
                                 </a>
+                                @endif
                             </div>
                         </div>
                         <p class="text-sm text-gray-800 leading-relaxed line-clamp-3 text-start w-full" dir="auto" x-text="body"></p>
@@ -274,13 +305,41 @@
                         <div class="px-4 py-4 bg-gray-50/50">
                             <div x-show="!editing">
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
+                                    @if($orderSlug)
                                     <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 hover:text-primary-700" x-text="orderNumber"></a>
+                                    @else
+                                    <span class="font-medium text-gray-500" x-text="orderNumber"></span>
+                                    @endif
                                     <span>·</span>
                                     <span x-text="author"></span>
                                     <span>·</span>
-                                    <time :datetime="isoCreatedAt" x-text="createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"></time>
+                                    <span x-text="createdAtRelative + ' · ' + createdAt" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"></span>
+                                    <time :datetime="isoCreatedAt" class="sr-only" x-text="createdAt"></time>
                                 </div>
                                 <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap" dir="auto" x-text="body"></p>
+
+                                {{-- Inline quick reply (visible without scrolling) --}}
+                                <div class="mt-4 pt-4 border-t border-gray-200" @click.stop>
+                                    <p class="text-xs font-semibold text-gray-600 mb-2">{{ __('comments.reply') }}</p>
+                                    <textarea x-model="replyBody" rows="3" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"
+                                              :placeholder="replyPlaceholder"
+                                              class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 focus:outline-none resize-y min-h-[72px]"
+                                              :disabled="replying"></textarea>
+                                    <p x-show="replyErrorMsg" x-text="replyErrorMsg" class="mt-2 text-xs text-red-600"></p>
+                                    <div class="flex flex-wrap items-center gap-3 mt-2">
+                                        <button type="button" @click.stop="submitReply()" :disabled="replying"
+                                                class="shrink-0 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
+                                            <span x-show="!replying">{{ __('comments.send') }}</span>
+                                            <span x-show="replying" x-text="savingText"></span>
+                                        </button>
+                                        <template x-if="isStaff">
+                                            <label class="flex items-center gap-1 cursor-pointer text-[10px] text-gray-400/80 hover:text-gray-500 shrink-0">
+                                                <input type="checkbox" x-model="replyInternal" class="rounded border-gray-300 text-amber-500 focus:ring-amber-200 size-3">
+                                                <span x-text="replyInternalLabel"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
 
                                 {{-- Attachments --}}
                                 <template x-if="files.length > 0 || (canEdit && files.length < maxFiles)">
@@ -322,6 +381,7 @@
                                 </template>
 
                                 <div class="flex flex-wrap gap-2 mt-4">
+                                    @if($orderSlug)
                                     <a href="{{ route('orders.show', $orderSlug) }}" target="_blank" rel="noopener noreferrer" @click.stop
                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -336,6 +396,7 @@
                                         </svg>
                                         {{ __('comments.open_comment') }}
                                     </a>
+                                    @endif
                                     <template x-if="canEdit">
                                         <button type="button" @click.stop="startEdit()"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">

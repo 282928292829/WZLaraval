@@ -26,9 +26,9 @@
     @else
     <button type="button"
             @click="doPasteCurrentItem($event)"
-            :aria-label="currentItemPasteFeedback === 'pasted' ? pastedLabel : pasteLabel"
+            :aria-label="currentItemPasteFeedback === 'pasted' && currentItemPasteField === 'url' ? pastedLabel : pasteLabel"
             class="hover:text-slate-500 hover:underline focus:outline-none focus:underline py-2 -my-1">
-        <span x-text="currentItemPasteFeedback === 'pasted' ? pastedLabel : pasteLabel"></span>
+        <span x-text="currentItemPasteFeedback === 'pasted' && currentItemPasteField === 'url' ? pastedLabel : pasteLabel"></span>
     </button>
     <span class="text-slate-300">|</span>
     <button type="button"
