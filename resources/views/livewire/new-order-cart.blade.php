@@ -74,7 +74,13 @@
                     <div class="grid grid-cols-6 gap-x-3 gap-y-2.5">
                         {{-- URL — full width --}}
                         <div class="col-span-6">
-                            <label class="block text-xs text-slate-500 mb-0.5 font-medium">{{ __('order_form.th_url') }} <span class="order-field-optional">{{ __('order_form.optional') }}</span></label>
+                            <div class="flex flex-wrap items-center gap-2 mb-0.5" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+                                <span class="text-xs text-slate-500 font-medium">
+                                    {{ __('order_form.th_url') }}
+                                    <span class="order-field-optional">{{ __('order_form.optional') }}</span>
+                                </span>
+                                @include('livewire.partials._url-paste-open', ['mode' => 'current'])
+                            </div>
                             <div dir="ltr">
                                 <input type="text" wire:model="currentItem.url" class="order-form-input w-full px-3 py-2 border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left min-h-[2.5rem]" placeholder="{{ __('order_form.url_placeholder') }}" dir="ltr">
                             </div>
@@ -321,6 +327,49 @@ function newOrderFormCart(attachBlocked = false) {
         pendingDraftNotes: '',
         tipsOpen: false,
         tipsHidden: false,
+        currentItemPasteFeedback: null,
+        noLinkToOpenMsg: @js(__('order_form.no_link_to_open')),
+        pasteLabel: @js(__('order_form.paste')),
+        pastedLabel: @js(__('order_form.pasted')),
+        openLabel: @js(__('order_form.open')),
+        openedLabel: @js(__('order_form.opened')),
+        doPasteCurrentItem(ev) {
+            if (!navigator.clipboard?.readText) {
+                return;
+            }
+            navigator.clipboard.readText().then(t => {
+                const text = t.trim();
+                if (!text) {
+                    return;
+                }
+                this.$wire.set('currentItem.url', text.slice(0, 2000));
+                this.currentItemPasteFeedback = 'pasted';
+                setTimeout(() => { this.currentItemPasteFeedback = null; }, 1500);
+            }).catch(() => {});
+        },
+        doOpenCurrentItem() {
+            const v = (this.$wire.get('currentItem.url') || '').trim();
+            if (!v) {
+                this.showNotify('error', this.noLinkToOpenMsg);
+                return;
+            }
+            const url = v.startsWith('http') ? v : 'https://' + v;
+            let isUrl = false;
+            try {
+                const parsed = new URL(url);
+                const host = (parsed.hostname || '').toLowerCase();
+                if (host && (host.includes('.') || host === 'localhost') && !host.includes(' ')) {
+                    isUrl = true;
+                }
+            } catch {}
+            if (isUrl) {
+                window.open(url, '_blank');
+            } else {
+                window.open('https://www.google.com/search?q=' + encodeURIComponent(v), '_blank');
+            }
+            this.currentItemPasteFeedback = 'opened';
+            setTimeout(() => { this.currentItemPasteFeedback = null; }, 1500);
+        },
         focusCartOnDesktop() {
             this.cartOpen = true;
             if (window.innerWidth >= 768) {

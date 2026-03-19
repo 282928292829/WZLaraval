@@ -135,10 +135,10 @@
 <div class="flex-1 min-h-0 flex flex-col max-w-6xl w-full mx-auto px-3 pb-2 overflow-hidden gap-2">
 
     {{-- Table card — flex-1 so it fills available space --}}
-    <div class="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden relative">
 
         {{-- Single overflow-auto container: handles both x and y scroll --}}
-        <div class="flex-1 min-h-0 overflow-auto" x-ref="tableScrollContainer">
+        <div class="flex-1 min-h-0 overflow-auto" x-ref="tableScrollContainer" @scroll="updateScrollHint()">
             <table class="w-full min-w-[1020px] border-collapse text-sm">
                 <thead class="sticky top-0 z-20 bg-primary-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
                     <tr class="border-b-2 border-primary-200/90">
@@ -204,7 +204,10 @@
                             </td>
 
                             {{-- URL --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="url">
+                                <div class="flex items-center mb-0.5">
+                                    @include('livewire.partials._url-paste-open', ['mode' => 'items'])
+                                </div>
                                 <textarea
                                     x-model="item.url"
                                     @blur="calcTotals(); saveDraft()"
@@ -243,7 +246,7 @@
                             </td>
 
                             {{-- Qty --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="qty">
                                 <input
                                     type="text"
                                     x-model="item.qty"
@@ -256,7 +259,7 @@
                             </td>
 
                             {{-- Color --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="color">
                                 <textarea
                                     x-model="item.color"
                                     @blur="saveDraft()"
@@ -294,7 +297,7 @@
                             </td>
 
                             {{-- Size --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="size">
                                 <textarea
                                     x-model="item.size"
                                     @blur="saveDraft()"
@@ -332,7 +335,7 @@
                             </td>
 
                             {{-- Price --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="price">
                                 <input
                                     type="text"
                                     x-model="item.price"
@@ -350,7 +353,7 @@
                             </td>
 
                             {{-- Notes --}}
-                            <td class="py-2 px-2">
+                            <td class="py-2 px-2" :data-item-idx="idx" data-field="notes">
                                 <textarea
                                     x-model="item.notes"
                                     @blur="saveDraft()"
@@ -535,6 +538,26 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
         showDraftPrompt: false,
         pendingDraftItems: null,
         pendingDraftNotes: '',
+        showScrollHintRight: false,
+        showScrollHintRight: true,
+
+        updateScrollHint() {
+            const el = this.$refs.tableScrollContainer;
+            if (!el) return;
+            const overflow = el.scrollWidth > el.clientWidth;
+            if (!overflow) {
+                this.showScrollHintRight = false;
+                return;
+            }
+            const isRtl = document.documentElement.dir === 'rtl' || document.documentElement.getAttribute('lang') === 'ar';
+            const threshold = 15;
+            if (isRtl) {
+                const minScroll = el.clientWidth - el.scrollWidth;
+                this.showScrollHintRight = el.scrollLeft > minScroll + threshold;
+            } else {
+                this.showScrollHintRight = el.scrollLeft + el.clientWidth < el.scrollWidth - threshold;
+            }
+        },
 
         // Show draft prompt instead of silently restoring
         init() {
@@ -571,6 +594,30 @@ function newOrderFormTable(rates, currencyList, maxProducts, defaultCurrency, is
                 @endif
                 e.preventDefault();
             });
+
+            this.$nextTick(() => {
+                this.updateScrollHint();
+                const ro = new ResizeObserver(() => this.updateScrollHint());
+                const el = this.$refs.tableScrollContainer;
+                if (el) ro.observe(el);
+            });
+        },
+
+        updateScrollHint() {
+            const el = this.$refs.tableScrollContainer;
+            if (!el) return;
+            const { scrollWidth, clientWidth, scrollLeft } = el;
+            const hasOverflow = scrollWidth > clientWidth;
+            if (!hasOverflow) {
+                this.showScrollHintRight = false;
+                return;
+            }
+            const isRtl = document.documentElement.dir === 'rtl' || document.documentElement.getAttribute('lang') === 'ar';
+            const threshold = 20;
+            const atEnd = isRtl
+                ? scrollLeft <= -(scrollWidth - clientWidth - threshold)
+                : scrollLeft + clientWidth >= scrollWidth - threshold;
+            this.showScrollHintRight = !atEnd;
         },
 
         // 5 rows on desktop (≥768px), 3 on mobile
