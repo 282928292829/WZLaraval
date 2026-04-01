@@ -38,8 +38,8 @@ When you finish, update the STATUS section in REFACTOR_HANDOFF.md to reflect wha
 ## STATUS (AI updates this section after each phase)
 
 **Last updated by:** AI — 2026-03-19
-**Current phase:** Phase 7
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
+**Current phase:** All phases complete
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
 
 ### Phase completion log
 - [x] Phase 1 — Paste/Open on all 7 layouts *(Cards ✅, Wizard ✅, Cart Inline ✅, Hybrid ✅, Table ✅, Cart ✅, Cart Next ✅)*
@@ -329,3 +329,14 @@ Tasks:
 - One phase per AI session — never combine phases
 - All strings through `__()`, keys in both `lang/ar.json` and `lang/en.json`
 - No new base folders without approval
+
+### Paste / Open button rules (Table layout — `new-order-table.blade.php`)
+
+The Table layout has two distinct paste patterns — do not mix them:
+
+- **URL column** — has **both** Paste and Open buttons (`doPasteForItem` / `doOpenForItem`). Open makes sense here because the URL field is the only field that holds a link worth navigating to.
+- **Color, Size, Price, Notes columns** — have **Paste only** (`doPasteForField(idx, 'field', $event)`). No Open button. These fields hold plain text values, not links.
+
+The floating overlay pattern (`absolute -translate-y-1/2 top-0`) is intentional for the Table layout — it keeps the dense table rows compact while making the paste button discoverable. Do not flatten it into inline label placement without approval.
+
+The `_url-paste-open.blade.php` partial is **not used** in the Table layout. The Table layout has its paste/open buttons inlined directly in the blade. The partial is used by Cards, Wizard, Cart Inline, and Hybrid layouts only.

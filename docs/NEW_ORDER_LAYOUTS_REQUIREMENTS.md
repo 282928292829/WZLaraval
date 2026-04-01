@@ -131,7 +131,8 @@ All 7 layouts exist. The admin chooses which one customers see at `/new-order` v
 
 **Behavior:**
 - **URL field:** Paste | Open. Paste fills from clipboard. Open opens URL in new tab, or Google search if not a URL. Empty URL + Open → toast: `order_form.no_link_to_open`.
-- **Other fields (Color, Size, Qty, Price, Notes):** Paste only.
+- **Other fields (Color, Size, Price, Notes):** Paste only.
+- **Qty:** No Paste on any layout (by design).
 - **Currency:** No Paste (layout spacer for alignment only).
 - **Translations:** `order_form.paste`, `order_form.pasted`, `order_form.open`, `order_form.opened_search`, `order_form.no_link_to_open`.
 

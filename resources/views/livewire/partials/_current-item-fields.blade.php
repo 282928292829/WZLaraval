@@ -39,12 +39,12 @@
             </span>
             @include('livewire.partials._url-paste-open', ['mode' => 'current'])
         </div>
-        <div dir="ltr">
+        <div dir="{{ $rtl ? 'rtl' : 'ltr' }}">
             <input type="text"
                    wire:model="currentItem.url"
-                   class="order-form-input w-full px-3 {{ $inputPy }} border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-left min-h-[2.5rem]"
+                   class="order-form-input w-full px-3 {{ $inputPy }} border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-start min-h-[2.5rem] placeholder:text-slate-500 placeholder:opacity-100"
                    placeholder="{{ __('order_form.url_placeholder') }}"
-                   dir="ltr">
+                   dir="{{ $rtl ? 'rtl' : 'ltr' }}">
         </div>
     </div>
 
@@ -84,18 +84,18 @@
                class="order-form-input w-full px-3 {{ $inputPy }} border border-primary-100 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[2.5rem]">
     </div>
 
-    {{-- Qty + Price + Currency — inline row, full width --}}
+    {{-- Qty + Price + Currency — qty narrow; price (+ paste) flexes --}}
     <div class="col-span-6 flex flex-nowrap items-end gap-2">
 
-        {{-- Qty --}}
-        <div class="min-w-0 flex-1">
+        {{-- Qty — fixed narrow width (digits only) --}}
+        <div class="shrink-0 w-[3.75rem] sm:w-20">
             <span class="{{ $labelClass }} block mb-0.5">
                 {{ __('order_form.th_qty') }}
                 <span class="order-field-optional">{{ __('order_form.optional') }}</span>
             </span>
             <input type="text"
                    wire:model="currentItem.qty"
-                   class="order-form-input w-full px-3 {{ $inputPy }} border border-primary-100 rounded-lg text-sm bg-white h-10 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                   class="order-form-input w-full px-2 sm:px-3 {{ $inputPy }} border border-primary-100 rounded-lg text-sm bg-white h-10 text-center sm:text-start focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
                    placeholder="1"
                    dir="ltr">
         </div>
@@ -120,15 +120,21 @@
                    dir="ltr">
         </div>
 
-        {{-- Currency — no paste (dropdown) --}}
+        {{-- Currency — label-only (same as Cards / _currency-dropdown) --}}
         <div x-data="{ open: false }" class="relative min-w-0 flex-1 min-w-[5rem]">
             <span class="block {{ $labelClass }} mb-0.5">
                 {{ __('order_form.th_currency') }}
                 <span class="order-field-optional">{{ __('order_form.optional') }}</span>
             </span>
+            @php
+                $curBtnCode = $currentItem['currency'] ?? 'USD';
+                $curBtn = $currencies[$curBtnCode] ?? [];
+                $curBtnLabel = $curBtn['label'] ?? $curBtnCode;
+            @endphp
             <button type="button" @click="open = !open"
-                class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5">
-                <span class="truncate">{{ ($currentItem['currency'] ?? 'USD') }} — {{ ($currencies[$currentItem['currency'] ?? 'USD'] ?? [])['label'] ?? ($currentItem['currency'] ?? 'USD') }}</span>
+                class="order-form-input w-full h-10 px-3 py-2 rounded-lg text-sm text-start bg-white border border-primary-100 hover:border-primary-200 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 inline-flex items-center justify-between gap-1.5"
+                title="{{ $curBtnLabel }}">
+                <span class="truncate">{{ $curBtnLabel }}</span>
                 <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -136,11 +142,17 @@
             <div x-show="open" x-collapse x-cloak @click.outside="open = false"
                 class="absolute top-full mt-1 z-30 w-full max-w-[14rem] bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-56 overflow-y-auto scrollbar-hide {{ $rtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
                 @foreach ($currencies ?? [] as $code => $data)
+                @php
+                    $rowLabel = $data['label'] ?? $code;
+                    $rowSym = $data['symbol'] ?? '';
+                    $rowTitle = $rowSym !== '' ? $rowLabel.' ('.$rowSym.')' : $rowLabel;
+                @endphp
                 <button type="button"
                         data-code="{{ $code }}"
+                        title="{{ $rowTitle }}"
                         @click="$wire.set('currentItem.currency', $event.currentTarget.dataset.code); open = false"
                         class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors whitespace-nowrap {{ ($currentItem['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">
-                    {{ $code }} — {{ $data['label'] ?? $code }}
+                    {{ $rowLabel }}
                 </button>
                 @endforeach
             </div>

@@ -15,6 +15,7 @@ class OrderItem extends Model
         'order_id',
         'url',
         'is_url',
+        'source_host',
         'qty',
         'color',
         'size',

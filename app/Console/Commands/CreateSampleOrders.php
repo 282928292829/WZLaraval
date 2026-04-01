@@ -115,6 +115,7 @@ class CreateSampleOrders extends Command
                 'order_id' => $order->id,
                 'url' => $url,
                 'is_url' => true,
+                'source_host' => order_item_source_host($url),
                 'qty' => $qty,
                 'color' => ['Red', 'Blue', 'Black', 'White'][$i % 4],
                 'size' => ['S', 'M', 'L', 'XL'][$i % 4],

@@ -23,7 +23,7 @@
         </ul>
         <div class="mt-4 pt-4 border-t border-primary-100">
             <label class="flex items-center gap-3 min-h-[44px] text-sm text-slate-500 cursor-pointer">
-                <input type="checkbox" @change="hideTips30Days()" class="w-4 h-4 cursor-pointer rounded">
+                <input type="checkbox" @change="if ($event.target.checked) hideTips30Days()" class="w-4 h-4 cursor-pointer rounded">
                 <span>{{ __('order_form.tips_dont_show') }}</span>
             </label>
         </div>

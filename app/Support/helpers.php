@@ -132,6 +132,26 @@ if (! function_exists('safe_item_url')) {
     }
 }
 
+if (! function_exists('order_item_source_host')) {
+    /**
+     * Normalized hostname for analytics (lowercase), or null if not a usable URL host.
+     */
+    function order_item_source_host(?string $url): ?string
+    {
+        $safe = safe_item_url($url);
+        if ($safe === null) {
+            return null;
+        }
+
+        $host = parse_url($safe, PHP_URL_HOST);
+        if ($host === null || $host === '') {
+            return null;
+        }
+
+        return strtolower($host);
+    }
+}
+
 if (! function_exists('format_datetime_for_display')) {
     /**
      * Format a date/time for display, using site timezone or authenticated user's timezone.

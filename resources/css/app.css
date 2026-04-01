@@ -228,4 +228,31 @@
     }
     .order-modal-form { @apply hidden; }
     .order-modal-form.active { @apply block; }
+
+    /* Cart-Next drawer panel — x-transition enter/leave classes.
+       Alpine applies these classes during the transition cycle, so they re-fire on every open/close.
+       Mobile (<sm): panel slides up/down from bottom (translate-y).
+       Desktop (sm+): panel slides horizontally from the drawer side (translate-x).
+       The blade renders the correct static class strings into x-transition attributes at PHP render time. */
+    .drawer-enter-start-from-right  { transform: translateX(100%); }
+    .drawer-enter-end-from-right    { transform: translateX(0); }
+    .drawer-leave-start-from-right  { transform: translateX(0); }
+    .drawer-leave-end-from-right    { transform: translateX(100%); }
+
+    .drawer-enter-start-from-left   { transform: translateX(-100%); }
+    .drawer-enter-end-from-left     { transform: translateX(0); }
+    .drawer-leave-start-from-left   { transform: translateX(0); }
+    .drawer-leave-end-from-left     { transform: translateX(-100%); }
+
+    /* Mobile overrides: always slide from bottom regardless of side */
+    @media (max-width: 639px) {
+        .drawer-enter-start-from-right,
+        .drawer-enter-start-from-left  { transform: translateY(100%); }
+        .drawer-enter-end-from-right,
+        .drawer-enter-end-from-left    { transform: translateY(0); }
+        .drawer-leave-start-from-right,
+        .drawer-leave-start-from-left  { transform: translateY(0); }
+        .drawer-leave-end-from-right,
+        .drawer-leave-end-from-left    { transform: translateY(100%); }
+    }
 }

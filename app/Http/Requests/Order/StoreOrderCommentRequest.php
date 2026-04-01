@@ -18,7 +18,7 @@ class StoreOrderCommentRequest extends FormRequest
         $maxFileKb = (int) Setting::get('comment_max_file_size_mb', 10) * 1024;
 
         return [
-            'body' => ['required_without:files.0', 'nullable', 'string', 'max:5000'],
+            'body' => ['required_without:files.0', 'nullable', 'string', 'max:25000'],
             'is_internal' => ['sometimes', 'boolean'],
             'template_id' => ['sometimes', 'nullable', 'integer', 'exists:comment_templates,id'],
             'files' => ['sometimes', 'array', 'max:'.$maxFiles],

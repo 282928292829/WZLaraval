@@ -161,6 +161,7 @@ class DevOrdersSeeder extends Seeder
                 'order_id' => $order->id,
                 'url' => $url,
                 'is_url' => str_starts_with($url, 'http'),
+                'source_host' => order_item_source_host($url),
                 'qty' => $qty,
                 'color' => $colors[$i] ?? null,
                 'size' => $sizes[$i] ?? null,

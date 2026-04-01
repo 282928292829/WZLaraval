@@ -12,7 +12,6 @@ use App\Services\ImportCommentTemplatesFromWordPress;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @deprecated Use migrate:all instead. This command resets passwords and lacks role mapping.
@@ -362,14 +361,18 @@ class ImportFromWordPress extends Command
                 $rows = [];
                 foreach ($products as $i => $p) {
                     $url = is_string($p) ? $p : ($p['url'] ?? $p['link'] ?? null);
+                    $urlStr = $url !== null ? (string) $url : '';
+                    $urlStr = mb_substr($urlStr, 0, 4096);
+                    $isUrlFlag = $urlStr !== '' && (str_starts_with($urlStr, 'http') || str_contains($urlStr, '.'));
                     $rows[] = [
                         'order_id' => $orderId,
-                        'url' => $url,
-                        'is_url' => $url && (str_starts_with($url, 'http') || str_contains($url, '.')),
+                        'url' => $urlStr !== '' ? $urlStr : null,
+                        'is_url' => $isUrlFlag,
+                        'source_host' => $isUrlFlag ? order_item_source_host($urlStr) : null,
                         'qty' => min(65535, max(1, (int) ($p['qty'] ?? $p['quantity'] ?? 1))),
-                        'color' => isset($p['color']) ? mb_substr((string) $p['color'], 0, 100) : null,
-                        'size' => isset($p['size']) ? mb_substr((string) $p['size'], 0, 100) : null,
-                        'notes' => isset($p['notes']) || isset($p['info']) ? Str::limit($p['notes'] ?? $p['info'] ?? '', 65535) : null,
+                        'color' => isset($p['color']) ? mb_substr((string) $p['color'], 0, 500) : null,
+                        'size' => isset($p['size']) ? mb_substr((string) $p['size'], 0, 500) : null,
+                        'notes' => isset($p['notes']) || isset($p['info']) ? mb_substr((string) ($p['notes'] ?? $p['info'] ?? ''), 0, 2000) : null,
                         'unit_price' => isset($p['price']) ? (float) $p['price'] : null,
                         'final_price' => isset($p['final_price']) ? (float) $p['final_price'] : null,
                         'sort_order' => $i,

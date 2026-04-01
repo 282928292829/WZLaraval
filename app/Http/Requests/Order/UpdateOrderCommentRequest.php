@@ -16,7 +16,7 @@ class UpdateOrderCommentRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['required', 'string', 'max:25000'],
         ];
 
         $maxFiles = (int) Setting::get('comment_max_files', 10);

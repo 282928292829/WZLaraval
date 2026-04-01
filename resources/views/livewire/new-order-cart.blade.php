@@ -40,6 +40,7 @@
                         <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-bold">{{ count($items) }}</span>
                         @endif
                     </button>
+                    </div>
                 </div>
 
                 @include('livewire.partials._order-tips')
@@ -134,6 +135,8 @@
                             @if (!empty(trim($item['size'] ?? '')))<span>{{ __('order_form.th_size') }}: {{ $item['size'] }}</span>@endif
                             <span dir="ltr">{{ $item['qty'] ?? 1 }} × {{ $item['currency'] ?? 'USD' }} {{ $item['price'] ?? __('order_form.no_price') }}</span>
                         </div>
+                        @php $itemPreviews = $this->getItemFilePreviews($idx); @endphp
+                        @include('livewire.partials._cart-item-file-previews', ['itemIndex' => $idx, 'previews' => $itemPreviews])
                     </div>
                     <div class="flex flex-col gap-1 shrink-0">
                         <button type="button" wire:click="editCartItem({{ $idx }})" class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg text-xs font-medium">{{ __('order_form.show_edit') }}</button>
@@ -157,8 +160,6 @@
                     <div class="flex justify-between text-sm"><span class="text-slate-600">{{ __('order_form.commission_label') }}</span><span dir="ltr">{{ number_format($cartSummary['commission'], 0) }} {{ __('SAR') }}</span></div>
                     <div class="flex justify-between font-bold pt-2 border-t border-primary-200"><span>{{ __('order_form.total_label') }}</span><span dir="ltr">{{ number_format($cartSummary['total'], 0) }} {{ __('SAR') }}</span></div>
                 </div>
-                @elseif (count($items) > 0)
-                <p class="text-sm text-slate-500">{{ __('order_form.cart_price_note') }}</p>
                 @endif
                 <button type="button" wire:click="submitOrder" wire:loading.attr="disabled" class="w-full py-3 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2">
                     <span wire:loading.remove wire:target="submitOrder">{{ __('order_form.confirm_order') }}</span>
@@ -208,6 +209,8 @@
                             @if (!empty(trim($item['size'] ?? '')))<span>{{ __('order_form.th_size') }}: {{ $item['size'] }}</span>@endif
                             <span dir="ltr">{{ $item['qty'] ?? 1 }} × {{ $item['currency'] ?? 'USD' }} {{ $item['price'] ?? __('order_form.no_price') }}</span>
                         </div>
+                        @php $itemPreviews = $this->getItemFilePreviews($idx); @endphp
+                        @include('livewire.partials._cart-item-file-previews', ['itemIndex' => $idx, 'previews' => $itemPreviews])
                     </div>
                     <div class="flex flex-col gap-1 shrink-0">
                         <button type="button" wire:click="editCartItem({{ $idx }})" @click="cartOpen = false" class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg text-xs font-medium">{{ __('order_form.show_edit') }}</button>
@@ -231,8 +234,6 @@
                     <div class="flex justify-between text-sm"><span class="text-slate-600">{{ __('order_form.commission_label') }}</span><span dir="ltr">{{ number_format($cartSummary['commission'], 0) }} {{ __('SAR') }}</span></div>
                     <div class="flex justify-between font-bold pt-2 border-t border-primary-200"><span>{{ __('order_form.total_label') }}</span><span dir="ltr">{{ number_format($cartSummary['total'], 0) }} {{ __('SAR') }}</span></div>
                 </div>
-                @elseif (count($items) > 0)
-                <p class="text-sm text-slate-500">{{ __('order_form.cart_price_note') }}</p>
                 @endif
                 <button type="button" wire:click="submitOrder" wire:loading.attr="disabled" class="w-full py-3 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2">
                     <span wire:loading.remove wire:target="submitOrder">{{ __('order_form.confirm_order') }}</span>
@@ -243,25 +244,6 @@
         </div>
     </div>
 
-    {{-- Mobile: Thumb-reachable FAB to open cart (visible when cart has items) --}}
-    @if (count($items) > 0)
-    <button type="button"
-            x-show="!cartOpen"
-            x-cloak
-            x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 scale-90"
-            x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            @click="cartOpen = true"
-            class="md:hidden fixed z-[2900] w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center hover:from-primary-600 hover:to-primary-500 active:scale-95 transition-all"
-            style="bottom: max(1.5rem, env(safe-area-inset-bottom)); right: max(1.5rem, env(safe-area-inset-right)); left: auto;"
-            aria-label="{{ __('order_form.cart') }}">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-        <span class="absolute -top-1 -end-1 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-white text-primary-600 text-xs font-bold flex items-center justify-center border border-primary-200">{{ count($items) }}</span>
-    </button>
-    @endif
 </div>
     @livewire('guest-login-modal')
 </div>
@@ -292,6 +274,25 @@ function newOrderFormCart(attachBlocked = false) {
         pastedLabel: @js(__('order_form.pasted')),
         openLabel: @js(__('order_form.open')),
         openedLabel: @js(__('order_form.opened')),
+        tipsHiddenMsg: @js(__('order_form.tips_hidden')),
+        checkTipsHidden() {
+            try {
+                let until = localStorage.getItem('wz_order_form_tips_until');
+                if (!until) until = localStorage.getItem('wz_opus46_tips_until');
+                if (until && Date.now() < parseInt(until)) this.tipsHidden = true;
+                else {
+                    localStorage.removeItem('wz_order_form_tips_until');
+                    localStorage.removeItem('wz_opus46_tips_until');
+                }
+            } catch (_) {}
+        },
+        hideTips30Days() {
+            try {
+                localStorage.setItem('wz_order_form_tips_until', (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
+            } catch (_) {}
+            this.tipsHidden = true;
+            this.showNotify('success', this.tipsHiddenMsg);
+        },
         doPasteCurrentItem(ev) { this.doPasteCurrentItemField('url', ev); },
         doPasteCurrentItemField(field, ev) {
             if (!navigator.clipboard?.readText) {
@@ -359,6 +360,7 @@ function newOrderFormCart(attachBlocked = false) {
             this.showDraftPrompt = false;
         },
         initCartDraft() {
+            this.checkTipsHidden();
             @if ($isGuest && count($items) === 0)
             const draft = this.peekDraft();
             if (draft) {

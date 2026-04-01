@@ -122,17 +122,25 @@
     </div>
 
     {{-- Cart drawer: slides from left (en) or right (ar) — Bersonal-style --}}
+    {{-- Outer overlay: fades in/out (backdrop). Inner panel: slides in/out from the correct side. --}}
     <div x-show="cartOpen" x-cloak
-         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter="transition ease-out duration-250"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-[3000] flex items-end sm:items-stretch {{ $drawerSide === 'right' ? 'flex-row-reverse' : '' }}">
         <div class="absolute inset-0 bg-black/50" @click="cartOpen = false"></div>
-        <div class="relative w-full sm:max-w-lg max-w-[100vw] max-h-[85vh] sm:max-h-full rounded-t-2xl sm:rounded-none bg-white shadow-2xl flex flex-col transform transition-transform duration-200 ease-out"
-             :class="{{ $drawerSide === 'right' ? "'translate-x-0'" : "'translate-x-0'" }}"
+        {{-- Panel: slides from bottom on mobile, from the correct side on desktop. --}}
+        <div x-show="cartOpen"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="drawer-enter-start-from-{{ $drawerSide }}"
+             x-transition:enter-end="drawer-enter-end-from-{{ $drawerSide }}"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="drawer-leave-start-from-{{ $drawerSide }}"
+             x-transition:leave-end="drawer-leave-end-from-{{ $drawerSide }}"
+             class="relative w-full sm:max-w-lg max-w-[100vw] max-h-[85vh] sm:max-h-full rounded-t-2xl sm:rounded-none bg-white shadow-2xl flex flex-col"
              style="{{ $drawerSide === 'right' ? 'margin-right: 0; margin-left: auto;' : 'margin-left: 0; margin-right: auto;' }}">
             <div class="flex items-center justify-between p-4 border-b border-slate-200 shrink-0">
                 <h2 class="text-lg font-bold text-slate-800 m-0">{{ __('order_form.cart') }} ({{ count($items) }})</h2>
@@ -149,24 +157,36 @@
                 </div>
                 @else
                 @foreach ($items as $idx => $item)
+                @php
+                    $itemPreviews = $this->getItemFilePreviews($idx);
+                    $cnHasColor = ! empty(trim($item['color'] ?? ''));
+                    $cnHasSize = ! empty(trim($item['size'] ?? ''));
+                    $cnCurCodeRow = $item['currency'] ?? 'USD';
+                    $cnCurDataRow = $currencies[$cnCurCodeRow] ?? [];
+                    $cnCurLabelRow = $cnCurDataRow['label'] ?? $cnCurCodeRow;
+                @endphp
                 <div wire:key="cart-next-item-{{ $idx }}" class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm">
-                    {{-- Collapsed: badges + link + remove --}}
+                    {{-- Collapsed: URL → Color|Size → Qty|Price|Currency → Notes → files (matches _current-item-fields flow) --}}
                     <div x-show="editingIndex !== {{ $idx }}"
                          class="space-y-2">
-                        <div class="flex items-start justify-between gap-2 flex-wrap">
+                        {{-- Row 1: # + URL + actions --}}
+                        <div class="flex items-start justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                                 <span class="text-sm font-semibold text-slate-700 shrink-0">{{ __('order_form.product_num') }} {{ $idx + 1 }}</span>
                                 @if (!empty(trim($item['url'] ?? '')))
-                                <a href="{{ safe_item_url($item['url']) ?? '#' }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary-50 border border-primary-200 text-xs text-primary-600 hover:bg-primary-100 truncate max-w-[12ch]" dir="ltr">
+                                @php
+                                    $cnItemUrl = trim($item['url'] ?? '');
+                                    $cnSafeUrl = safe_item_url($cnItemUrl);
+                                    $cnHostLabel = $cnSafeUrl
+                                        ? (parse_url($cnSafeUrl, PHP_URL_HOST) ?: $cnItemUrl)
+                                        : (parse_url($cnItemUrl, PHP_URL_HOST) ?: $cnItemUrl);
+                                    $cnHostLabel = preg_replace('/^www\./i', '', (string) $cnHostLabel);
+                                @endphp
+                                <a href="{{ $cnSafeUrl ?? '#' }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary-50 border border-primary-200 text-xs text-primary-600 hover:bg-primary-100 truncate min-w-0 max-w-full" dir="ltr" title="{{ $cnItemUrl }}">
                                     <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                    {{ \Illuminate\Support\Str::limit(parse_url($item['url'], PHP_URL_HOST) ?: $item['url'], 12) }}
+                                    {{ $cnHostLabel }}
                                 </a>
                                 @endif
-                                @if (!empty(trim($item['color'] ?? '')))
-                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200">{{ __('order_form.th_color') }}: {{ \Illuminate\Support\Str::limit($item['color'], 15) }}</span>
-                                @endif
-                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200" dir="ltr">{{ $item['qty'] ?? 1 }}</span>
-                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200" dir="ltr">{{ $item['currency'] ?? 'USD' }} {{ $item['price'] ?? __('order_form.no_price') }}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0">
                                 <button type="button" @click="editingIndex = {{ $idx }}" class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg text-xs font-medium">{{ __('order_form.edit') }}</button>
@@ -175,43 +195,42 @@
                                 </button>
                             </div>
                         </div>
+                        {{-- Row 2: Color | Size (same order as add form: color start, size end in LTR) --}}
+                        @if ($cnHasColor || $cnHasSize)
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="min-w-0">
+                                @if ($cnHasColor)
+                                <span class="inline-flex max-w-full px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200 truncate align-top" title="{{ $item['color'] }}">{{ __('order_form.th_color') }}: {{ \Illuminate\Support\Str::limit($item['color'], 15) }}</span>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                @if ($cnHasSize)
+                                <span class="inline-flex max-w-full px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200 truncate align-top" title="{{ $item['size'] }}">{{ __('order_form.th_size') }}: {{ \Illuminate\Support\Str::limit($item['size'], 15) }}</span>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
+                        {{-- Row 3: Qty + Price + Currency --}}
+                        <div class="flex flex-wrap items-center gap-2" dir="ltr">
+                            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200 tabular-nums">{{ __('order_form.th_qty') }}: {{ $item['qty'] ?? 1 }}</span>
+                            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200 tabular-nums min-w-0 truncate max-w-full" title="{{ $item['price'] ?? '' }}">{{ __('order_form.th_price_per_unit') }}: {{ $item['price'] ?? __('order_form.no_price') }}</span>
+                            <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200 min-w-0 truncate max-w-[min(100%,14rem)]" title="{{ $cnCurLabelRow }}">{{ __('order_form.th_currency') }}: {{ $cnCurLabelRow }}</span>
+                        </div>
                         @if (!empty(trim($item['notes'] ?? '')))
                         <p class="text-xs text-slate-500 mt-1">{{ __('order_form.th_notes') }}: {{ \Illuminate\Support\Str::limit($item['notes'], 80) }}</p>
                         @endif
-                        @php $itemPreviews = $this->getItemFilePreviews($idx); @endphp
-                        @if (count($itemPreviews) > 0)
-                        <div class="flex flex-wrap items-center gap-2 mt-2">
-                            @foreach ($itemPreviews as $fp)
-                            <div class="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-slate-200 {{ $fp['url'] ? 'cursor-pointer' : '' }}"
-                                 @if ($fp['url']) data-zoom-src="{{ $fp['url'] }}" @click="$dispatch('zoom-image', $event.currentTarget.dataset.zoomSrc)" @endif>
-                                @if ($fp['url'])
-                                <img src="{{ $fp['url'] }}" class="w-full h-full object-cover block" alt="">
-                                @elseif ($fp['type'] === 'img')
-                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">...</div>
-                                @elseif ($fp['type'] === 'pdf')
-                                <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
-                                @else
-                                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">?</div>
-                                @endif
-                            </div>
-                            @endforeach
-                        </div>
-                        @endif
+                        @include('livewire.partials._cart-item-file-previews', ['itemIndex' => $idx, 'previews' => $itemPreviews])
                     </div>
-                    {{-- Expanded: inline edit form — wire:model.blur ensures edits sync on blur before Save closes panel --}}
+                    {{-- Expanded: same field order as _current-item-fields --}}
                     <div x-show="editingIndex === {{ $idx }}" x-cloak class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_url') }}</label>
-                            <input type="text" wire:model.blur="items.{{ $idx }}.url" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" dir="ltr">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_price_per_unit') }}</label>
-                                <input type="text" wire:model.blur="items.{{ $idx }}.price" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_qty') }}</label>
-                                <input type="text" wire:model.blur="items.{{ $idx }}.qty" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center" dir="ltr">
+                            <div dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
+                            <input type="text"
+                                   wire:model.blur="items.{{ $idx }}.url"
+                                   class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-start placeholder:text-slate-500 placeholder:opacity-100"
+                                   placeholder="{{ __('order_form.url_placeholder') }}"
+                                   dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
@@ -224,16 +243,36 @@
                                 <input type="text" wire:model.blur="items.{{ $idx }}.size" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
                             </div>
                         </div>
-                        <div x-data="{ open: false }" class="relative">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_currency') }}</label>
-                            <button type="button" @click="open = !open" class="order-form-input w-full h-9 px-3 py-2 rounded-lg text-sm text-start bg-white border border-slate-200 inline-flex items-center justify-between">
-                                <span class="truncate">{{ $item['currency'] ?? 'USD' }}</span>
-                                <svg class="w-4 h-4 shrink-0" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </button>
-                            <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-40 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-40 overflow-y-auto scrollbar-thin {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
-                                @foreach ($currencies ?? [] as $code => $data)
-                                <button type="button" @click="$wire.set('items.{{ $idx }}.currency', '{{ $code }}'); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 {{ ($item['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $code }}</button>
-                                @endforeach
+                        <div class="flex flex-nowrap items-end gap-2">
+                            <div class="shrink-0 w-[3.75rem] sm:w-20">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_qty') }}</label>
+                                <input type="text" wire:model.blur="items.{{ $idx }}.qty" class="order-form-input w-full px-2 sm:px-3 py-2 border border-slate-200 rounded-lg text-sm text-center sm:text-start" dir="ltr">
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_price_per_unit') }}</label>
+                                <input type="text" wire:model.blur="items.{{ $idx }}.price" class="order-form-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[4ch]" dir="ltr" placeholder="{{ __('placeholder.amount') }}">
+                            </div>
+                            <div x-data="{ open: false }" class="relative flex-1 min-w-[5rem]">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_currency') }}</label>
+                                @php
+                                    $cnCurCode = $item['currency'] ?? 'USD';
+                                    $cnCur = $currencies[$cnCurCode] ?? [];
+                                    $cnCurLabel = $cnCur['label'] ?? $cnCurCode;
+                                @endphp
+                                <button type="button" @click="open = !open" class="order-form-input w-full h-9 px-3 py-2 rounded-lg text-sm text-start bg-white border border-slate-200 inline-flex items-center justify-between" title="{{ $cnCurLabel }}">
+                                    <span class="truncate">{{ $cnCurLabel }}</span>
+                                    <svg class="w-4 h-4 shrink-0" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse x-cloak @click.outside="open = false" class="absolute top-full mt-1 z-40 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-40 overflow-y-auto scrollbar-thin {{ $isRtl ? 'right-0 left-auto' : 'left-0 right-auto' }}">
+                                    @foreach ($currencies ?? [] as $code => $data)
+                                    @php
+                                        $cnRowLabel = $data['label'] ?? $code;
+                                        $cnRowSym = $data['symbol'] ?? '';
+                                        $cnRowTitle = $cnRowSym !== '' ? $cnRowLabel.' ('.$cnRowSym.')' : $cnRowLabel;
+                                    @endphp
+                                    <button type="button" title="{{ $cnRowTitle }}" @click="$wire.set('items.{{ $idx }}.currency', '{{ $code }}'); open = false" class="w-full px-3 py-2 text-start text-sm hover:bg-primary-50 {{ ($item['currency'] ?? 'USD') === $code ? 'bg-primary-50 text-primary-700 font-medium' : '' }}">{{ $cnRowLabel }}</button>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -243,22 +282,7 @@
                         @if (count($itemPreviews) > 0)
                         <div>
                             <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('order_form.th_files') }}</label>
-                            <div class="flex flex-wrap items-center gap-2">
-                                @foreach ($itemPreviews as $fp)
-                                <div class="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-slate-200 {{ $fp['url'] ? 'cursor-pointer' : '' }}"
-                                     @if ($fp['url']) data-zoom-src="{{ $fp['url'] }}" @click="$dispatch('zoom-image', $event.currentTarget.dataset.zoomSrc)" @endif>
-                                    @if ($fp['url'])
-                                    <img src="{{ $fp['url'] }}" class="w-full h-full object-cover block" alt="">
-                                    @elseif ($fp['type'] === 'img')
-                                    <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">...</div>
-                                    @elseif ($fp['type'] === 'pdf')
-                                    <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500 text-[10px] font-bold">PDF</div>
-                                    @else
-                                    <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px]">?</div>
-                                    @endif
-                                </div>
-                                @endforeach
-                            </div>
+                            @include('livewire.partials._cart-item-file-previews', ['itemIndex' => $idx, 'previews' => $itemPreviews])
                         </div>
                         @endif
                         <button type="button" @click="$wire.syncItemEdits(); editingIndex = null" class="w-full py-2 px-4 rounded-lg text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
@@ -280,8 +304,7 @@
                         <div class="flex justify-between text-sm"><span class="text-slate-600">{{ __('order_form.commission_label') }}</span><span dir="ltr">{{ number_format($cartSummary['commission'], 0) }} {{ __('SAR') }}</span></div>
                         <div class="flex justify-between font-bold pt-2 border-t border-primary-200"><span>{{ __('order_form.total_label') }}</span><span dir="ltr">{{ number_format($cartSummary['total'], 0) }} {{ __('SAR') }}</span></div>
                         <p class="text-xs text-slate-500 mt-1">{{ __('order_form.terms_disclaimer') }}</p>
-                    @elseif (count($items) > 0)
-                    <p class="text-sm text-slate-500">{{ __('order_form.cart_price_note') }}</p>
+                    </div>
                     @endif
 
                     @if (count($items) > 0 && ($requireTerms ?? true))
@@ -299,7 +322,7 @@
             @if (count($items) > 0)
             <div class="p-4 border-t border-slate-200 space-y-2 shrink-0">
                 <button type="button" @click="cartOpen = false" class="w-full py-3 px-4 rounded-lg font-semibold text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
-                    {{ __('Add another product') }}
+                    {{ __('order_form.add_product') }}
                 </button>
                 <button type="button"
                         @click="handleCheckout()"
@@ -318,21 +341,6 @@
             @endif
         </div>
     </div>
-
-    {{-- Mobile FAB when cart has items --}}
-    @if (count($items) > 0)
-    <button type="button"
-            x-show="!cartOpen"
-            x-cloak
-            x-transition
-            @click="cartOpen = true"
-            class="fixed z-[2900] w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center hover:from-primary-600 hover:to-primary-500 active:scale-95 transition-all"
-            style="bottom: max(1.5rem, env(safe-area-inset-bottom)); {{ $drawerSide === 'right' ? 'left: max(1.5rem, env(safe-area-inset-left));' : 'right: max(1.5rem, env(safe-area-inset-right));' }}"
-            aria-label="{{ __('order_form.cart') }}">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-        <span class="absolute -top-1 {{ $drawerSide === 'right' ? '-start-1' : '-end-1' }} min-w-[1.25rem] h-5 px-1.5 rounded-full bg-white text-primary-600 text-xs font-bold flex items-center justify-center border border-primary-200">{{ count($items) }}</span>
-    </button>
-    @endif
 
     {{-- Image zoom modal --}}
     <div x-show="zoomedImage" x-cloak
@@ -427,6 +435,9 @@ function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
         pendingDraftNotes: '',
         isShaking: false,
         zoomedImage: null,
+        tipsOpen: false,
+        tipsHidden: false,
+        tipsHiddenMsg: @js(__('order_form.tips_hidden')),
         currentItemPasteFeedback: null,
         currentItemPasteField: null,
         noLinkToOpenMsg: @js(__('order_form.no_link_to_open')),
@@ -437,6 +448,24 @@ function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
         pastedLabel: @js(__('order_form.pasted')),
         openLabel: @js(__('order_form.open')),
         openedLabel: @js(__('order_form.opened')),
+        checkTipsHidden() {
+            try {
+                let until = localStorage.getItem('wz_order_form_tips_until');
+                if (!until) until = localStorage.getItem('wz_opus46_tips_until');
+                if (until && Date.now() < parseInt(until)) this.tipsHidden = true;
+                else {
+                    localStorage.removeItem('wz_order_form_tips_until');
+                    localStorage.removeItem('wz_opus46_tips_until');
+                }
+            } catch (_) {}
+        },
+        hideTips30Days() {
+            try {
+                localStorage.setItem('wz_order_form_tips_until', (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
+            } catch (_) {}
+            this.tipsHidden = true;
+            this.showNotify('success', this.tipsHiddenMsg);
+        },
         doPasteCurrentItem(ev) { this.doPasteCurrentItemField('url', ev); },
         doPasteCurrentItemField(field, ev) {
             if (!navigator.clipboard?.readText) {
@@ -513,6 +542,7 @@ function newOrderFormCartNext(requireTerms = true, attachBlocked = false) {
             this.showDraftPrompt = false;
         },
         initCartDraft() {
+            this.checkTipsHidden();
             @if ($isGuest && count($items) === 0)
             if (sessionStorage.getItem('wz_draft_discarded')) {
                 try {

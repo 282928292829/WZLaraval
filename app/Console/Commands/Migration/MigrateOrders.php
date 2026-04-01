@@ -280,8 +280,8 @@ class MigrateOrders extends Command
             }
 
             $url = trim($meta[$urlKey] ?? '');
-            if (strlen($url) > 2000) {
-                $url = substr($url, 0, 2000);
+            if (mb_strlen($url) > 4096) {
+                $url = mb_substr($url, 0, 4096);
             }
 
             if (empty($url)) {
@@ -301,10 +301,11 @@ class MigrateOrders extends Command
             $items[] = [
                 'url' => $url,
                 'is_url' => $isUrl,
+                'source_host' => $isUrl ? order_item_source_host($url) : null,
                 'qty' => $qty,
-                'color' => $this->truncate($meta["p_color_{$i}"] ?? null, 100),
-                'size' => $this->truncate($meta["p_size_{$i}"] ?? null, 100),
-                'notes' => $meta["p_info_{$i}"] ?? null,
+                'color' => $this->truncate($meta["p_color_{$i}"] ?? null, 500),
+                'size' => $this->truncate($meta["p_size_{$i}"] ?? null, 500),
+                'notes' => $this->truncate($meta["p_info_{$i}"] ?? null, 2000),
                 'image_path' => $imagePath,
                 'currency' => null,
                 'unit_price' => $price > 0 ? $price : null,
